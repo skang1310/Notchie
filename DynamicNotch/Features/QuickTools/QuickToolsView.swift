@@ -1836,7 +1836,7 @@ final class NotchieWeatherStore: ObservableObject {
     }
 }
 
-// MARK: - Column 3: Apple Weather Widget (Official macOS / iOS Weather Widget Design)
+// MARK: - Column 3: Weather & Golden Hour Solar Arc (Top: Weather / Bottom: Golden Hour Graph)
 
 private struct NotchieAppleWeatherWidgetColumn: View {
     @ObservedObject private var weatherStore = NotchieWeatherStore.shared
@@ -1876,31 +1876,60 @@ private struct NotchieAppleWeatherWidgetColumn: View {
         return isKorean ? "최고:\(high)°  최저:\(low)°" : "H:\(high)°  L:\(low)°"
     }
 
+    private var goldenHourStatusText: String {
+        let now = Date()
+        let cal = Calendar.current
+        let currentHour = Double(cal.component(.hour, from: now)) + (Double(cal.component(.minute, from: now)) / 60.0)
+
+        let sunrise = Self.parseHourDecimal(weatherStore.snapshot.sunriseText) ?? 6.78
+        let sunset = Self.parseHourDecimal(weatherStore.snapshot.sunsetText) ?? 19.98
+
+        let isMorningGolden = (currentHour >= (sunrise - 0.25)) && (currentHour <= (sunrise + 0.75))
+        let isEveningGolden = (currentHour >= (sunset - 0.75)) && (currentHour <= (sunset + 0.25))
+
+        if isMorningGolden || isEveningGolden {
+            return isKorean ? "지금 골든아워 ✨" : "Golden Hour Now ✨"
+        } else if currentHour < sunrise {
+            let minsUntil = Int(round((sunrise - currentHour) * 60))
+            let h = minsUntil / 60
+            let m = minsUntil % 60
+            return isKorean ? (h > 0 ? "일출까지 \(h)시간 \(m)분" : "일출까지 \(m)분") : (h > 0 ? "\(h)h \(m)m to sunrise" : "\(m)m to sunrise")
+        } else if currentHour < sunset {
+            let minsUntil = Int(round((sunset - currentHour) * 60))
+            let h = minsUntil / 60
+            let m = minsUntil % 60
+            return isKorean ? (h > 0 ? "일몰까지 \(h)시간 \(m)분" : "일몰까지 \(m)분") : (h > 0 ? "\(h)h \(m)m to sunset" : "\(m)m to sunset")
+        } else {
+            return isKorean ? "내일 일출 \(weatherStore.snapshot.sunriseText)" : "Sunrise tomorrow"
+        }
+    }
+
     var body: some View {
         ZStack {
-            // Authentic Apple Weather Atmospheric Sky / Midnight Gradient
+            // Atmospheric Sky Gradient: Apple Weather Blue (Top) -> Twilight Sapphire (Bottom)
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [
-                            Color(red: 0.14, green: 0.38, blue: 0.74),
-                            Color(red: 0.08, green: 0.22, blue: 0.50),
-                            Color(red: 0.05, green: 0.11, blue: 0.32)
+                        stops: [
+                            .init(color: Color(red: 0.14, green: 0.38, blue: 0.74), location: 0.0),
+                            .init(color: Color(red: 0.08, green: 0.22, blue: 0.48), location: 0.48),
+                            .init(color: Color(red: 0.05, green: 0.10, blue: 0.28), location: 0.52),
+                            .init(color: Color(red: 0.04, green: 0.07, blue: 0.20), location: 1.0)
                         ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
                 )
                 .overlay(
-                    // Subtle ambient celestial radiance
+                    // Golden Hour Warm Horizon Glow in lower chamber
                     RadialGradient(
                         colors: [
-                            Color(red: 1.0, green: 0.88, blue: 0.45).opacity(0.20),
+                            Color(red: 1.0, green: 0.68, blue: 0.22).opacity(0.18),
                             Color.clear
                         ],
-                        center: .topTrailing,
+                        center: UnitPoint(x: 0.5, y: 0.78),
                         startRadius: 5,
-                        endRadius: 90
+                        endRadius: 75
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 )
@@ -1921,58 +1950,81 @@ private struct NotchieAppleWeatherWidgetColumn: View {
                 )
 
             VStack(spacing: 0) {
-                // 1. Header: Location + Refresh Indicator
-                HStack(alignment: .center) {
-                    HStack(spacing: 3.5) {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 9.0, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.88))
-                        Text(locationTitle)
-                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                    }
+                // MARK: - TOP HALF: 날씨 (Weather Section - 65pt)
+                topWeatherHalfView
+                    .frame(height: 65)
 
-                    Spacer()
+                // Frosted Center Hairline Divider
+                Rectangle()
+                    .fill(Color.white.opacity(0.18))
+                    .frame(height: 0.75)
+                    .padding(.horizontal, 8)
 
-                    Button {
-                        weatherStore.refreshIfNeeded(force: true)
-                    } label: {
-                        if weatherStore.isRefreshing {
-                            ProgressView()
-                                .controlSize(.mini)
-                                .scaleEffect(0.65)
-                        } else {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 9.0, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.65))
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .help(isKorean ? "날씨 새로고침" : "Refresh Weather")
-                }
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-                .frame(height: 18)
+                // MARK: - BOTTOM HALF: 일출/일몰 골든아워 그래프 (Golden Hour Solar Arc - 70pt)
+                bottomGoldenHourHalfView
+                    .frame(height: 70)
+            }
+        }
+        .onAppear {
+            weatherStore.refreshIfNeeded()
+        }
+    }
 
-                // 2. Upper Hero: Large Display Temp + Condition & High/Low
-                HStack(alignment: .center, spacing: 6) {
-                    Text("\(Int(round(weatherStore.snapshot.currentTempC)))°")
-                        .font(.system(size: 32, weight: .light, design: .rounded))
+    // MARK: - Top Half View: 날씨
+    private var topWeatherHalfView: some View {
+        VStack(spacing: 0) {
+            // Header: Location + Refresh
+            HStack(alignment: .center) {
+                HStack(spacing: 3.5) {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 9.0, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.88))
+                    Text(locationTitle)
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
+                }
 
-                    Spacer(minLength: 4)
+                Spacer()
 
-                    VStack(alignment: .trailing, spacing: 1) {
-                        HStack(spacing: 3.5) {
-                            NotchieAppleWeatherSymbolView(weatherCode: weatherStore.snapshot.weatherCode, size: 16)
-                            Text(localizedCondition)
-                                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                        }
+                Button {
+                    weatherStore.refreshIfNeeded(force: true)
+                } label: {
+                    if weatherStore.isRefreshing {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .scaleEffect(0.65)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 9.0, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
+                }
+                .buttonStyle(.plain)
+                .help(isKorean ? "날씨 새로고침" : "Refresh Weather")
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 6)
+            .frame(height: 18)
+
+            // Weather Hero: Large Temp + Weather Symbol + Condition + High/Low
+            HStack(alignment: .center, spacing: 8) {
+                Text("\(Int(round(weatherStore.snapshot.currentTempC)))°")
+                    .font(.system(size: 34, weight: .light, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+
+                Spacer(minLength: 4)
+
+                HStack(spacing: 6) {
+                    NotchieAppleWeatherSymbolView(weatherCode: weatherStore.snapshot.weatherCode, size: 22)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(localizedCondition)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
 
                         Text(formattedHighLow)
                             .font(.system(size: 9.0, weight: .medium, design: .rounded))
@@ -1981,103 +2033,303 @@ private struct NotchieAppleWeatherWidgetColumn: View {
                             .fixedSize(horizontal: true, vertical: false)
                     }
                 }
-                .padding(.horizontal, 10)
-                .frame(height: 34)
-
-                // Frosted Divider
-                Rectangle()
-                    .fill(Color.white.opacity(0.18))
-                    .frame(height: 0.65)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-
-                // 3. Middle: 4-Day Forecast Columns (Apple Weather Widget Strip)
-                HStack(spacing: 0) {
-                    ForEach(Array(weatherStore.snapshot.forecastDays.prefix(4).enumerated()), id: \.element.id) { index, day in
-                        VStack(spacing: 2) {
-                            Text(displayDayTitle(for: index))
-                                .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.88))
-                                .lineLimit(1)
-
-                            NotchieAppleWeatherSymbolView(weatherCode: day.weatherCode, size: 14)
-                                .frame(height: 16)
-
-                            VStack(spacing: 0.5) {
-                                Text("\(Int(round(day.highTempC)))°")
-                                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                                Text("\(Int(round(day.lowTempC)))°")
-                                    .font(.system(size: 8.0, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.65))
-                                    .lineLimit(1)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal, 4)
-                .frame(height: 52)
-
-                // Frosted Divider
-                Rectangle()
-                    .fill(Color.white.opacity(0.12))
-                    .frame(height: 0.65)
-                    .padding(.horizontal, 8)
-
-                // 4. Micro Bottom Info: Sunrise, Sunset, Wind
-                HStack(spacing: 6) {
-                    HStack(spacing: 2.0) {
-                        Image(systemName: "sunrise.fill")
-                            .font(.system(size: 7.5))
-                            .foregroundStyle(Color(red: 1.0, green: 0.82, blue: 0.32))
-                        Text(weatherStore.snapshot.sunriseText)
-                            .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.78))
-                            .lineLimit(1)
-                    }
-
-                    HStack(spacing: 2.0) {
-                        Image(systemName: "sunset.fill")
-                            .font(.system(size: 7.5))
-                            .foregroundStyle(Color(red: 1.0, green: 0.58, blue: 0.28))
-                        Text(weatherStore.snapshot.sunsetText)
-                            .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.78))
-                            .lineLimit(1)
-                    }
-
-                    Spacer(minLength: 2)
-
-                    HStack(spacing: 2.0) {
-                        Image(systemName: "wind")
-                            .font(.system(size: 7.5, weight: .semibold))
-                            .foregroundStyle(Color(red: 0.62, green: 0.86, blue: 1.0))
-                        Text(weatherStore.snapshot.windText)
-                            .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.82))
-                            .lineLimit(1)
-                    }
-                }
-                .padding(.horizontal, 9)
-                .frame(height: 20)
             }
-        }
-        .onAppear {
-            weatherStore.refreshIfNeeded()
+            .padding(.horizontal, 10)
+            .padding(.bottom, 4)
+            .frame(height: 42)
         }
     }
 
-    private func displayDayTitle(for index: Int) -> String {
-        if index == 0 {
-            return isKorean ? "오늘" : "Today"
+    // MARK: - Bottom Half View: 일출/일몰 골든아워 그래프
+    private var bottomGoldenHourHalfView: some View {
+        VStack(spacing: 0) {
+            // Header: Golden Hour Title + Status
+            HStack(alignment: .center) {
+                HStack(spacing: 3) {
+                    Image(systemName: "sun.horizon.fill")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundStyle(Color(red: 1.0, green: 0.82, blue: 0.35))
+                    Text(isKorean ? "골든아워" : "Golden Hour")
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color(red: 1.0, green: 0.88, blue: 0.45))
+                }
+
+                Spacer()
+
+                Text(goldenHourStatusText)
+                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.80))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 4)
+            .frame(height: 14)
+
+            // Interactive Solar Arc Graph Canvas
+            NotchieGoldenHourSunArcCanvas(
+                sunriseText: weatherStore.snapshot.sunriseText,
+                sunsetText: weatherStore.snapshot.sunsetText,
+                isKorean: isKorean
+            )
+            .frame(height: 36)
+            .padding(.horizontal, 8)
+
+            // Footer: Sunrise Time + Warm Light Pill + Sunset Time
+            HStack(alignment: .center) {
+                HStack(spacing: 2) {
+                    Image(systemName: "sunrise.fill")
+                        .font(.system(size: 7.5))
+                        .foregroundStyle(Color(red: 1.0, green: 0.82, blue: 0.32))
+                    Text(isKorean ? "일출 \(weatherStore.snapshot.sunriseText)" : "Sunrise \(weatherStore.snapshot.sunriseText)")
+                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 2)
+
+                Text(isKorean ? "황금빛 조명" : "Golden Light")
+                    .font(.system(size: 7.0, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 1.0, green: 0.84, blue: 0.35))
+                    .padding(.horizontal, 4.5)
+                    .padding(.vertical, 1.0)
+                    .background(Color(red: 1.0, green: 0.65, blue: 0.15).opacity(0.20), in: Capsule())
+
+                Spacer(minLength: 2)
+
+                HStack(spacing: 2) {
+                    Image(systemName: "sunset.fill")
+                        .font(.system(size: 7.5))
+                        .foregroundStyle(Color(red: 1.0, green: 0.58, blue: 0.28))
+                    Text(isKorean ? "일몰 \(weatherStore.snapshot.sunsetText)" : "Sunset \(weatherStore.snapshot.sunsetText)")
+                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 18)
         }
-        let date = Calendar.current.date(byAdding: .day, value: index, to: Date()) ?? Date()
-        let formatter = DateFormatter()
-        formatter.locale = Locale.autoupdatingCurrent
-        formatter.dateFormat = isKorean ? "E" : "EEE"
-        return formatter.string(from: date)
+    }
+
+    private static func parseHourDecimal(_ string: String) -> Double? {
+        let clean = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "h:mm a"
+        if let d = f.date(from: clean) {
+            let c = Calendar.current
+            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
+        }
+        f.dateFormat = "HH:mm"
+        if let d = f.date(from: clean) {
+            let c = Calendar.current
+            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
+        }
+        return nil
+    }
+}
+
+// MARK: - Golden Hour Solar Arc Canvas (Apple Sun Trajectory + Horizon Line + Glowing Sun Orb)
+
+private struct NotchieGoldenHourSunArcCanvas: View {
+    let sunriseText: String
+    let sunsetText: String
+    let isKorean: Bool
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let yHorizon = h * 0.68
+            let xSunrise = w * 0.14
+            let xSunset = w * 0.86
+            let yNoon = h * 0.14
+
+            let (isDaytime, sunProgress, isGoldenHour) = computeSolarStatus()
+
+            ZStack {
+                // 1. Horizon Line (Dashed)
+                Path { p in
+                    p.move(to: CGPoint(x: 4, y: yHorizon))
+                    p.addLine(to: CGPoint(x: w - 4, y: yHorizon))
+                }
+                .stroke(
+                    Color.white.opacity(0.18),
+                    style: StrokeStyle(lineWidth: 0.75, dash: [3.5, 2.5])
+                )
+
+                // 2. Daytime Solar Arc Fill (Subtle warm amber gradient)
+                Path { p in
+                    p.move(to: CGPoint(x: xSunrise, y: yHorizon))
+                    for x in stride(from: xSunrise, through: xSunset, by: 1.5) {
+                        let ratio = (x - xSunrise) / (xSunset - xSunrise)
+                        let y = yHorizon - (yHorizon - yNoon) * sin(ratio * .pi)
+                        p.addLine(to: CGPoint(x: x, y: y))
+                    }
+                    p.addLine(to: CGPoint(x: xSunset, y: yHorizon))
+                    p.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.75, blue: 0.25).opacity(0.20),
+                            Color(red: 1.0, green: 0.50, blue: 0.15).opacity(0.05),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+                // 3. Complete Solar Curve (Daytime arc + Twilight dip below horizon)
+                Path { p in
+                    // Left night/twilight lead-in
+                    p.move(to: CGPoint(x: 4, y: yHorizon + 3))
+                    p.addQuadCurve(
+                        to: CGPoint(x: xSunrise, y: yHorizon),
+                        control: CGPoint(x: xSunrise * 0.5, y: yHorizon + 4)
+                    )
+                    // Daylight arc
+                    for x in stride(from: xSunrise, through: xSunset, by: 1.5) {
+                        let ratio = (x - xSunrise) / (xSunset - xSunrise)
+                        let y = yHorizon - (yHorizon - yNoon) * sin(ratio * .pi)
+                        p.addLine(to: CGPoint(x: x, y: y))
+                    }
+                    // Right night/twilight lead-out
+                    p.addQuadCurve(
+                        to: CGPoint(x: w - 4, y: yHorizon + 3),
+                        control: CGPoint(x: xSunset + (w - xSunset) * 0.5, y: yHorizon + 4)
+                    )
+                }
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.45, green: 0.55, blue: 0.75).opacity(0.4),
+                            Color(red: 1.0, green: 0.65, blue: 0.22),
+                            Color(red: 1.0, green: 0.94, blue: 0.55),
+                            Color(red: 1.0, green: 0.58, blue: 0.24),
+                            Color(red: 0.45, green: 0.55, blue: 0.75).opacity(0.4)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round)
+                )
+                .shadow(color: Color(red: 1.0, green: 0.75, blue: 0.25).opacity(0.45), radius: 2)
+
+                // 4. Golden Hour Horizon Highlights (Amber rings at Sunrise / Sunset points)
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.78, blue: 0.28))
+                    .frame(width: 4, height: 4)
+                    .position(x: xSunrise, y: yHorizon)
+                    .shadow(color: Color(red: 1.0, green: 0.75, blue: 0.20).opacity(0.8), radius: 2)
+
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.58, blue: 0.24))
+                    .frame(width: 4, height: 4)
+                    .position(x: xSunset, y: yHorizon)
+                    .shadow(color: Color(red: 1.0, green: 0.55, blue: 0.20).opacity(0.8), radius: 2)
+
+                // 5. Dynamic Sun / Moon Position Orb
+                if isDaytime {
+                    let sunX = xSunrise + CGFloat(sunProgress) * (xSunset - xSunrise)
+                    let sunY = yHorizon - (yHorizon - yNoon) * sin(CGFloat(sunProgress) * .pi)
+
+                    ZStack {
+                        // Ambient radial pulse glow
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        isGoldenHour
+                                            ? Color(red: 1.0, green: 0.65, blue: 0.15).opacity(0.75)
+                                            : Color(red: 1.0, green: 0.88, blue: 0.35).opacity(0.65),
+                                        Color.clear
+                                    ],
+                                    center: .center,
+                                    startRadius: 1,
+                                    endRadius: 9
+                                )
+                            )
+                            .frame(width: 18, height: 18)
+
+                        // Core sun sphere
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white,
+                                        isGoldenHour
+                                            ? Color(red: 1.0, green: 0.72, blue: 0.20)
+                                            : Color(red: 1.0, green: 0.90, blue: 0.40)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(width: 7.5, height: 7.5)
+                            .shadow(color: isGoldenHour ? Color.orange : Color.yellow, radius: 2.5)
+                    }
+                    .position(x: sunX, y: sunY)
+                } else {
+                    // Night: Moon position
+                    let nightX = w * 0.5
+                    let nightY = yHorizon + 4.5
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.6, green: 0.75, blue: 1.0).opacity(0.3))
+                            .frame(width: 12, height: 12)
+                        Image(systemName: "moon.fill")
+                            .font(.system(size: 6.5, weight: .bold))
+                            .foregroundStyle(Color(red: 0.85, green: 0.92, blue: 1.0))
+                    }
+                    .position(x: nightX, y: nightY)
+                }
+            }
+        }
+    }
+
+    private func computeSolarStatus() -> (isDaytime: Bool, sunProgress: Double, isGoldenHour: Bool) {
+        let now = Date()
+        let cal = Calendar.current
+        let currentHour = Double(cal.component(.hour, from: now)) + (Double(cal.component(.minute, from: now)) / 60.0)
+
+        let sunrise = Self.parseHourDecimal(sunriseText) ?? 6.78
+        let sunset = Self.parseHourDecimal(sunsetText) ?? 19.98
+
+        let isDaytime = currentHour >= sunrise && currentHour <= sunset
+        let progress: Double
+        if isDaytime {
+            let totalDay = max(0.1, sunset - sunrise)
+            progress = min(max((currentHour - sunrise) / totalDay, 0.0), 1.0)
+        } else {
+            progress = 0.5
+        }
+
+        // Golden hour: 45 min after sunrise or 45 min before sunset
+        let isMorningGolden = (currentHour >= (sunrise - 0.25)) && (currentHour <= (sunrise + 0.75))
+        let isEveningGolden = (currentHour >= (sunset - 0.75)) && (currentHour <= (sunset + 0.25))
+        let isGoldenHour = isMorningGolden || isEveningGolden
+
+        return (isDaytime, progress, isGoldenHour)
+    }
+
+    private static func parseHourDecimal(_ string: String) -> Double? {
+        let clean = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "h:mm a"
+        if let d = f.date(from: clean) {
+            let c = Calendar.current
+            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
+        }
+        f.dateFormat = "HH:mm"
+        if let d = f.date(from: clean) {
+            let c = Calendar.current
+            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
+        }
+        return nil
     }
 }
 
