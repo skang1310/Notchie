@@ -192,6 +192,68 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
         XCTAssertEqual(appSettings.notchCollapseInteraction, .hoverLeaves)
     }
 
+    func testAppIconAppearanceStyleAndScreenshotHistoryAndMessengerQuickReply() {
+        isolated { defaults in
+            let store = ApplicationSettingsStore(defaults: defaults)
+            XCTAssertEqual(store.appIconAppearanceStyle, .auto)
+            store.appIconAppearanceStyle = .light
+            let reloaded = ApplicationSettingsStore(defaults: defaults)
+            XCTAssertEqual(reloaded.appIconAppearanceStyle, .light)
+
+            XCTAssertEqual(
+                AppIconController.resolvedVariant(style: .auto, appearanceMode: .system, systemDark: true),
+                .dark
+            )
+            XCTAssertEqual(
+                AppIconController.resolvedVariant(style: .auto, appearanceMode: .system, systemDark: false),
+                .light
+            )
+            XCTAssertEqual(
+                AppIconController.resolvedVariant(style: .auto, appearanceMode: .light, systemDark: true),
+                .light
+            )
+            XCTAssertEqual(
+                AppIconController.resolvedVariant(style: .dark, appearanceMode: .light, systemDark: false),
+                .dark
+            )
+
+            // Screenshot filename detection (English & Korean NFD/NFC)
+            XCTAssertTrue(ScreenshotMonitorService.isScreenshotFilename("Screenshot 2026-10-28 at 21.50.00.png"))
+            let koreanDecomposed = "스크린샷 2026-10-28 오후 9.50.00.png".decomposedStringWithCanonicalMapping
+            XCTAssertTrue(ScreenshotMonitorService.isScreenshotFilename(koreanDecomposed))
+            XCTAssertFalse(ScreenshotMonitorService.isScreenshotFilename("document.pdf"))
+
+            // Screenshot history recording & deletion
+            let screenshotVM = ScreenshotViewModel()
+            let sampleImage = NSImage(size: NSSize(width: 120, height: 80))
+            let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent("NotchieHistoryTest-\(UUID().uuidString).png")
+            screenshotVM.processNewScreenshot(image: sampleImage, fileURL: tempFile, fileName: "NotchieHistoryTest.png")
+            XCTAssertEqual(screenshotVM.history.count, 1)
+            if let first = screenshotVM.history.first {
+                screenshotVM.deleteFromHistory(first)
+            }
+            XCTAssertEqual(screenshotVM.history.count, 0)
+
+            // KakaoTalk & iMessage Quick Reply in Notch
+            let messenger = NotchMessengerManager.shared
+            messenger.simulateIncomingMessage(service: .kakaoTalk)
+            guard let latestKakao = messenger.messages.first else {
+                XCTFail("Expected simulated KakaoTalk message")
+                return
+            }
+            XCTAssertEqual(latestKakao.service, .kakaoTalk)
+            XCTAssertTrue(latestKakao.isUnread)
+
+            let bannerContent = MessageReplyNotchContent(manager: messenger, message: latestKakao)
+            XCTAssertGreaterThanOrEqual(bannerContent.expandedSize(baseWidth: 190, baseHeight: 38).width, 520)
+
+            messenger.sendReply(to: latestKakao.id, text: "노치에서 바로 답장 보냅니다!")
+            let updatedKakao = messenger.messages.first(where: { $0.id == latestKakao.id })
+            XCTAssertEqual(updatedKakao?.sentReplies.last?.text, "노치에서 바로 답장 보냅니다!")
+            XCTAssertEqual(updatedKakao?.isUnread, false)
+        }
+    }
+
     func testGenerateDocumentationScreenshotsIfRequested() throws {
         guard let outputDir = ProcessInfo.processInfo.environment["NOTCHIE_SCREENSHOT_DIR"],
               !outputDir.isEmpty else {

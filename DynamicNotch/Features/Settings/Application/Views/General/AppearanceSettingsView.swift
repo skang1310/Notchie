@@ -26,11 +26,136 @@ struct AppearanceSettingsView: View {
         privacyText(en, ko)
     }
     
+    @ObservedObject private var iconController = AppIconController.shared
+
     var body: some View {
         SettingsPageScrollView {
             themeCard
+            appIconStyleCard
             accentColorCard
         }
+    }
+
+    private var appIconStyleCard: some View {
+        SettingsCard(verbatimTitle: text("App Icon Style (Dark & Light Mode)", "앱 아이콘 스타일 (다크 / 라이트 모드 연동)"), spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(text("Dynamic App Icon", "다크/라이트 모드에 따라 앱 아이콘 변경"))
+                        .font(.system(size: 13.5, weight: .semibold))
+                    Text(text("Automatically switches between Notchie Light and Dark icons based on system/app appearance, or pins your preferred icon.", "시스템/앱의 다크·라이트 테마에 맞춰 앱 아이콘을 자동으로 바꾸거나 원하는 아이콘으로 고정할 수 있습니다."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(applicationSettings.customAccentColor)
+                        .frame(width: 7, height: 7)
+                    Text(
+                        iconController.activeVariant == .light
+                            ? text("Active: Light", "현재 적용: 라이트 아이콘")
+                            : text("Active: Dark", "현재 적용: 다크 아이콘")
+                    )
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Color.primary.opacity(0.06), in: Capsule())
+            }
+
+            HStack(spacing: 12) {
+                appIconOptionCard(
+                    style: .auto,
+                    title: text("Auto (Dark / Light)", "자동 (다크/라이트 연동)"),
+                    subtitle: text("Follows theme automatically", "테마에 따라 자동 전환")
+                )
+                appIconOptionCard(
+                    style: .light,
+                    title: text("Notchie Light", "라이트 아이콘"),
+                    subtitle: text("Bright silver-glass icon", "밝은 실버 글래스 아이콘")
+                )
+                appIconOptionCard(
+                    style: .dark,
+                    title: text("Notchie Dark", "다크 아이콘"),
+                    subtitle: text("Obsidian carbon icon", "옵시디언 다크 아이콘")
+                )
+            }
+        }
+    }
+
+    private func appIconOptionCard(
+        style: AppIconAppearanceStyle,
+        title: String,
+        subtitle: String
+    ) -> some View {
+        let isSelected = applicationSettings.appIconAppearanceStyle == style
+        let accent = applicationSettings.customAccentColor
+        return Button {
+            withAnimation(.snappy(duration: 0.22)) {
+                applicationSettings.appIconAppearanceStyle = style
+                AppIconController.shared.refreshIcon()
+            }
+        } label: {
+            VStack(spacing: 8) {
+                ZStack {
+                    if style == .auto {
+                        HStack(spacing: -14) {
+                            Image("NotchieIconLight")
+                                .resizable()
+                                .interpolation(.high)
+                                .scaledToFit()
+                                .frame(width: 48, height: 48)
+                                .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
+                            Image("NotchieIconDark")
+                                .resizable()
+                                .interpolation(.high)
+                                .scaledToFit()
+                                .frame(width: 48, height: 48)
+                                .shadow(color: .black.opacity(0.32), radius: 6, y: 2)
+                        }
+                        .frame(height: 54)
+                    } else {
+                        Image(style == .light ? "NotchieIconLight" : "NotchieIconDark")
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 54, height: 54)
+                            .shadow(color: .black.opacity(0.28), radius: 6, y: 3)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 6)
+
+                VStack(spacing: 2) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundStyle(isSelected ? accent : .secondary)
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    Text(subtitle)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? accent.opacity(0.14) : Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(isSelected ? accent.opacity(0.85) : Color.primary.opacity(0.08), lineWidth: isSelected ? 1.5 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.appearance.appIcon.\(style.rawValue)")
     }
     
     private var accentColorCard: some View {

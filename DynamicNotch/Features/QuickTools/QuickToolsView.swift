@@ -3,6 +3,8 @@ internal import AppKit
 import AVFoundation
 internal import EventKit
 import UniformTypeIdentifiers
+import ApplicationServices
+import Combine
 
 // MARK: - QuickToolsView (Settings & Notch Entry Point)
 
@@ -236,8 +238,14 @@ struct NotchiePanoramicHubView: View {
     var applicationSettings: ApplicationSettingsStore?
     var onOpenPlaybackSource: @MainActor () -> Void = {}
 
+    @ObservedObject private var iconController = AppIconController.shared
+    @ObservedObject private var messengerManager = NotchMessengerManager.shared
     @State private var showingTabCustomizer = false
+    @State private var showingIconPicker = false
     @State private var selectedDayOffset: Int = 0
+
+    private let leftWingModes: [NotchHubMode] = [.nook, .shots, .messages, .tray]
+    private let rightWingModes: [NotchHubMode] = [.clips, .notes, .tools]
 
     private var accentColor: Color {
         ApplicationSettingsStore.currentCustomAccentColor()
@@ -268,6 +276,17 @@ struct NotchiePanoramicHubView: View {
                 switch store.hubMode {
                 case .nook:
                     nookThreeColumnDashboard
+                case .shots:
+                    NotchieScreenshotHubView(
+                        screenshotViewModel: store.screenshotViewModel,
+                        fileTrayViewModel: store.fileTrayViewModel,
+                        accentColor: accentColor
+                    )
+                case .messages:
+                    NotchieMessengerHubView(
+                        manager: messengerManager,
+                        accentColor: accentColor
+                    )
                 case .tray:
                     NotchiePanoramicTraySection(
                         fileTrayViewModel: store.fileTrayViewModel,
@@ -302,28 +321,39 @@ struct NotchiePanoramicHubView: View {
     // MARK: - Top Header Bar (Flanking the Physical Camera Cutout)
 
     private var topWingHeaderBar: some View {
-        HStack(spacing: 6) {
-            // Left Wing: Mode Pills (Nook, Tray, Clips, Notes, Tools)
-            HStack(spacing: 4) {
-                ForEach(NotchHubMode.allCases) { mode in
+        HStack(spacing: 4) {
+            // Left Wing: Primary Mode Pills (Nook, Shots, Talk, Tray)
+            HStack(spacing: 3) {
+                ForEach(leftWingModes) { mode in
                     modePillButton(for: mode)
                 }
             }
 
             // Center Camera Cutout Safe Area
-            Spacer(minLength: isNotchlessScreen ? 12 : 162)
+            Spacer(minLength: isNotchlessScreen ? 10 : 158)
 
-            // Right Wing: Mini Now Playing Pill (when not on Nook tab) + Pin / Customize / Settings
-            HStack(spacing: 5) {
-                if store.hubMode != .nook, let vm = resolvedNowPlayingViewModel {
-                    NotchieMiniNowPlayingHeaderPill(
-                        nowPlayingViewModel: vm,
-                        accentColor: accentColor
-                    ) {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                            store.hubMode = .nook
-                        }
-                    }
+            // Right Wing: Secondary Mode Pills (Clips, Notes, Tools) + App Icon Picker / Pin / Settings
+            HStack(spacing: 4) {
+                ForEach(rightWingModes) { mode in
+                    modePillButton(for: mode)
+                }
+
+                Button {
+                    showingIconPicker.toggle()
+                } label: {
+                    Image(iconController.activeVariant == .light ? "NotchieIconLight" : "NotchieIconDark")
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: 17, height: 17)
+                        .frame(width: 24, height: 24)
+                        .background(Color.white.opacity(0.08), in: Circle())
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
+                .help(text("Switch App Icon (Light / Dark / Auto)", "앱 아이콘 선택 (라이트 / 다크 / 자동)"))
+                .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
+                    NotchieAppIconPopoverView(accentColor: accentColor)
                 }
 
                 Button {
@@ -348,22 +378,6 @@ struct NotchiePanoramicHubView: View {
                 .help(store.isNotchHubPinned ? text("Pinned open", "노치 고정됨") : text("Pin notch open", "노치 열어두기 고정"))
 
                 Button {
-                    showingTabCustomizer.toggle()
-                } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .frame(width: 24, height: 24)
-                        .background(Color.white.opacity(0.08), in: Circle())
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8))
-                }
-                .buttonStyle(.plain)
-                .help(text("Customize tools", "도구 탭 설정"))
-                .popover(isPresented: $showingTabCustomizer, arrowEdge: .bottom) {
-                    QuickToolTabCustomizerPopover(store: store)
-                }
-
-                Button {
                     SettingsWindowController.shared.showWindow()
                 } label: {
                     Image(systemName: "gearshape.fill")
@@ -381,28 +395,35 @@ struct NotchiePanoramicHubView: View {
 
     private func modePillButton(for mode: NotchHubMode) -> some View {
         let isSelected = store.hubMode == mode
-        let trayCount = store.fileTrayViewModel?.count ?? 0
+        let badgeCount = modeBadgeCount(for: mode)
 
         return Button {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
                 store.hubMode = mode
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text(modeTitle(for: mode))
-                    .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.46))
-
-                if mode == .tray && trayCount > 0 {
-                    Text("\(trayCount)")
-                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4.5)
-                        .padding(.vertical, 1)
-                        .background(accentColor.opacity(0.85), in: Capsule())
+                if mode == .messages {
+                    messengerManager.markAllRead()
                 }
             }
-            .padding(.horizontal, 9)
+        } label: {
+            HStack(spacing: 3.5) {
+                Text(modeTitle(for: mode))
+                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium, design: .rounded))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.5))
+                    .lineLimit(1)
+
+                if badgeCount > 0 {
+                    Text("\(badgeCount)")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(mode == .messages ? .black : .white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 0.5)
+                        .background(
+                            (mode == .messages ? Color(red: 0.99, green: 0.90, blue: 0.0) : accentColor.opacity(0.85)),
+                            in: Capsule()
+                        )
+                }
+            }
+            .padding(.horizontal, 7.5)
             .padding(.vertical, 4.5)
             .background(
                 ZStack {
@@ -437,9 +458,24 @@ struct NotchiePanoramicHubView: View {
         .buttonStyle(.plain)
     }
 
+    private func modeBadgeCount(for mode: NotchHubMode) -> Int {
+        switch mode {
+        case .tray:
+            return store.fileTrayViewModel?.count ?? 0
+        case .shots:
+            return store.screenshotViewModel?.history.count ?? 0
+        case .messages:
+            return messengerManager.unreadCount
+        default:
+            return 0
+        }
+    }
+
     private func modeTitle(for mode: NotchHubMode) -> String {
         switch mode {
         case .nook: return "Nook"
+        case .shots: return text("Shots", "캡처")
+        case .messages: return text("Talk", "톡·메시지")
         case .tray: return "Tray"
         case .clips: return text("Clips", "클립")
         case .notes: return text("Notes", "메모")
@@ -1798,5 +1834,1392 @@ struct FocusCompactView: View {
             .monospacedDigit()
             .font(.caption)
             .foregroundStyle(ApplicationSettingsStore.currentCustomAccentColor())
+    }
+}
+
+// MARK: - In-Notch Visual App Icon Selector Popover (Dark / Light / Auto)
+
+struct NotchieAppIconPopoverView: View {
+    let accentColor: Color
+    @AppStorage(GeneralSettingsStorage.Keys.appIconAppearanceStyle) private var appIconStyleRaw: String = AppIconAppearanceStyle.auto.rawValue
+    @ObservedObject private var iconController = AppIconController.shared
+
+    private var currentStyle: AppIconAppearanceStyle {
+        AppIconAppearanceStyle.resolved(appIconStyleRaw)
+    }
+
+    private func text(_ en: String, _ ko: String) -> String {
+        privacyText(en, ko)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(text("Notchie App Icon", "앱 아이콘 스타일 선택"))
+                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                Spacer()
+                Text(
+                    iconController.activeVariant == .light
+                        ? text("Active: Light", "현재: 라이트")
+                        : text("Active: Dark", "현재: 다크")
+                )
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                iconOptionButton(
+                    style: .auto,
+                    title: text("Auto", "자동 전환"),
+                    subtitle: text("Dark / Light", "다크·라이트 연동")
+                )
+                iconOptionButton(
+                    style: .light,
+                    title: text("Light", "라이트"),
+                    subtitle: text("Silver Glass", "실버 아이콘")
+                )
+                iconOptionButton(
+                    style: .dark,
+                    title: text("Dark", "다크"),
+                    subtitle: text("Obsidian", "다크 아이콘")
+                )
+            }
+        }
+        .padding(12)
+        .frame(width: 286)
+    }
+
+    private func iconOptionButton(
+        style: AppIconAppearanceStyle,
+        title: String,
+        subtitle: String
+    ) -> some View {
+        let isSelected = currentStyle == style
+        return Button {
+            AppIconController.shared.selectStyle(style)
+        } label: {
+            VStack(spacing: 6) {
+                if style == .auto {
+                    HStack(spacing: -10) {
+                        Image("NotchieIconLight")
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 34, height: 34)
+                        Image("NotchieIconDark")
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 34, height: 34)
+                    }
+                    .frame(height: 38)
+                } else {
+                    Image(style == .light ? "NotchieIconLight" : "NotchieIconDark")
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: 38, height: 38)
+                }
+
+                VStack(spacing: 1) {
+                    HStack(spacing: 3) {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(isSelected ? accentColor : .secondary)
+                        Text(title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    Text(subtitle)
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? accentColor.opacity(0.16) : Color.primary.opacity(0.05))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(isSelected ? accentColor.opacity(0.8) : Color.primary.opacity(0.1), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - In-Notch Screenshot History & Fly-to-Notch Studio
+
+struct NotchieScreenshotHubView: View {
+    var screenshotViewModel: ScreenshotViewModel?
+    var fileTrayViewModel: FileTrayViewModel?
+    let accentColor: Color
+
+    @State private var copiedToastID: UUID?
+
+    private func text(_ en: String, _ ko: String) -> String {
+        privacyText(en, ko)
+    }
+
+    var body: some View {
+        if let vm = screenshotViewModel {
+            NotchieScreenshotHubInnerView(
+                viewModel: vm,
+                fileTrayViewModel: fileTrayViewModel,
+                accentColor: accentColor,
+                copiedToastID: $copiedToastID
+            )
+        } else {
+            Text(text("Screenshot service unavailable", "스크린샷 서비스를 불러올 수 없습니다."))
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.6))
+        }
+    }
+}
+
+private struct NotchieScreenshotHubInnerView: View {
+    @ObservedObject var viewModel: ScreenshotViewModel
+    var fileTrayViewModel: FileTrayViewModel?
+    let accentColor: Color
+    @Binding var copiedToastID: UUID?
+
+    private func text(_ en: String, _ ko: String) -> String {
+        privacyText(en, ko)
+    }
+
+    private var selectedScreenshot: ScreenshotModel? {
+        if let id = viewModel.selectedHistoryItemID,
+           let match = viewModel.history.first(where: { $0.id == id }) {
+            return match
+        }
+        return viewModel.history.first
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            screenshotTopBar
+
+            if viewModel.history.isEmpty {
+                emptyHistoryPlaceholder
+            } else {
+                HStack(spacing: 10) {
+                    if let selected = selectedScreenshot {
+                        selectedScreenshotCard(selected)
+                    }
+                    historyFilmstrip
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.8)
+        )
+    }
+
+    private var screenshotTopBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "camera.viewfinder")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(accentColor)
+            Text(text("Screenshot History & Fly-to-Notch", "스크린샷 히스토리 · 노치 바로가기"))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.92))
+
+            Text("\(viewModel.history.count)")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.85))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1.5)
+                .background(Color.white.opacity(0.1), in: Capsule())
+
+            Spacer()
+
+            Button {
+                viewModel.captureInteractiveScreenshot()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus.viewfinder")
+                        .font(.system(size: 10.5, weight: .bold))
+                    Text(text("Area Capture", "영역 캡처"))
+                        .font(.system(size: 10.5, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(accentColor.opacity(0.78), in: Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                viewModel.triggerDemoFlyToNotch()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10.5, weight: .bold))
+                    Text(text("Fly-to-Notch Capture", "전체 캡처 (노치 애니메이션)"))
+                        .font(.system(size: 10.5, weight: .semibold))
+                }
+                .foregroundStyle(.white.opacity(0.92))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.12), in: Capsule())
+                .overlay(Capsule().strokeBorder(accentColor.opacity(0.45), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+
+            if !viewModel.history.isEmpty {
+                Button {
+                    viewModel.preloadRecentScreenshots()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .frame(width: 22, height: 22)
+                        .background(Color.white.opacity(0.08), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .help(text("Refresh Screenshot Folder", "스크린샷 폴더 새로고침"))
+            }
+        }
+    }
+
+    private var emptyHistoryPlaceholder: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .frame(width: 68, height: 52)
+                Image(systemName: "photo.badge.arrow.down.fill")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(accentColor)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(text("Take a screenshot (⌘⇧3 / ⌘⇧4) to watch it fly straight into the notch!", "스크린샷(⌘⇧3 / ⌘⇧4)을 찍으면 노치로 날아 들어오며 여기에 기록됩니다."))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.88))
+                Text(text("Or click 'Fly-to-Notch Capture' above to capture your screen right now and preview the curved notch flight animation.", "상단의 '전체 캡처 (노치 애니메이션)' 버튼을 누르면 지금 바로 화면을 캡처해 노치 비행 애니메이션과 히스토리를 확인할 수 있습니다."))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .lineLimit(2)
+            }
+            Spacer()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+        )
+    }
+
+    private func selectedScreenshotCard(_ selected: ScreenshotModel) -> some View {
+        let isCopied = copiedToastID == selected.id
+        let copyIcon = isCopied ? "checkmark" : "doc.on.doc.fill"
+        let copyLabel = isCopied ? text("Copied", "복사됨") : text("Copy", "복사")
+
+        return HStack(spacing: 10) {
+            Image(nsImage: selected.image)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFill()
+                .frame(width: 126, height: 92)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                )
+                .onDrag {
+                    viewModel.makeItemProvider(for: selected)
+                }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(selected.fileName)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Text(selected.timestamp.formatted(date: .abbreviated, time: .shortened))
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.5))
+
+                if !selected.recognizedText.isEmpty {
+                    Text(selected.recognizedText.replacingOccurrences(of: "\n", with: " "))
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                selectedScreenshotActionButtons(selected, copyIcon: copyIcon, copyLabel: copyLabel)
+            }
+        }
+        .padding(8)
+        .frame(width: 326, height: 112)
+        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8)
+        )
+    }
+
+    private func selectedScreenshotActionButtons(
+        _ selected: ScreenshotModel,
+        copyIcon: String,
+        copyLabel: String
+    ) -> some View {
+        HStack(spacing: 5) {
+            Button {
+                viewModel.copyScreenshot(selected)
+                copiedToastID = selected.id
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: copyIcon)
+                        .font(.system(size: 9.5, weight: .bold))
+                    Text(copyLabel)
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(accentColor.opacity(0.75), in: Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                if let url = viewModel.existingURL(for: selected) {
+                    fileTrayViewModel?.add([url])
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "tray.and.arrow.down.fill")
+                        .font(.system(size: 9.5, weight: .semibold))
+                    Text("Tray")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(.white.opacity(0.88))
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.1), in: Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                viewModel.openInPreview(selected)
+            } label: {
+                Image(systemName: "eye.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .frame(width: 22, height: 22)
+                    .background(Color.white.opacity(0.1), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help(text("Open in Preview", "미리보기에서 열기"))
+
+            Button {
+                viewModel.revealInFinder(selected)
+            } label: {
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .frame(width: 22, height: 22)
+                    .background(Color.white.opacity(0.1), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help(text("Reveal in Finder", "Finder에서 보기"))
+
+            Button {
+                viewModel.deleteFromHistory(selected)
+            } label: {
+                Image(systemName: "trash.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.red.opacity(0.9))
+                    .frame(width: 22, height: 22)
+                    .background(Color.red.opacity(0.16), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help(text("Delete Screenshot", "스크린샷 삭제"))
+        }
+    }
+
+    private var historyFilmstrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.history) { item in
+                    historyThumbnailButton(item)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func historyThumbnailButton(_ item: ScreenshotModel) -> some View {
+        let isSelected = selectedScreenshot?.id == item.id
+        return Button {
+            withAnimation(.snappy(duration: 0.18)) {
+                viewModel.selectedHistoryItemID = item.id
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Image(nsImage: item.image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: 82, height: 68)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(isSelected ? accentColor : Color.white.opacity(0.14), lineWidth: isSelected ? 1.8 : 0.8)
+                    )
+
+                Text(item.timestamp, style: .time)
+                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(isSelected ? accentColor : .white.opacity(0.6))
+                    .lineLimit(1)
+            }
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? accentColor.opacity(0.16) : Color.white.opacity(0.04))
+            )
+        }
+        .buttonStyle(.plain)
+        .onDrag {
+            viewModel.makeItemProvider(for: item)
+        }
+    }
+}
+
+// MARK: - KakaoTalk & iMessage In-Notch Quick Reply Engine & Views
+
+enum NotchMessengerService: String, Codable, CaseIterable, Identifiable {
+    case kakaoTalk = "kakaotalk"
+    case iMessage = "imessage"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .kakaoTalk:
+            return privacyText("KakaoTalk", "카카오톡")
+        case .iMessage:
+            return privacyText("iMessage", "아이메시지")
+        }
+    }
+
+    var bundleIdentifier: String {
+        switch self {
+        case .kakaoTalk:
+            return "com.kakao.KakaoTalkMac"
+        case .iMessage:
+            return "com.apple.MobileSMS"
+        }
+    }
+
+    var brandColor: Color {
+        switch self {
+        case .kakaoTalk:
+            return Color(red: 0.996, green: 0.898, blue: 0.0) // #FEE500 Kakao Yellow
+        case .iMessage:
+            return Color(red: 0.204, green: 0.780, blue: 0.349) // #34C759 iMessage Green
+        }
+    }
+
+    var foregroundBadgeColor: Color {
+        switch self {
+        case .kakaoTalk:
+            return Color(red: 0.22, green: 0.12, blue: 0.12)
+        case .iMessage:
+            return .white
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .kakaoTalk:
+            return "bubble.left.and.bubble.right.fill"
+        case .iMessage:
+            return "message.fill"
+        }
+    }
+}
+
+struct SentNotchReply: Identifiable, Equatable {
+    let id = UUID()
+    let text: String
+    let timestamp: Date
+    let deliveryNote: String
+}
+
+struct IncomingNotchMessage: Identifiable, Equatable {
+    let id: UUID
+    let service: NotchMessengerService
+    let sender: String
+    let roomOrSubtitle: String
+    let body: String
+    let timestamp: Date
+    var chatIdentifier: String?
+    var isUnread: Bool
+    var isSimulated: Bool
+    var sentReplies: [SentNotchReply]
+
+    init(
+        id: UUID = UUID(),
+        service: NotchMessengerService,
+        sender: String,
+        roomOrSubtitle: String = "",
+        body: String,
+        timestamp: Date = Date(),
+        chatIdentifier: String? = nil,
+        isUnread: Bool = true,
+        isSimulated: Bool = false,
+        sentReplies: [SentNotchReply] = []
+    ) {
+        self.id = id
+        self.service = service
+        self.sender = sender
+        self.roomOrSubtitle = roomOrSubtitle
+        self.body = body
+        self.timestamp = timestamp
+        self.chatIdentifier = chatIdentifier
+        self.isUnread = isUnread
+        self.isSimulated = isSimulated
+        self.sentReplies = sentReplies
+    }
+}
+
+@MainActor
+final class NotchMessengerManager: ObservableObject {
+    static let shared = NotchMessengerManager()
+
+    @Published private(set) var messages: [IncomingNotchMessage] = []
+    @Published var selectedMessageID: UUID?
+    @Published var activeBannerMessage: IncomingNotchMessage?
+    @Published var draftReplyText: String = ""
+    @Published var lastStatusMessage: String?
+
+    weak var notchViewModel: NotchViewModel?
+    private var monitorTimer: Timer?
+    private var seenFingerprints = Set<String>()
+    private var lastIMessageRowID: Int64?
+
+    var unreadCount: Int {
+        messages.filter(\.isUnread).count
+    }
+
+    private init() {
+        seedWelcomePreviewMessagesIfNeeded()
+    }
+
+    func bind(notchViewModel: NotchViewModel) {
+        self.notchViewModel = notchViewModel
+        startMonitoringIfNeeded()
+    }
+
+    private func seedWelcomePreviewMessagesIfNeeded() {
+        guard messages.isEmpty else { return }
+        let kakaoSample = IncomingNotchMessage(
+            service: .kakaoTalk,
+            sender: privacyText("Minji Kim", "김민지"),
+            roomOrSubtitle: privacyText("KakaoTalk · Direct", "카카오톡 · 1:1 채팅"),
+            body: privacyText("Did you check the new Notchie OS 27 design? Reply right from the notch!", "오늘 회의 자료 확인하셨나요? 노치에서 바로 답장 테스트해보세요!"),
+            timestamp: Date().addingTimeInterval(-180),
+            isUnread: false,
+            isSimulated: true
+        )
+        let imessageSample = IncomingNotchMessage(
+            service: .iMessage,
+            sender: privacyText("Alex Park", "박현우"),
+            roomOrSubtitle: "iMessage",
+            body: privacyText("On my way! Let me know when you're ready.", "지금 출발했어요! 도착하기 전에 카톡이나 아이메시지 주세요."),
+            timestamp: Date().addingTimeInterval(-540),
+            chatIdentifier: nil,
+            isUnread: false,
+            isSimulated: true
+        )
+        messages = [kakaoSample, imessageSample]
+        selectedMessageID = kakaoSample.id
+    }
+
+    func startMonitoringIfNeeded() {
+        guard !AppEnvironment.isRunningTests, monitorTimer == nil else { return }
+        primeIMessageBaseline()
+        monitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.pollNotificationCenterBanners()
+                self?.pollIMessageDatabaseIfAuthorized()
+            }
+        }
+    }
+
+    func markAllRead() {
+        for idx in messages.indices {
+            messages[idx].isUnread = false
+        }
+    }
+
+    func simulateIncomingMessage(service: NotchMessengerService) {
+        let message: IncomingNotchMessage
+        switch service {
+        case .kakaoTalk:
+            message = IncomingNotchMessage(
+                service: .kakaoTalk,
+                sender: privacyText("Jisoo Lee", "이지수"),
+                roomOrSubtitle: privacyText("KakaoTalk · Project Team", "카카오톡 · 프로젝트 단톡방"),
+                body: privacyText("Can we review the screenshot history & notch reply at 3 PM?", "노치에서 바로 카톡 답장 보내기 잘 되나요? 확인 부탁드려요! 😊"),
+                timestamp: Date(),
+                isUnread: true,
+                isSimulated: true
+            )
+        case .iMessage:
+            message = IncomingNotchMessage(
+                service: .iMessage,
+                sender: privacyText("Daniel Kang", "강다니엘"),
+                roomOrSubtitle: "iMessage",
+                body: privacyText("Hey! Just sent the build over AirDrop. Reply here!", "방금 파일 보냈어요! 노치에서 바로 아이메시지 답장 남겨주세요."),
+                timestamp: Date(),
+                chatIdentifier: nil,
+                isUnread: true,
+                isSimulated: true
+            )
+        }
+        receiveIncomingMessage(message)
+    }
+
+    func receiveIncomingMessage(_ message: IncomingNotchMessage) {
+        let fingerprint = "\(message.service.rawValue)|\(message.sender)|\(message.body)"
+        if !message.isSimulated {
+            guard !seenFingerprints.contains(fingerprint) else { return }
+            seenFingerprints.insert(fingerprint)
+        }
+
+        messages.insert(message, at: 0)
+        if messages.count > 30 {
+            messages.removeLast(messages.count - 30)
+        }
+        selectedMessageID = message.id
+        activeBannerMessage = message
+        draftReplyText = ""
+
+        if let notchViewModel {
+            notchViewModel.pulseNotch()
+            let content = MessageReplyNotchContent(manager: self, message: message)
+            notchViewModel.send(.showTemporaryNotification(content, duration: 12.0))
+        }
+    }
+
+    func dismissBanner() {
+        activeBannerMessage = nil
+        notchViewModel?.hideTemporaryNotification()
+    }
+
+    func focusNotchPanelForTyping() {
+        NSApp.activate(ignoringOtherApps: true)
+        if let overlayWindow = NSApp.windows.first(where: { $0 is OverlayPanelWindow }) {
+            overlayWindow.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    func sendReply(to messageID: UUID, text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let idx = messages.firstIndex(where: { $0.id == messageID }) else { return }
+
+        let target = messages[idx]
+        var deliveryNote = privacyText("Sent from Notch", "노치에서 답장 전송 완료")
+
+        if target.isSimulated {
+            deliveryNote = privacyText("Delivered (Preview Mode)", "노치 즉시 답장 완료 (미리보기)")
+        } else if trySendViaNotificationCenterBanner(replyText: trimmed, service: target.service) {
+            deliveryNote = privacyText("Sent via Notification Banner", "알림 배너 인라인 답장 전송 완료")
+        } else if target.service == .iMessage,
+                  let handle = target.chatIdentifier,
+                  !handle.isEmpty,
+                  trySendIMessageViaAppleScript(handle: handle, body: trimmed) {
+            deliveryNote = privacyText("Sent via Messages.app", "iMessage 직접 전송 완료")
+        } else {
+            deliveryNote = sendViaAppActivationOrPasteboard(service: target.service, replyText: trimmed)
+        }
+
+        let reply = SentNotchReply(text: trimmed, timestamp: Date(), deliveryNote: deliveryNote)
+        messages[idx].sentReplies.append(reply)
+        messages[idx].isUnread = false
+        if activeBannerMessage?.id == messageID {
+            activeBannerMessage = messages[idx]
+        }
+        draftReplyText = ""
+        lastStatusMessage = deliveryNote
+
+        if activeBannerMessage?.id == messageID {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
+                if self?.activeBannerMessage?.id == messageID {
+                    self?.dismissBanner()
+                }
+            }
+        }
+    }
+
+    // MARK: - Live Notification Center Inspection & Inline Reply
+
+    private func pollNotificationCenterBanners() {
+        guard AXIsProcessTrusted() else { return }
+        guard let ncApp = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.notificationcenterui").first else {
+            return
+        }
+        let appElement = AXUIElementCreateApplication(ncApp.processIdentifier)
+        var windowsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let windows = windowsRef as? [AXUIElement] else { return }
+
+        for window in windows {
+            var strings: [String] = []
+            collectStrings(from: window, into: &strings, depth: 0)
+            guard !strings.isEmpty else { continue }
+            let joined = strings.joined(separator: " ").lowercased()
+
+            let detectedService: NotchMessengerService?
+            if joined.contains("kakaotalk") || joined.contains("카카오톡") || joined.contains("카톡") {
+                detectedService = .kakaoTalk
+            } else if joined.contains("messages") || joined.contains("imessage") || joined.contains("메시지") {
+                detectedService = .iMessage
+            } else {
+                detectedService = nil
+            }
+
+            guard let service = detectedService else { continue }
+            let filtered = strings.filter { str in
+                let lower = str.lowercased()
+                return lower != "kakaotalk" && lower != "카카오톡" && lower != "messages" && lower != "메시지" && lower != "now" && lower != "지금"
+            }
+            guard filtered.count >= 2 else { continue }
+            let sender = filtered[0]
+            let body = filtered.dropFirst().joined(separator: " ")
+            let msg = IncomingNotchMessage(
+                service: service,
+                sender: sender,
+                roomOrSubtitle: service.displayName,
+                body: body,
+                timestamp: Date(),
+                isUnread: true,
+                isSimulated: false
+            )
+            receiveIncomingMessage(msg)
+        }
+    }
+
+    private func collectStrings(from element: AXUIElement, into results: inout [String], depth: Int) {
+        guard depth < 7 else { return }
+        for attr in [kAXTitleAttribute, kAXValueAttribute, kAXDescriptionAttribute] {
+            var valRef: CFTypeRef?
+            if AXUIElementCopyAttributeValue(element, attr as CFString, &valRef) == .success,
+               let str = valRef as? String {
+                let trimmed = str.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty, trimmed.count < 240, !results.contains(trimmed) {
+                    results.append(trimmed)
+                }
+            }
+        }
+        var childrenRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+           let children = childrenRef as? [AXUIElement] {
+            for child in children {
+                collectStrings(from: child, into: &results, depth: depth + 1)
+            }
+        }
+    }
+
+    private func trySendViaNotificationCenterBanner(replyText: String, service: NotchMessengerService) -> Bool {
+        guard AXIsProcessTrusted(),
+              let ncApp = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.notificationcenterui").first else {
+            return false
+        }
+        let appElement = AXUIElementCreateApplication(ncApp.processIdentifier)
+        var windowsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let windows = windowsRef as? [AXUIElement],
+              !windows.isEmpty else { return false }
+
+        for window in windows {
+            if let textField = findElement(in: window, role: kAXTextFieldRole as String, depth: 0) ??
+                findElement(in: window, role: kAXTextAreaRole as String, depth: 0) {
+                AXUIElementSetAttributeValue(textField, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+                AXUIElementSetAttributeValue(textField, kAXValueAttribute as CFString, replyText as CFTypeRef)
+                AXUIElementPerformAction(textField, kAXConfirmAction as CFString)
+                return true
+            }
+        }
+        return false
+    }
+
+    private func findElement(in root: AXUIElement, role: String, depth: Int) -> AXUIElement? {
+        guard depth < 8 else { return nil }
+        var roleRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(root, kAXRoleAttribute as CFString, &roleRef) == .success,
+           let currentRole = roleRef as? String,
+           currentRole == role {
+            return root
+        }
+        var childrenRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(root, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+           let children = childrenRef as? [AXUIElement] {
+            for child in children {
+                if let match = findElement(in: child, role: role, depth: depth + 1) {
+                    return match
+                }
+            }
+        }
+        return nil
+    }
+
+    // MARK: - iMessage Read-Only SQLite Polling & AppleScript Reply
+
+    private func primeIMessageBaseline() {
+        let dbPath = (NSHomeDirectory() as NSString).appendingPathComponent("Library/Messages/chat.db")
+        guard FileManager.default.isReadableFile(atPath: dbPath) else { return }
+        if let maxID = queryLatestIMessageRowID(dbPath: dbPath) {
+            lastIMessageRowID = maxID
+        }
+    }
+
+    private func pollIMessageDatabaseIfAuthorized() {
+        let dbPath = (NSHomeDirectory() as NSString).appendingPathComponent("Library/Messages/chat.db")
+        guard FileManager.default.isReadableFile(atPath: dbPath) else { return }
+        guard let baseline = lastIMessageRowID else {
+            lastIMessageRowID = queryLatestIMessageRowID(dbPath: dbPath)
+            return
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        let sql = "SELECT m.ROWID, IFNULL(h.id, 'iMessage'), REPLACE(IFNULL(m.text, ''), char(10), ' ') FROM message m LEFT JOIN handle h ON m.handle_id = h.ROWID WHERE m.is_from_me = 0 AND m.ROWID > \(baseline) AND m.text IS NOT NULL AND m.text != '' ORDER BY m.ROWID ASC LIMIT 3;"
+        process.arguments = ["-readonly", "-separator", "\t", dbPath, sql]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8), !output.isEmpty else { return }
+            for line in output.split(separator: "\n") {
+                let cols = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+                guard cols.count >= 3, let rowID = Int64(cols[0]) else { continue }
+                lastIMessageRowID = max(lastIMessageRowID ?? rowID, rowID)
+                let handle = cols[1]
+                let text = cols[2]
+                let msg = IncomingNotchMessage(
+                    service: .iMessage,
+                    sender: handle,
+                    roomOrSubtitle: "iMessage",
+                    body: text,
+                    timestamp: Date(),
+                    chatIdentifier: handle,
+                    isUnread: true,
+                    isSimulated: false
+                )
+                receiveIncomingMessage(msg)
+            }
+        } catch {}
+    }
+
+    private func queryLatestIMessageRowID(dbPath: String) -> Int64? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        process.arguments = ["-readonly", dbPath, "SELECT IFNULL(MAX(ROWID), 0) FROM message;"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let str = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return Int64(str)
+        } catch {
+            return nil
+        }
+    }
+
+    private func trySendIMessageViaAppleScript(handle: String, body: String) -> Bool {
+        let escapedHandle = handle.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedBody = body.replacingOccurrences(of: "\"", with: "\\\"")
+        let source = """
+        tell application "Messages"
+            set targetService to 1st account whose service type = iMessage
+            set targetBuddy to participant "\(escapedHandle)" of targetService
+            send "\(escapedBody)" to targetBuddy
+        end tell
+        """
+        guard let script = NSAppleScript(source: source) else { return false }
+        var error: NSDictionary?
+        _ = script.executeAndReturnError(&error)
+        return error == nil
+    }
+
+    private func sendViaAppActivationOrPasteboard(service: NotchMessengerService, replyText: String) -> String {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(replyText, forType: .string)
+
+        if let runningApp = NSRunningApplication.runningApplications(withBundleIdentifier: service.bundleIdentifier).first {
+            runningApp.activate()
+            if AXIsProcessTrusted() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                    Self.postPasteAndReturnKeystrokes()
+                }
+                return privacyText("Sent to \(service.displayName) chat window", "\(service.displayName) 대화창으로 즉시 전송 완료")
+            }
+            return privacyText("Copied & opened \(service.displayName) (⌘V to send)", "답장 복사 및 \(service.displayName) 열기 완료 (⌘V)")
+        } else if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: service.bundleIdentifier) {
+            NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration())
+            return privacyText("Copied & launched \(service.displayName)", "답장 복사 및 \(service.displayName) 실행 완료")
+        }
+        return privacyText("Reply copied to clipboard", "답장이 클립보드에 복사되었습니다")
+    }
+
+    private static func postPasteAndReturnKeystrokes() {
+        let src = CGEventSource(stateID: .combinedSessionState)
+        // Cmd + V (keyCode 9)
+        if let vDown = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true),
+           let vUp = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: false) {
+            vDown.flags = .maskCommand
+            vUp.flags = .maskCommand
+            vDown.post(tap: .cghidEventTap)
+            vUp.post(tap: .cghidEventTap)
+        }
+        // Return (keyCode 36)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            if let retDown = CGEvent(keyboardEventSource: src, virtualKey: 36, keyDown: true),
+               let retUp = CGEvent(keyboardEventSource: src, virtualKey: 36, keyDown: false) {
+                retDown.post(tap: .cghidEventTap)
+                retUp.post(tap: .cghidEventTap)
+            }
+        }
+    }
+}
+
+// MARK: - Live Notch Content for Incoming KakaoTalk / iMessage Quick Reply
+
+struct MessageReplyNotchContent: NotchContentProtocol {
+    let id = "local.messenger.quickReply"
+    let manager: NotchMessengerManager
+    let message: IncomingNotchMessage
+
+    var priority: Int { 92 }
+    var isExpandable: Bool { true }
+    var shouldAutoExpandOnAppear: Bool { true }
+    var pinsExpandedInteraction: Bool { true }
+    var strokeColor: Color {
+        message.service.brandColor.opacity(0.55)
+    }
+
+    func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
+        CGSize(width: baseWidth + 240, height: baseHeight + 98)
+    }
+
+    func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
+        CGSize(width: max(520, baseWidth + 320), height: baseHeight + 128)
+    }
+
+    func compactCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {
+        (top: 19, bottom: 26)
+    }
+
+    func expandedCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {
+        (top: 19, bottom: 26)
+    }
+
+    @MainActor
+    func compactView() -> AnyView {
+        AnyView(MessageReplyNotchBannerView(manager: manager, message: message))
+    }
+
+    @MainActor
+    func expandedView() -> AnyView {
+        AnyView(MessageReplyNotchBannerView(manager: manager, message: message))
+    }
+}
+
+struct MessageReplyNotchBannerView: View {
+    @ObservedObject var manager: NotchMessengerManager
+    let message: IncomingNotchMessage
+    @State private var replyText: String = ""
+    @FocusState private var isReplyFocused: Bool
+
+    private func text(_ en: String, _ ko: String) -> String {
+        privacyText(en, ko)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Spacer(minLength: 24)
+
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(message.service.brandColor)
+                        .frame(width: 34, height: 34)
+                    Image(systemName: message.service.iconName)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(message.service.foregroundBadgeColor)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(message.sender)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                        Text(message.service.displayName)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(message.service.foregroundBadgeColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1.5)
+                            .background(message.service.brandColor, in: Capsule())
+                        Spacer()
+                        Button {
+                            manager.dismissBanner()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.white.opacity(0.45))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Text(message.body)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .lineLimit(1)
+                }
+            }
+
+            HStack(spacing: 6) {
+                TextField(
+                    text("Reply directly from notch…", "노치에서 바로 답장 입력… (Enter 전송)"),
+                    text: $replyText
+                )
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundStyle(.white)
+                .focused($isReplyFocused)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.white.opacity(0.1), in: Capsule())
+                .overlay(Capsule().strokeBorder(message.service.brandColor.opacity(0.65), lineWidth: 1))
+                .onTapGesture {
+                    manager.focusNotchPanelForTyping()
+                    isReplyFocused = true
+                }
+                .onSubmit {
+                    guard !replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                    manager.sendReply(to: message.id, text: replyText)
+                    replyText = ""
+                }
+
+                ForEach([text("Got it 👍", "확인했어요 👍"), text("One sec!", "잠시만요!")], id: \.self) { chip in
+                    Button {
+                        manager.sendReply(to: message.id, text: chip)
+                    } label: {
+                        Text(chip)
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.1), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    manager.sendReply(to: message.id, text: replyText)
+                    replyText = ""
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 10.5, weight: .bold))
+                        Text(text("Send", "전송"))
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundStyle(message.service.foregroundBadgeColor)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(message.service.brandColor, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.bottom, 12)
+        .onAppear {
+            manager.focusNotchPanelForTyping()
+        }
+    }
+}
+
+// MARK: - In-Notch KakaoTalk & iMessage Quick Reply Studio (Talk Tab)
+
+struct NotchieMessengerHubView: View {
+    @ObservedObject var manager: NotchMessengerManager
+    let accentColor: Color
+    @FocusState private var isInputFocused: Bool
+
+    private func text(_ en: String, _ ko: String) -> String {
+        privacyText(en, ko)
+    }
+
+    private var selectedMessage: IncomingNotchMessage? {
+        if let id = manager.selectedMessageID,
+           let found = manager.messages.first(where: { $0.id == id }) {
+            return found
+        }
+        return manager.messages.first
+    }
+
+    private var quickReplyChips: [String] {
+        [
+            text("Got it 👍", "확인했어요 👍"),
+            text("One moment!", "잠시만요!"),
+            text("In a meeting, will text soon", "회의 중이라 곧 연락드릴게요"),
+            text("Thank you!", "감사합니다 😊")
+        ]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            // Top bar
+            HStack(spacing: 8) {
+                Image(systemName: "message.badge.filled.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.996, green: 0.898, blue: 0.0))
+                Text(text("KakaoTalk & iMessage Quick Reply", "카카오톡 · 아이메시지 노치 즉시 답장"))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+
+                if let status = manager.lastStatusMessage {
+                    Text(status)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(accentColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(accentColor.opacity(0.16), in: Capsule())
+                }
+
+                Spacer()
+
+                Button {
+                    manager.simulateIncomingMessage(service: .kakaoTalk)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(text("Test KakaoTalk Banner", "카톡 도착 테스트"))
+                            .font(.system(size: 10.5, weight: .bold))
+                    }
+                    .foregroundStyle(Color(red: 0.22, green: 0.12, blue: 0.12))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color(red: 0.996, green: 0.898, blue: 0.0), in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    manager.simulateIncomingMessage(service: .iMessage)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "message.fill")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(text("Test iMessage Banner", "iMessage 도착 테스트"))
+                            .font(.system(size: 10.5, weight: .bold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color(red: 0.204, green: 0.780, blue: 0.349), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 10) {
+                // Left column: Recent KakaoTalk / iMessage list
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 5) {
+                        ForEach(manager.messages) { msg in
+                            let isSelected = selectedMessage?.id == msg.id
+                            Button {
+                                manager.selectedMessageID = msg.id
+                                manager.focusNotchPanelForTyping()
+                            } label: {
+                                HStack(spacing: 8) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(msg.service.brandColor)
+                                            .frame(width: 24, height: 24)
+                                        Image(systemName: msg.service.iconName)
+                                            .font(.system(size: 10.5, weight: .bold))
+                                            .foregroundStyle(msg.service.foregroundBadgeColor)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 1.5) {
+                                        HStack {
+                                            Text(msg.sender)
+                                                .font(.system(size: 11.5, weight: .bold))
+                                                .foregroundStyle(.white)
+                                                .lineLimit(1)
+                                            Spacer()
+                                            Text(msg.timestamp, style: .time)
+                                                .font(.system(size: 9, design: .monospaced))
+                                                .foregroundStyle(.white.opacity(0.45))
+                                        }
+                                        Text(msg.body)
+                                            .font(.system(size: 10.5))
+                                            .foregroundStyle(.white.opacity(0.68))
+                                            .lineLimit(1)
+                                    }
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(isSelected ? Color.white.opacity(0.14) : Color.white.opacity(0.04))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .strokeBorder(isSelected ? msg.service.brandColor.opacity(0.75) : Color.clear, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .frame(width: 215)
+
+                // Right column: Selected conversation + inline reply input
+                if let current = selectedMessage {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Text(current.sender)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                            Text(current.roomOrSubtitle.isEmpty ? current.service.displayName : current.roomOrSubtitle)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(current.service.foregroundBadgeColor)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 1.5)
+                                .background(current.service.brandColor, in: Capsule())
+                            Spacer()
+                        }
+
+                        Text(current.body)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(2)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+                        if let lastReply = current.sentReplies.last {
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrowshape.turn.up.left.fill")
+                                    .font(.system(size: 9.5))
+                                    .foregroundStyle(accentColor)
+                                Text("\(text("Replied:", "내 답장:")) \(lastReply.text)")
+                                    .font(.system(size: 10.5, weight: .semibold))
+                                    .foregroundStyle(accentColor)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(lastReply.deliveryNote)
+                                    .font(.system(size: 9.5))
+                                    .foregroundStyle(.white.opacity(0.45))
+                                    .lineLimit(1)
+                            }
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 5) {
+                                    ForEach(quickReplyChips, id: \.self) { chip in
+                                        Button {
+                                            manager.sendReply(to: current.id, text: chip)
+                                        } label: {
+                                            Text(chip)
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundStyle(.white.opacity(0.86))
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 3.5)
+                                                .background(Color.white.opacity(0.08), in: Capsule())
+                                                .overlay(Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 0.7))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(minLength: 0)
+
+                        HStack(spacing: 6) {
+                            TextField(
+                                text("Type a reply to send from the notch…", "\(current.sender)님에게 노치에서 바로 답장 입력…"),
+                                text: $manager.draftReplyText
+                            )
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.white)
+                            .focused($isInputFocused)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5.5)
+                            .background(Color.white.opacity(0.09), in: Capsule())
+                            .overlay(Capsule().strokeBorder(current.service.brandColor.opacity(0.6), lineWidth: 0.9))
+                            .onTapGesture {
+                                manager.focusNotchPanelForTyping()
+                                isInputFocused = true
+                            }
+                            .onSubmit {
+                                guard !manager.draftReplyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                                manager.sendReply(to: current.id, text: manager.draftReplyText)
+                            }
+
+                            Button {
+                                manager.sendReply(to: current.id, text: manager.draftReplyText)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "paperplane.fill")
+                                        .font(.system(size: 10, weight: .bold))
+                                    Text(text("Send", "답장 전송"))
+                                        .font(.system(size: 10.5, weight: .bold))
+                                }
+                                .foregroundStyle(current.service.foregroundBadgeColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5.5)
+                                .background(current.service.brandColor, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(manager.draftReplyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8)
+                    )
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.8)
+        )
     }
 }

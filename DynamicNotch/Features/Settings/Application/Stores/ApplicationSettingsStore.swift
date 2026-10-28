@@ -4,6 +4,21 @@ internal import AppKit
 import ServiceManagement
 import SwiftUI
 
+enum AppIconAppearanceStyle: String, CaseIterable, Identifiable, StoredSettingValue {
+    case auto
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    static func resolved(_ rawValue: String?) -> AppIconAppearanceStyle {
+        guard let rawValue, let style = AppIconAppearanceStyle(rawValue: rawValue) else {
+            return .auto
+        }
+        return style
+    }
+}
+
 extension SettingsAppearanceMode: StoredSettingValue {}
 extension NotchBackgroundStyle: StoredSettingValue {}
 extension NotchDisplayLocation: StoredSettingValue {}
@@ -34,6 +49,9 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
 
     @StoredDefault(key: GeneralSettingsStorage.Keys.appearanceMode, defaultValue: .system)
     var appearanceMode: SettingsAppearanceMode
+
+    @StoredDefault(key: GeneralSettingsStorage.Keys.appIconAppearanceStyle, defaultValue: .auto)
+    var appIconAppearanceStyle: AppIconAppearanceStyle
 
     @StoredDefault(key: GeneralSettingsStorage.Keys.isBlueNightMode, defaultValue: false)
     var isBlueNightMode: Bool
@@ -231,6 +249,9 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
         persistSanitizedNotchStrokeSettingsIfNeeded()
         ensureSpecificDisplaySelection(previousLocation: .main)
         updateLaunchAtLogin()
+        if defaults === UserDefaults.standard {
+            AppIconController.shared.refreshIcon(using: defaults)
+        }
     }
 
     func resetGeneral() {
@@ -268,8 +289,14 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
         appearanceMode = SettingsAppearanceMode.resolved(
             defaultString(for: GeneralSettingsStorage.Keys.appearanceMode)
         )
+        appIconAppearanceStyle = AppIconAppearanceStyle.resolved(
+            defaultString(for: GeneralSettingsStorage.Keys.appIconAppearanceStyle)
+        )
         isBlueNightMode = defaultBool(for: GeneralSettingsStorage.Keys.isBlueNightMode)
         customAccentColorHex = defaultString(for: GeneralSettingsStorage.Keys.customAccentColorHex)
+        if defaults === UserDefaults.standard {
+            AppIconController.shared.refreshIcon(using: defaults)
+        }
     }
 
     func resetDisplay() {
@@ -537,5 +564,108 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
         let g = Int((min(1, max(0, srgb.greenComponent)) * 255).rounded())
         let b = Int((min(1, max(0, srgb.blueComponent)) * 255).rounded())
         return String(format: "#%02X%02X%02X", r, g, b)
+    }
+}
+
+@MainActor
+final class AppIconController: ObservableObject {
+    static let shared = AppIconController()
+
+    @Published private(set) var activeVariant: AppIconAppearanceStyle = .dark
+    private var cancellables = Set<AnyCancellable>()
+    private var lastAppliedBundleVariant: AppIconAppearanceStyle?
+
+    private init() {
+        DistributedNotificationCenter.default()
+            .publisher(for: Notification.Name("AppleInterfaceThemeChangedNotification"))
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.refreshIcon()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.refreshIcon()
+            }
+            .store(in: &cancellables)
+
+        refreshIcon()
+    }
+
+    static func isSystemInDarkMode() -> Bool {
+        if let app = NSApp {
+            let match = app.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
+            if let match {
+                return match == .darkAqua
+            }
+        }
+        let globalStyle = UserDefaults.standard.string(forKey: "AppleInterfaceStyle")
+        return globalStyle?.caseInsensitiveCompare("Dark") == .orderedSame
+    }
+
+    static func resolvedVariant(
+        style: AppIconAppearanceStyle,
+        appearanceMode: SettingsAppearanceMode,
+        systemDark: Bool? = nil
+    ) -> AppIconAppearanceStyle {
+        let isDark = systemDark ?? isSystemInDarkMode()
+        switch style {
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        case .auto:
+            switch appearanceMode {
+            case .light:
+                return .light
+            case .dark:
+                return .dark
+            case .system:
+                return isDark ? .dark : .light
+            }
+        }
+    }
+
+    func iconImage(for variant: AppIconAppearanceStyle) -> NSImage? {
+        switch variant {
+        case .light:
+            return NSImage(named: "NotchieIconLight") ?? NSImage(named: "AppIcon")
+        case .dark, .auto:
+            return NSImage(named: "NotchieIconDark") ?? NSImage(named: "AppIcon")
+        }
+    }
+
+    func selectStyle(_ style: AppIconAppearanceStyle, defaults: UserDefaults = .standard) {
+        defaults.set(style.rawValue, forKey: GeneralSettingsStorage.Keys.appIconAppearanceStyle)
+        refreshIcon(using: defaults)
+    }
+
+    func refreshIcon(using defaults: UserDefaults = .standard) {
+        let style = AppIconAppearanceStyle.resolved(
+            defaults.string(forKey: GeneralSettingsStorage.Keys.appIconAppearanceStyle)
+        )
+        let appearanceMode = SettingsAppearanceMode.resolved(
+            defaults.string(forKey: GeneralSettingsStorage.Keys.appearanceMode) ?? SettingsAppearanceMode.system.rawValue
+        )
+        let resolved = Self.resolvedVariant(style: style, appearanceMode: appearanceMode)
+        if activeVariant != resolved {
+            activeVariant = resolved
+        }
+
+        guard !AppEnvironment.isRunningTests else { return }
+        guard let icon = iconImage(for: resolved) else { return }
+        NSApp?.applicationIconImage = icon
+
+        if lastAppliedBundleVariant != resolved,
+           Bundle.main.bundleURL.pathExtension == "app" {
+            lastAppliedBundleVariant = resolved
+            let bundlePath = Bundle.main.bundlePath
+            DispatchQueue.global(qos: .utility).async {
+                NSWorkspace.shared.setIcon(icon, forFile: bundlePath, options: [])
+            }
+        }
     }
 }

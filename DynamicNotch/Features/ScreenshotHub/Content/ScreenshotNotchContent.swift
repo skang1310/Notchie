@@ -8,11 +8,11 @@ struct ScreenshotNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     var allowsPressScaleEffect: Bool { false }
     
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        return .init(width: baseWidth + 160, height: baseHeight + 105)
+        return .init(width: baseWidth + 210, height: baseHeight + 108)
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        return .init(width: baseWidth + 200, height: baseHeight + 100)
+        return .init(width: baseWidth + 240, height: baseHeight + 104)
     }
     
     func compactCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {

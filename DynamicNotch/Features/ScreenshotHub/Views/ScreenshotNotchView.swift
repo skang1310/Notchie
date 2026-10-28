@@ -71,20 +71,35 @@ struct ScreenshotNotchView: View {
     }
     
     private var buttons: some View {
-        HStack {
+        HStack(spacing: 8) {
             Button(action: { screenshotViewModel.copyImageToClipboard() }) {
                 Text(locale.dn("notch.action.copy", fallback: "Copy"))
                     .fontWeight(.medium)
                     .foregroundStyle(.white)
             }
-            .buttonStyle(PrimaryButtonStyle(height: 35, backgroundColor: .gray.opacity(0.25)))
+            .buttonStyle(PrimaryButtonStyle(height: 34, backgroundColor: .gray.opacity(0.25)))
+
+            Button(action: {
+                screenshotViewModel.dismiss()
+                QuickToolsStore.shared.hubMode = .shots
+                NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "photo.stack.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(privacyText("History", "히스토리"))
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(.white)
+            }
+            .buttonStyle(PrimaryButtonStyle(height: 34, backgroundColor: ApplicationSettingsStore.currentCustomAccentColor().opacity(0.32)))
             
             Button(action: { screenshotViewModel.deleteScreenshot() }) {
                 Text(locale.dn("notch.action.delete", fallback: "Delete"))
                     .fontWeight(.medium)
                     .foregroundStyle(.red)
             }
-            .buttonStyle(PrimaryButtonStyle(height: 35, backgroundColor: .red.opacity(0.25)))
+            .buttonStyle(PrimaryButtonStyle(height: 34, backgroundColor: .red.opacity(0.25)))
         }
     }
 }

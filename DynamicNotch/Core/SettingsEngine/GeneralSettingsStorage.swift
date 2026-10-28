@@ -4,6 +4,7 @@ enum GeneralSettingsStorage {
         static let dockIcon = "isDockIconVisible"
         static let isBlueNightMode = "settings.general.isBlueNightMode"
         static let appearanceMode = "settings.general.appearance.mode"
+        static let appIconAppearanceStyle = "settings.general.appIconAppearanceStyle"
         static let customAccentColorHex = "settings.appearance.customAccentColorHex"
         static let idleNotchHoverMenuEnabled = "settings.notch.gestures.idleHoverMenu"
         static let startupPermissionCheckEnabled = "settings.permissions.startupCheckEnabled"
@@ -140,6 +141,7 @@ enum GeneralSettingsStorage {
         Keys.dockIcon: false,
         Keys.isBlueNightMode: false,
         Keys.appearanceMode: SettingsAppearanceMode.system.rawValue,
+        Keys.appIconAppearanceStyle: "auto",
         Keys.customAccentColorHex: "#34C759",
         Keys.idleNotchHoverMenuEnabled: true,
         Keys.startupPermissionCheckEnabled: true,

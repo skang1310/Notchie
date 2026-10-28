@@ -13,35 +13,33 @@ final class ScreenshotMonitorService {
     private var fileWatcherTimer: Timer?
     private var knownFilePaths = Set<String>()
     private var isMonitoring = false
+    private var lastPasteboardChangeCount: Int = NSPasteboard.general.changeCount
+    private var suppressUntil: Date = .distantPast
     private let fileManager = FileManager.default
     
-    init() {}
+    init() {
+        self.originalScreenshotLocation = Self.getSystemScreenshotLocation()
+        self.userTargetDirectoryURL = computeUserTargetDirectoryURL()
+    }
     
     deinit {
         stopMonitoring()
     }
     
     func startMonitoring(disableSystemThumbnail: Bool = true) {
-        // Upstream interception changes macOS screenshot preferences and scans Desktop.
-        // Local builds preserve system capture behavior; tests never touch real folders/preferences.
-        guard !AppEnvironment.isRunningTests, !AppEnvironment.isLocalBuild, !isMonitoring else { return }
+        guard !AppEnvironment.isRunningTests, !isMonitoring else { return }
         isMonitoring = true
         
         self.originalScreenshotLocation = Self.getSystemScreenshotLocation()
         self.userTargetDirectoryURL = computeUserTargetDirectoryURL()
+        self.lastPasteboardChangeCount = NSPasteboard.general.changeCount
         
         let stagingDir = rawStagingDirectoryURL()
         try? fileManager.createDirectory(at: stagingDir, withIntermediateDirectories: true)
         
-        Self.setSystemScreenshotLocation(stagingDir.path)
-        
-        if disableSystemThumbnail {
-            Self.setSystemFloatingThumbnailEnabled(false)
-        }
-        
         primeBaseline()
         
-        fileWatcherTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+        fileWatcherTimer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: true) { [weak self] _ in
             self?.scanForNewScreenshots()
             self?.scanTargetDirectoryForRecordings()
         }
@@ -52,13 +50,16 @@ final class ScreenshotMonitorService {
         isMonitoring = false
         fileWatcherTimer?.invalidate()
         fileWatcherTimer = nil
-        
-        Self.setSystemScreenshotLocation(originalScreenshotLocation)
     }
     
-    func updateLastPasteboardChangeCount() {}
+    func updateLastPasteboardChangeCount() {
+        lastPasteboardChangeCount = NSPasteboard.general.changeCount
+    }
     
-    func suppressMonitoring(for duration: TimeInterval = 3.0) {}
+    func suppressMonitoring(for duration: TimeInterval = 3.0) {
+        suppressUntil = Date().addingTimeInterval(duration)
+        lastPasteboardChangeCount = NSPasteboard.general.changeCount
+    }
     
     func rawStagingDirectoryURL() -> URL {
         let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first ?? fileManager.temporaryDirectory
@@ -106,18 +107,29 @@ final class ScreenshotMonitorService {
         return candidateURL
     }
     
-    private func primeBaseline() {
-        let dir = rawStagingDirectoryURL()
-        if let urls = try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) {
-            for url in urls {
-                knownFilePaths.insert(url.path)
-            }
-        }
+    static func isScreenshotFilename(_ filename: String) -> Bool {
+        let normalized = filename.precomposedStringWithCanonicalMapping.lowercased()
+        let isImage = normalized.hasSuffix(".png") || normalized.hasSuffix(".jpg") || normalized.hasSuffix(".jpeg") || normalized.hasSuffix(".heic") || normalized.hasSuffix(".tiff")
+        guard isImage else { return false }
+        return normalized.contains("screenshot") ||
+            normalized.contains("screen shot") ||
+            normalized.contains("스크린샷") ||
+            normalized.contains("화면 캡처") ||
+            normalized.contains("캡처") ||
+            normalized.contains("cleanshot") ||
+            normalized.contains("скриншот")
+    }
 
-        let targetDir = computeScreenRecordingTargetDirectoryURL()
-        if let urls = try? fileManager.contentsOfDirectory(at: targetDir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) {
-            for url in urls {
-                knownFilePaths.insert(url.path)
+    private func primeBaseline() {
+        var dirs = [rawStagingDirectoryURL(), computeUserTargetDirectoryURL(), computeScreenRecordingTargetDirectoryURL()]
+        if let desktop = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first {
+            dirs.append(desktop)
+        }
+        for dir in dirs {
+            if let urls = try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) {
+                for url in urls {
+                    knownFilePaths.insert(url.path)
+                }
             }
         }
     }
@@ -128,60 +140,75 @@ final class ScreenshotMonitorService {
     }
 
     private func scanForNewScreenshots() {
-        let dir = rawStagingDirectoryURL()
-        guard let urls = try? fileManager.contentsOfDirectory(
-            at: dir,
-            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ) else { return }
-        
-        let now = Date()
-        for url in urls {
-            let path = url.path
-            guard !knownFilePaths.contains(path) else { continue }
-            
-            let filename = url.lastPathComponent
-            let lower = filename.lowercased()
-            
-            if lower.hasSuffix(".mov") || lower.hasSuffix(".mp4") || lower.contains("screen recording") || lower.contains("запись экрана") {
-                guard let resourceValues = try? url.resourceValues(forKeys: [.isRegularFileKey]),
-                      resourceValues.isRegularFile == true else { continue }
-                
-                let targetDir = computeScreenRecordingTargetDirectoryURL()
-                try? fileManager.createDirectory(at: targetDir, withIntermediateDirectories: true)
-                let destinationURL = uniqueURL(for: targetDir.appendingPathComponent(filename))
-                do {
-                    try fileManager.moveItem(at: url, to: destinationURL)
-                    knownFilePaths.insert(path)
-                    knownFilePaths.insert(destinationURL.path)
+        guard Date() >= suppressUntil else { return }
+        self.userTargetDirectoryURL = computeUserTargetDirectoryURL()
+        let stagingDir = rawStagingDirectoryURL()
+        var directoriesToScan: [URL] = [stagingDir, userTargetDirectoryURL]
+        if let desktop = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first,
+           !directoriesToScan.contains(where: { $0.standardizedFileURL == desktop.standardizedFileURL }) {
+            directoriesToScan.append(desktop)
+        }
 
-                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                        let thumbnail = Self.generateVideoThumbnail(for: destinationURL) ?? NSWorkspace.shared.icon(forFile: destinationURL.path)
-                        DispatchQueue.main.async {
-                            self?.onScreenRecordingCaptured?(destinationURL, thumbnail, filename)
+        let now = Date()
+        for dir in directoriesToScan {
+            let isStagingDir = dir.standardizedFileURL == stagingDir.standardizedFileURL
+            guard let urls = try? fileManager.contentsOfDirectory(
+                at: dir,
+                includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+
+            for url in urls {
+                let path = url.path
+                guard !knownFilePaths.contains(path) else { continue }
+
+                let filename = url.lastPathComponent
+                let lower = filename.precomposedStringWithCanonicalMapping.lowercased()
+
+                if lower.hasSuffix(".mov") || lower.hasSuffix(".mp4") || lower.contains("screen recording") || lower.contains("화면 기록") || lower.contains("запись экрана") {
+                    guard isStagingDir,
+                          let resourceValues = try? url.resourceValues(forKeys: [.isRegularFileKey]),
+                          resourceValues.isRegularFile == true else { continue }
+
+                    let targetDir = computeScreenRecordingTargetDirectoryURL()
+                    try? fileManager.createDirectory(at: targetDir, withIntermediateDirectories: true)
+                    let destinationURL = uniqueURL(for: targetDir.appendingPathComponent(filename))
+                    do {
+                        try fileManager.moveItem(at: url, to: destinationURL)
+                        knownFilePaths.insert(path)
+                        knownFilePaths.insert(destinationURL.path)
+
+                        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                            let thumbnail = Self.generateVideoThumbnail(for: destinationURL) ?? NSWorkspace.shared.icon(forFile: destinationURL.path)
+                            DispatchQueue.main.async {
+                                self?.onScreenRecordingCaptured?(destinationURL, thumbnail, filename)
+                            }
                         }
+                    } catch {
+                        // File might be currently open/being written by screencapture, try again on next timer tick
                     }
-                } catch {
-                    // File might be currently open/being written by screencapture, try again on next timer tick
+                    continue
                 }
-                continue
-            }
-            
-            guard let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
-                  resourceValues.isRegularFile == true,
-                  let modDate = resourceValues.contentModificationDate,
-                  now.timeIntervalSince(modDate) < 10.0 else {
-                knownFilePaths.insert(path)
-                continue
-            }
-            
-            if lower.contains("screenshot") || lower.contains("скриншот") || lower.hasSuffix(".png") || lower.hasSuffix(".jpg") {
-                if let image = NSImage(contentsOf: url) {
+
+                guard let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
+                      resourceValues.isRegularFile == true,
+                      let modDate = resourceValues.contentModificationDate,
+                      now.timeIntervalSince(modDate) < 12.0 else {
                     knownFilePaths.insert(path)
+                    continue
+                }
+
+                let matchesScreenshot = isStagingDir
+                    ? (lower.hasSuffix(".png") || lower.hasSuffix(".jpg") || Self.isScreenshotFilename(filename))
+                    : Self.isScreenshotFilename(filename)
+
+                if matchesScreenshot, let image = NSImage(contentsOf: url), image.size.width > 16, image.size.height > 16 {
+                    knownFilePaths.insert(path)
+                    lastPasteboardChangeCount = NSPasteboard.general.changeCount
                     DispatchQueue.main.async { [weak self] in
                         self?.onScreenshotCaptured?(image, url, filename)
                     }
-                    break
+                    return
                 }
             }
         }

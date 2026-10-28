@@ -4,7 +4,11 @@ import QuickLookUI
 
 @MainActor
 final class ScreenshotViewModel: ObservableObject {
+    static let maxHistoryCount = 24
+
     @Published var activeScreenshot: ScreenshotModel?
+    @Published private(set) var history: [ScreenshotModel] = []
+    @Published var selectedHistoryItemID: UUID?
     
     var onScreenshotReady: ((ScreenshotModel) -> Void)?
     var onScreenshotDismissed: (() -> Void)?
@@ -39,6 +43,9 @@ final class ScreenshotViewModel: ObservableObject {
         self.ocrService = ocrService ?? .shared
         
         setupMonitoring()
+        if !AppEnvironment.isRunningTests {
+            preloadRecentScreenshots()
+        }
     }
     
     func startMonitoring(disableSystemThumbnail: Bool = true) {
@@ -75,7 +82,14 @@ final class ScreenshotViewModel: ObservableObject {
         
         let targetDir = monitorService.userTargetDirectoryURL
         let name = fileName.hasSuffix(".png") ? fileName : "\(fileName).png"
-        let targetURL = targetDir.appendingPathComponent(name)
+        let targetURL: URL
+        if let originalURL = fileURL,
+           originalURL.deletingLastPathComponent().standardizedFileURL == targetDir.standardizedFileURL {
+            targetURL = originalURL
+            isSavedToDisk = true
+        } else {
+            targetURL = targetDir.appendingPathComponent(name)
+        }
         
         let model = ScreenshotModel(
             image: image,
@@ -89,15 +103,208 @@ final class ScreenshotViewModel: ObservableObject {
         )
         
         self.activeScreenshot = model
+        self.recordInHistory(model)
         self.onScreenshotReady?(model)
         
         Task { @MainActor [weak self] in
             let extractedText = await self?.ocrService.recognizeText(in: image) ?? ""
-            guard var current = self?.activeScreenshot, current.id == model.id else { return }
-            current.recognizedText = extractedText
-            current.isRecognizing = false
-            self?.activeScreenshot = current
+            guard let self else { return }
+            if var current = self.activeScreenshot, current.id == model.id {
+                current.recognizedText = extractedText
+                current.isRecognizing = false
+                self.activeScreenshot = current
+            }
+            if let idx = self.history.firstIndex(where: { $0.id == model.id }) {
+                self.history[idx].recognizedText = extractedText
+                self.history[idx].isRecognizing = false
+            }
         }
+    }
+
+    private func recordInHistory(_ model: ScreenshotModel) {
+        history.removeAll { existing in
+            if existing.id == model.id { return true }
+            if let a = existing.targetDestinationURL?.standardizedFileURL,
+               let b = model.targetDestinationURL?.standardizedFileURL,
+               a == b {
+                return true
+            }
+            return false
+        }
+        history.insert(model, at: 0)
+        if history.count > Self.maxHistoryCount {
+            history.removeLast(history.count - Self.maxHistoryCount)
+        }
+        if selectedHistoryItemID == nil {
+            selectedHistoryItemID = model.id
+        }
+    }
+
+    func preloadRecentScreenshots() {
+        var dirs = [monitorService.userTargetDirectoryURL, monitorService.rawStagingDirectoryURL()]
+        if let desktop = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first,
+           !dirs.contains(where: { $0.standardizedFileURL == desktop.standardizedFileURL }) {
+            dirs.append(desktop)
+        }
+
+        var candidateFiles: [(url: URL, date: Date)] = []
+        var seenPaths = Set<String>()
+        for dir in dirs {
+            let isStaging = dir.standardizedFileURL == monitorService.rawStagingDirectoryURL().standardizedFileURL
+            guard let urls = try? fileManager.contentsOfDirectory(
+                at: dir,
+                includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+            for url in urls {
+                let stdPath = url.standardizedFileURL.path
+                guard !seenPaths.contains(stdPath) else { continue }
+                let filename = url.lastPathComponent
+                let matches = isStaging
+                    ? (filename.lowercased().hasSuffix(".png") || filename.lowercased().hasSuffix(".jpg"))
+                    : ScreenshotMonitorService.isScreenshotFilename(filename)
+                guard matches,
+                      let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
+                      values.isRegularFile == true,
+                      let modDate = values.contentModificationDate else { continue }
+                seenPaths.insert(stdPath)
+                candidateFiles.append((url, modDate))
+            }
+        }
+
+        candidateFiles.sort { $0.date > $1.date }
+        var loaded: [ScreenshotModel] = []
+        for entry in candidateFiles.prefix(16) {
+            guard let image = NSImage(contentsOf: entry.url), image.size.width > 16 else { continue }
+            let model = ScreenshotModel(
+                image: image,
+                fileURL: entry.url,
+                tempFileURL: entry.url,
+                targetDestinationURL: entry.url,
+                fileName: entry.url.lastPathComponent,
+                recognizedText: "",
+                isRecognizing: false,
+                timestamp: entry.date
+            )
+            loaded.append(model)
+        }
+        if !loaded.isEmpty {
+            self.history = loaded
+            self.selectedHistoryItemID = loaded.first?.id
+        }
+    }
+
+    func copyScreenshot(_ item: ScreenshotModel) {
+        monitorService.suppressMonitoring(for: 2.0)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if let tiffData = item.image.tiffRepresentation {
+            pasteboard.setData(tiffData, forType: .tiff)
+        }
+    }
+
+    func revealInFinder(_ item: ScreenshotModel) {
+        if let url = existingURL(for: item) {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+    }
+
+    func openInPreview(_ item: ScreenshotModel) {
+        if let url = existingURL(for: item) {
+            NSWorkspace.shared.open(url)
+            centerPreviewWindowOnScreen()
+        }
+    }
+
+    func deleteFromHistory(_ item: ScreenshotModel) {
+        if let tempURL = item.tempFileURL, fileManager.fileExists(atPath: tempURL.path) {
+            try? fileManager.removeItem(at: tempURL)
+        }
+        if let targetURL = item.targetDestinationURL, fileManager.fileExists(atPath: targetURL.path) {
+            try? fileManager.removeItem(at: targetURL)
+        }
+        history.removeAll { $0.id == item.id }
+        if selectedHistoryItemID == item.id {
+            selectedHistoryItemID = history.first?.id
+        }
+    }
+
+    func clearHistory() {
+        history.removeAll()
+        selectedHistoryItemID = nil
+    }
+
+    func existingURL(for item: ScreenshotModel) -> URL? {
+        if let target = item.targetDestinationURL, fileManager.fileExists(atPath: target.path) {
+            return target
+        }
+        if let fileURL = item.fileURL, fileManager.fileExists(atPath: fileURL.path) {
+            return fileURL
+        }
+        if let tempURL = item.tempFileURL, fileManager.fileExists(atPath: tempURL.path) {
+            return tempURL
+        }
+        return getFileURL(for: item)
+    }
+
+    func captureInteractiveScreenshot() {
+        let stagingDir = monitorService.rawStagingDirectoryURL()
+        try? fileManager.createDirectory(at: stagingDir, withIntermediateDirectories: true)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        let fileName = "Screenshot \(formatter.string(from: Date())).png"
+        let outputURL = stagingDir.appendingPathComponent(fileName)
+        monitorService.markPathAsKnown(outputURL.path)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        process.arguments = ["-i", outputURL.path]
+        process.terminationHandler = { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      self.fileManager.fileExists(atPath: outputURL.path),
+                      let image = NSImage(contentsOf: outputURL) else { return }
+                self.processNewScreenshot(image: image, fileURL: outputURL, fileName: fileName)
+            }
+        }
+        try? process.run()
+    }
+
+    func triggerDemoFlyToNotch() {
+        let stagingDir = monitorService.rawStagingDirectoryURL()
+        try? fileManager.createDirectory(at: stagingDir, withIntermediateDirectories: true)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        let fileName = "Screenshot \(formatter.string(from: Date())).png"
+        let outputURL = stagingDir.appendingPathComponent(fileName)
+        monitorService.markPathAsKnown(outputURL.path)
+
+        let capturedImage: NSImage
+        if let cgImage = CGDisplayCreateImage(CGMainDisplayID()) {
+            capturedImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width / 2, height: cgImage.height / 2))
+        } else {
+            capturedImage = Self.makePreviewCardImage(title: fileName)
+        }
+        writePNG(image: capturedImage, to: outputURL)
+        processNewScreenshot(image: capturedImage, fileURL: outputURL, fileName: fileName)
+    }
+
+    private static func makePreviewCardImage(title: String) -> NSImage {
+        let size = NSSize(width: 640, height: 400)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        let gradient = NSGradient(colors: [
+            NSColor(calibratedRed: 0.08, green: 0.12, blue: 0.22, alpha: 1.0),
+            NSColor(calibratedRed: 0.14, green: 0.34, blue: 0.42, alpha: 1.0)
+        ])
+        gradient?.draw(in: NSRect(origin: .zero, size: size), angle: 35)
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 24, weight: .bold),
+            .foregroundColor: NSColor.white
+        ]
+        ("Notchie Capture\n" + title as NSString).draw(in: NSRect(x: 36, y: 160, width: 560, height: 120), withAttributes: attrs)
+        image.unlockFocus()
+        return image
     }
     
     func markAsDropped() {
@@ -207,6 +414,9 @@ final class ScreenshotViewModel: ObservableObject {
     
     func deleteScreenshot() {
         isDeleted = true
+        if let activeID = activeScreenshot?.id {
+            history.removeAll { $0.id == activeID }
+        }
         if let tempURL = activeScreenshot?.tempFileURL {
             try? fileManager.removeItem(at: tempURL)
         }
@@ -248,6 +458,9 @@ final class ScreenshotViewModel: ObservableObject {
         if var current = activeScreenshot {
             current.targetDestinationURL = finalTargetURL
             self.activeScreenshot = current
+            if let idx = history.firstIndex(where: { $0.id == current.id }) {
+                history[idx].targetDestinationURL = finalTargetURL
+            }
         }
         
         if let tempURL = screenshot.tempFileURL, fileManager.fileExists(atPath: tempURL.path) {

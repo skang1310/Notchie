@@ -4,6 +4,8 @@ import Combine
 
 enum NotchHubMode: String, CaseIterable, Identifiable {
     case nook
+    case shots
+    case messages
     case tray
     case clips
     case notes
@@ -14,6 +16,8 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .nook: return "sparkles.rectangle.stack.fill"
+        case .shots: return "photo.stack.fill"
+        case .messages: return "message.badge.filled.fill"
         case .tray: return "tray.and.arrow.down.fill"
         case .clips: return "doc.on.clipboard.fill"
         case .notes: return "note.text"
@@ -25,7 +29,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         switch self {
         case .nook, .tray:
             return false
-        case .clips, .notes, .tools:
+        case .shots, .messages, .clips, .notes, .tools:
             return true
         }
     }
@@ -87,6 +91,7 @@ final class QuickToolsStore: ObservableObject {
     weak var calendarViewModel: CalendarViewModel?
     weak var fileTrayViewModel: FileTrayViewModel?
     weak var airDropViewModel: AirDropNotchViewModel?
+    weak var screenshotViewModel: ScreenshotViewModel?
     weak var mediaSettings: MediaAndFilesSettingsStore?
     weak var applicationSettings: ApplicationSettingsStore?
     weak var notchViewModel: NotchViewModel?
@@ -113,9 +118,11 @@ final class QuickToolsStore: ObservableObject {
         self.calendarViewModel = container.calendarViewModel
         self.fileTrayViewModel = container.fileTrayViewModel
         self.airDropViewModel = container.airDropViewModel
+        self.screenshotViewModel = container.screenshotViewModel
         self.mediaSettings = container.settingsViewModel.mediaAndFiles
         self.applicationSettings = container.settingsViewModel.application
         self.notchViewModel = container.notchViewModel
+        NotchMessengerManager.shared.bind(notchViewModel: container.notchViewModel)
     }
 
     var visibleTabs: [QuickToolTab] {
