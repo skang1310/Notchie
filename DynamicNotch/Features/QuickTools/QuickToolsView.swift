@@ -244,9 +244,6 @@ struct NotchiePanoramicHubView: View {
     @State private var showingIconPicker = false
     @State private var selectedDayOffset: Int = 0
 
-    private let leftWingModes: [NotchHubMode] = [.nook, .shots, .messages, .tray]
-    private let rightWingModes: [NotchHubMode] = [.clips, .notes, .tools]
-
     private var accentColor: Color {
         ApplicationSettingsStore.currentCustomAccentColor()
     }
@@ -268,47 +265,29 @@ struct NotchiePanoramicHubView: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             topWingHeaderBar
-                .frame(height: 30)
+                .frame(height: 28)
 
             Group {
                 switch store.hubMode {
                 case .nook:
                     nookThreeColumnDashboard
-                case .shots:
-                    NotchieScreenshotHubView(
-                        screenshotViewModel: store.screenshotViewModel,
-                        fileTrayViewModel: store.fileTrayViewModel,
-                        accentColor: accentColor
-                    )
+                case .tray, .shots:
+                    trayAndShotsUnifiedContainer
                 case .messages:
                     NotchieMessengerHubView(
                         manager: messengerManager,
                         accentColor: accentColor
                     )
-                case .tray:
-                    NotchiePanoramicTraySection(
-                        fileTrayViewModel: store.fileTrayViewModel,
-                        mediaSettings: resolvedMediaSettings,
-                        accentColor: accentColor
-                    )
-                case .clips:
-                    panoramicToolContainer(title: text("Clipboard History", "클립보드 기록"), icon: "doc.on.clipboard.fill") {
-                        ClipboardSnippetsView()
-                    }
-                case .notes:
-                    panoramicToolContainer(title: text("Quick Notes", "빠른 메모"), icon: "note.text") {
-                        QuickNotesView(store: store.notes)
-                    }
-                case .tools:
-                    panoramicToolsBrowser
+                case .clips, .notes, .tools:
+                    studioUnifiedContainer
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(.horizontal, isNotchlessScreen ? 18 : 26)
-        .padding(.top, isNotchlessScreen ? 6 : 4)
+        .padding(.horizontal, isNotchlessScreen ? 16 : 20)
+        .padding(.top, isNotchlessScreen ? 6 : 5)
         .padding(.bottom, isNotchlessScreen ? 12 : 13)
         .environment(\.colorScheme, .dark)
         .onDisappear {
@@ -318,115 +297,172 @@ struct NotchiePanoramicHubView: View {
         }
     }
 
-    // MARK: - Top Header Bar (Flanking the Physical Camera Cutout)
+    // MARK: - Top Header Bar (4 Balanced Primary Tabs Flanking the Camera Cutout)
 
     private var topWingHeaderBar: some View {
         HStack(spacing: 0) {
-            // Left Wing: Primary Mode Pills (Nook, Shots, Talk, Tray) — balanced width so the physical camera notch is dead-center
-            HStack(spacing: 3) {
-                ForEach(leftWingModes) { mode in
-                    modePillButton(for: mode)
+            // Left Wing: 2 Iconic Primary Tabs (Nook | Tray)
+            HStack(spacing: 6) {
+                primaryWingTabButton(
+                    title: "Nook",
+                    systemImage: "sparkles",
+                    isSelected: store.hubMode == .nook,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    store.hubMode = .nook
+                }
+
+                primaryWingTabButton(
+                    title: "Tray",
+                    systemImage: "tray.full.fill",
+                    isSelected: store.hubMode == .tray || store.hubMode == .shots,
+                    badgeCount: (store.fileTrayViewModel?.count ?? 0) + (store.screenshotViewModel?.history.count ?? 0),
+                    badgeIsAlert: false
+                ) {
+                    if store.hubMode != .tray && store.hubMode != .shots {
+                        store.hubMode = .tray
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Center Camera Cutout Safe Area (Dead-Center)
+            // Center Camera Cutout Safe Area (Strictly Centered)
             Color.clear
-                .frame(width: isNotchlessScreen ? 12 : 164)
+                .frame(width: isNotchlessScreen ? 16 : 172)
 
-            // Right Wing: Secondary Mode Pills (Clips, Notes, Tools) + App Icon Picker / Pin / Settings
-            HStack(spacing: 4) {
-                ForEach(rightWingModes) { mode in
-                    modePillButton(for: mode)
+            // Right Wing: 2 Primary Tabs (Talk | Studio) + Unified Glass Utility Rail
+            HStack(spacing: 6) {
+                primaryWingTabButton(
+                    title: text("Talk", "톡"),
+                    systemImage: "bubble.left.and.bubble.right.fill",
+                    isSelected: store.hubMode == .messages,
+                    badgeCount: messengerManager.unreadCount,
+                    badgeIsAlert: true
+                ) {
+                    store.hubMode = .messages
+                    messengerManager.markAllRead()
                 }
 
-                Button {
-                    showingIconPicker.toggle()
-                } label: {
-                    Image(iconController.activeVariant == .light ? "NotchieIconLight" : "NotchieIconDark")
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .frame(width: 17, height: 17)
-                        .frame(width: 24, height: 24)
-                        .background(Color.white.opacity(0.08), in: Circle())
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8))
-                }
-                .buttonStyle(.plain)
-                .help(text("Switch App Icon (Light / Dark / Auto)", "앱 아이콘 선택 (라이트 / 다크 / 자동)"))
-                .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
-                    NotchieAppIconPopoverView(accentColor: accentColor)
-                }
-
-                Button {
-                    withAnimation(.snappy(duration: 0.18)) {
-                        store.isNotchHubPinned.toggle()
+                primaryWingTabButton(
+                    title: text("Studio", "도구함"),
+                    systemImage: "square.grid.2x2.fill",
+                    isSelected: store.hubMode == .clips || store.hubMode == .notes || store.hubMode == .tools,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    if store.hubMode != .clips && store.hubMode != .notes && store.hubMode != .tools {
+                        store.hubMode = .clips
                     }
-                } label: {
-                    Image(systemName: store.isNotchHubPinned ? "pin.fill" : "pin")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(store.isNotchHubPinned ? accentColor : .white.opacity(0.68))
-                        .frame(width: 24, height: 24)
-                        .background(
-                            Circle()
-                                .fill(store.isNotchHubPinned ? accentColor.opacity(0.24) : Color.white.opacity(0.08))
-                        )
-                        .overlay(
-                            Circle()
-                                .strokeBorder(store.isNotchHubPinned ? accentColor.opacity(0.6) : Color.white.opacity(0.1), lineWidth: 0.8)
-                        )
                 }
-                .buttonStyle(.plain)
-                .help(store.isNotchHubPinned ? text("Pinned open", "노치 고정됨") : text("Pin notch open", "노치 열어두기 고정"))
 
-                Button {
-                    SettingsWindowController.shared.showWindow()
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.76))
-                        .frame(width: 24, height: 24)
-                        .background(Color.white.opacity(0.08), in: Circle())
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8))
+                Spacer(minLength: 4)
+
+                // Unified Apple Glass Utility Pill (Icon Theme · Pin · Settings)
+                HStack(spacing: 2) {
+                    Button {
+                        showingIconPicker.toggle()
+                    } label: {
+                        Image(iconController.activeVariant == .light ? "NotchieIconLight" : "NotchieIconDark")
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 15, height: 15)
+                            .frame(width: 24, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(text("Switch App Icon (Light / Dark / Auto)", "앱 아이콘 선택 (라이트 / 다크 / 자동)"))
+                    .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
+                        NotchieAppIconPopoverView(accentColor: accentColor)
+                    }
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.12))
+                        .frame(width: 0.8, height: 12)
+
+                    Button {
+                        withAnimation(.snappy(duration: 0.18)) {
+                            store.isNotchHubPinned.toggle()
+                        }
+                    } label: {
+                        Image(systemName: store.isNotchHubPinned ? "pin.fill" : "pin")
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundStyle(store.isNotchHubPinned ? accentColor : .white.opacity(0.72))
+                            .frame(width: 24, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(store.isNotchHubPinned ? text("Pinned open", "노치 고정됨") : text("Pin notch open", "노치 열어두기 고정"))
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.12))
+                        .frame(width: 0.8, height: 12)
+
+                    Button {
+                        SettingsWindowController.shared.showWindow()
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.75))
+                            .frame(width: 24, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(text("Open Notchie Settings", "Notchie 설정 열기"))
                 }
-                .buttonStyle(.plain)
-                .help(text("Open Notchie Settings", "Notchie 설정 열기"))
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(0.07))
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+                        )
+                )
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
-    private func modePillButton(for mode: NotchHubMode) -> some View {
-        let isSelected = store.hubMode == mode
-        let badgeCount = modeBadgeCount(for: mode)
-
-        return Button {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                store.hubMode = mode
-                if mode == .messages {
-                    messengerManager.markAllRead()
-                }
+    private func primaryWingTabButton(
+        title: String,
+        systemImage: String,
+        isSelected: Bool,
+        badgeCount: Int,
+        badgeIsAlert: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.84)) {
+                action()
             }
         } label: {
-            HStack(spacing: 3.5) {
-                Text(modeTitle(for: mode))
-                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.5))
+            HStack(spacing: 5) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(isSelected ? accentColor : .white.opacity(0.55))
+
+                Text(title)
+                    .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium, design: .rounded))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.62))
                     .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 if badgeCount > 0 {
                     Text("\(badgeCount)")
                         .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(mode == .messages ? .black : .white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 0.5)
+                        .foregroundStyle(badgeIsAlert ? .black : .white)
+                        .padding(.horizontal, 4.5)
+                        .padding(.vertical, 1)
                         .background(
-                            (mode == .messages ? Color(red: 0.99, green: 0.90, blue: 0.0) : accentColor.opacity(0.85)),
+                            (badgeIsAlert ? Color(red: 0.99, green: 0.90, blue: 0.0) : accentColor.opacity(0.85)),
                             in: Capsule()
                         )
                 }
             }
-            .padding(.horizontal, 7.5)
+            .padding(.horizontal, 10)
             .padding(.vertical, 4.5)
             .background(
                 ZStack {
@@ -435,8 +471,8 @@ struct NotchiePanoramicHubView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.18),
-                                        Color.white.opacity(0.09)
+                                        Color.white.opacity(0.16),
+                                        Color.white.opacity(0.08)
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -454,6 +490,9 @@ struct NotchiePanoramicHubView: View {
                                 ),
                                 lineWidth: 0.85
                             )
+                    } else {
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.035))
                     }
                 }
             )
@@ -461,36 +500,179 @@ struct NotchiePanoramicHubView: View {
         .buttonStyle(.plain)
     }
 
-    private func modeBadgeCount(for mode: NotchHubMode) -> Int {
-        switch mode {
-        case .tray:
-            return store.fileTrayViewModel?.count ?? 0
-        case .shots:
-            return store.screenshotViewModel?.history.count ?? 0
-        case .messages:
-            return messengerManager.unreadCount
-        default:
-            return 0
+    // MARK: - Unified Tray + Screenshots Container
+
+    private var trayAndShotsUnifiedContainer: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                subModeSegmentButton(
+                    title: text("File Tray", "파일 트레이"),
+                    icon: "tray.full.fill",
+                    count: store.fileTrayViewModel?.count ?? 0,
+                    isSelected: store.hubMode == .tray
+                ) {
+                    store.hubMode = .tray
+                }
+
+                subModeSegmentButton(
+                    title: text("Captures", "스크린샷 기록"),
+                    icon: "camera.viewfinder",
+                    count: store.screenshotViewModel?.history.count ?? 0,
+                    isSelected: store.hubMode == .shots
+                ) {
+                    store.hubMode = .shots
+                }
+
+                Spacer()
+            }
+
+            if store.hubMode == .shots {
+                NotchieScreenshotHubView(
+                    screenshotViewModel: store.screenshotViewModel,
+                    fileTrayViewModel: store.fileTrayViewModel,
+                    accentColor: accentColor
+                )
+            } else {
+                NotchiePanoramicTraySection(
+                    fileTrayViewModel: store.fileTrayViewModel,
+                    mediaSettings: resolvedMediaSettings,
+                    accentColor: accentColor
+                )
+            }
         }
     }
 
-    private func modeTitle(for mode: NotchHubMode) -> String {
-        switch mode {
-        case .nook: return "Nook"
-        case .shots: return text("Shots", "캡처")
-        case .messages: return text("Talk", "톡·메시지")
-        case .tray: return "Tray"
-        case .clips: return text("Clips", "클립")
-        case .notes: return text("Notes", "메모")
-        case .tools: return text("Tools", "도구")
+    // MARK: - Unified Studio Container (Clipboard · Notes · Tools)
+
+    private var studioUnifiedContainer: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                subModeSegmentButton(
+                    title: text("Clipboard", "클립보드"),
+                    icon: "doc.on.clipboard.fill",
+                    count: 0,
+                    isSelected: store.hubMode == .clips
+                ) {
+                    store.hubMode = .clips
+                }
+
+                subModeSegmentButton(
+                    title: text("Quick Notes", "빠른 메모"),
+                    icon: "note.text",
+                    count: 0,
+                    isSelected: store.hubMode == .notes
+                ) {
+                    store.hubMode = .notes
+                }
+
+                subModeSegmentButton(
+                    title: text("Tools", "생산성 도구"),
+                    icon: "wrench.and.screwdriver.fill",
+                    count: 0,
+                    isSelected: store.hubMode == .tools
+                ) {
+                    store.hubMode = .tools
+                }
+
+                Spacer()
+
+                Button {
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.84)) {
+                        store.hubMode = .nook
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("Nook")
+                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(.white.opacity(0.68))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(Color.white.opacity(0.08), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            Group {
+                if store.hubMode == .clips {
+                    ClipboardSnippetsView()
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.045))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
+                                )
+                        )
+                } else if store.hubMode == .notes {
+                    QuickNotesView(store: store.notes)
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.045))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
+                                )
+                        )
+                } else {
+                    panoramicToolsBrowser
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
-    // MARK: - 3-Column Nook Dashboard (Now Playing | 7-Day Calendar | Flip-Clock & Weather Widget)
+    private func subModeSegmentButton(
+        title: String,
+        icon: String,
+        count: Int,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.18)) {
+                action()
+            }
+        } label: {
+            HStack(spacing: 4.5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(isSelected ? accentColor : .white.opacity(0.52))
+                Text(title)
+                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .medium, design: .rounded))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.62))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 0.5)
+                        .background(accentColor.opacity(0.75), in: Capsule())
+                }
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(isSelected ? Color.white.opacity(0.14) : Color.white.opacity(0.05))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(isSelected ? accentColor.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 0.75)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - 3-Column Apple Liquid Glass Bento Dashboard (Now Playing | Calendar | Flip-Clock Weather)
 
     private var nookThreeColumnDashboard: some View {
-        HStack(alignment: .center, spacing: 10) {
-            // Column 1: Now Playing Studio
+        HStack(alignment: .top, spacing: 10) {
+            // Bento Card 1: Now Playing Studio (210pt × 136pt)
             NotchieNowPlayingStudioColumn(
                 nowPlayingViewModel: resolvedNowPlayingViewModel,
                 mediaSettings: resolvedMediaSettings,
@@ -498,21 +680,9 @@ struct NotchiePanoramicHubView: View {
                 accentColor: accentColor,
                 onOpenPlaybackSource: onOpenPlaybackSource
             )
-            .frame(width: 208)
+            .frame(width: 210, height: 136)
 
-            // Subtle OS 27 vertical glass divider
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [.clear, .white.opacity(0.12), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 1)
-                .padding(.vertical, 8)
-
-            // Column 2: Month + 7-Day Week Strip & Schedule (Centered)
+            // Bento Card 2: 7-Day Calendar & Schedule (Flexible Center × 136pt)
             NotchieCalendarScheduleColumn(
                 calendarViewModel: store.calendarViewModel,
                 selectedDayOffset: $selectedDayOffset,
@@ -525,24 +695,12 @@ struct NotchiePanoramicHubView: View {
                 }
             )
             .frame(maxWidth: .infinity)
+            .frame(height: 136)
 
-            // Subtle OS 27 vertical glass divider
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [.clear, .white.opacity(0.12), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 1)
-                .padding(.vertical, 8)
-
-            // Column 3: Classic Flip-Clock & Live Weather Widget (Replacing Camera Pod)
+            // Bento Card 3: Flip-Clock & Weather Studio (222pt × 136pt)
             NotchieFlipClockWeatherColumn()
-                .frame(width: 218)
+                .frame(width: 222, height: 136)
         }
-        .padding(.horizontal, 2)
     }
 
     // MARK: - Extended Mode Containers (Clips, Notes, Tools)
@@ -712,7 +870,7 @@ private struct NotchieNowPlayingStudioColumn: View {
     private var fallbackSnapshot: NowPlayingSnapshot {
         NowPlayingSnapshot(
             title: locale.dn("notch.nowPlaying.nothingPlaying", fallback: "Not Playing"),
-            artist: privacyText("Play music or video to control live media", "음악·영상을 재생하면 여기에 표시됩니다"),
+            artist: privacyText("Play music or video", "재생 중인 미디어 없음"),
             album: "Notchie Studio",
             duration: 0,
             elapsedTime: 0,
@@ -723,76 +881,138 @@ private struct NotchieNowPlayingStudioColumn: View {
     }
 
     var body: some View {
-        if let vm = nowPlayingViewModel {
-            ObservedNowPlayingStudioBody(
-                nowPlayingViewModel: vm,
-                mediaSettings: mediaSettings,
-                applicationSettings: applicationSettings,
-                accentColor: accentColor,
-                onOpenPlaybackSource: onOpenPlaybackSource,
-                scrubProgress: $scrubProgress
-            )
-        } else {
-            placeholderStudioCard
+        ZStack {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.075),
+                            Color.white.opacity(0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.20),
+                                    Color.white.opacity(0.06)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.85
+                        )
+                )
+
+            if let vm = nowPlayingViewModel {
+                ObservedNowPlayingStudioBody(
+                    nowPlayingViewModel: vm,
+                    mediaSettings: mediaSettings,
+                    applicationSettings: applicationSettings,
+                    accentColor: accentColor,
+                    onOpenPlaybackSource: onOpenPlaybackSource,
+                    scrubProgress: $scrubProgress
+                )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            } else {
+                placeholderStudioCard
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+            }
         }
     }
 
     private var placeholderStudioCard: some View {
         let snap = fallbackSnapshot
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 10) {
                 ZStack(alignment: .bottomTrailing) {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [Color(red: 0.98, green: 0.22, blue: 0.36), Color(red: 0.72, green: 0.12, blue: 0.28)],
+                                colors: [
+                                    Color(red: 0.98, green: 0.24, blue: 0.38),
+                                    Color(red: 0.72, green: 0.12, blue: 0.28)
+                                ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 66, height: 66)
+                        .frame(width: 48, height: 48)
                         .overlay {
                             Image(systemName: "music.note")
-                                .font(.system(size: 28, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.92))
+                                .font(.system(size: 21, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.95))
                         }
                         .overlay(
-                            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
                         )
+                        .shadow(color: .black.opacity(0.35), radius: 5, y: 2)
 
                     ZStack {
                         Circle()
-                            .fill(Color(red: 0.14, green: 0.16, blue: 0.22))
-                            .frame(width: 22, height: 22)
+                            .fill(Color(red: 0.12, green: 0.14, blue: 0.18))
+                            .frame(width: 18, height: 18)
                         Circle()
-                            .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)
-                            .frame(width: 22, height: 22)
+                            .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.7)
+                            .frame(width: 18, height: 18)
                         Image(systemName: "waveform")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 8.5, weight: .bold))
                             .foregroundStyle(accentColor)
                     }
-                    .offset(x: 4, y: 4)
+                    .offset(x: 3, y: 3)
                 }
-                VStack(alignment: .leading, spacing: 3) {
+
+                VStack(alignment: .leading, spacing: 2.5) {
                     Text(snap.title)
-                        .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
+
                     Text(snap.artist)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.54))
-                        .lineLimit(2)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            HStack(spacing: 22) {
+
+            Spacer(minLength: 6)
+
+            // Balanced Scrubber Track
+            VStack(spacing: 3) {
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+                    .frame(height: 3.5)
+
+                HStack {
+                    Text("0:00")
+                    Spacer()
+                    Text("-0:00")
+                }
+                .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.35))
+            }
+
+            Spacer(minLength: 4)
+
+            // Centered Transport Bar
+            HStack(spacing: 24) {
                 Image(systemName: "backward.fill")
+                    .font(.system(size: 13.5, weight: .semibold))
                 Image(systemName: "play.fill")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.82))
                 Image(systemName: "forward.fill")
+                    .font(.system(size: 13.5, weight: .semibold))
             }
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.45))
+            .foregroundStyle(.white.opacity(0.52))
             .frame(maxWidth: .infinity)
         }
     }
@@ -832,44 +1052,42 @@ private struct ObservedNowPlayingStudioBody: View {
             let displayedProgress = min(max(scrubProgress ?? progress, 0), 1)
 
             ZStack(alignment: .topLeading) {
-                // Subtle ambient glow from album artwork palette
                 Circle()
-                    .fill(Color(nsColor: nowPlayingViewModel.artworkPalette.equalizerHighlightColor).opacity(snapshot.isPlaying ? 0.22 : 0.1))
-                    .frame(width: 96, height: 96)
-                    .blur(radius: 26)
-                    .offset(x: -10, y: -6)
+                    .fill(Color(nsColor: nowPlayingViewModel.artworkPalette.equalizerHighlightColor).opacity(snapshot.isPlaying ? 0.20 : 0.08))
+                    .frame(width: 84, height: 84)
+                    .blur(radius: 24)
+                    .offset(x: -8, y: -6)
                     .allowsHitTesting(false)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .center, spacing: 12) {
-                        // Artwork + Floating Source App Badge (NotchNook style)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .center, spacing: 10) {
                         Button {
                             openPlaybackSource()
                         } label: {
                             ZStack(alignment: .bottomTrailing) {
                                 ArtworkView(
                                     nowPlayingViewModel: nowPlayingViewModel,
-                                    width: 66,
-                                    height: 66,
-                                    cornerRadius: 15,
+                                    width: 48,
+                                    height: 48,
+                                    cornerRadius: 12,
                                     usesFlipAnimation: mediaSettings?.nowPlayingAppearanceOptions.usesArtwork3DEffect ?? true
                                 )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8)
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
                                 )
-                                .shadow(color: .black.opacity(0.45), radius: 8, y: 3)
+                                .shadow(color: .black.opacity(0.4), radius: 5, y: 2)
 
                                 playbackSourceBadge(for: snapshot)
-                                    .offset(x: 4, y: 4)
+                                    .offset(x: 3, y: 3)
                             }
                         }
                         .buttonStyle(.plain)
 
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(alignment: .center, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 2.5) {
+                            HStack(alignment: .center, spacing: 5) {
                                 Text(displayTitle(for: snapshot))
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(.white)
                                     .lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -880,31 +1098,32 @@ private struct ObservedNowPlayingStudioBody: View {
                                         nowPlayingViewModel.artworkPalette.equalizerHighlightColor,
                                         nowPlayingViewModel.artworkPalette.equalizerBaseColor
                                     ],
-                                    barHeight: 16,
-                                    barWidth: 2.3
+                                    barHeight: 14,
+                                    barWidth: 2.1
                                 )
-                                .frame(width: 18, height: 15)
+                                .frame(width: 16, height: 14)
                             }
 
                             Text(displayArtist(for: snapshot))
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.56))
                                 .lineLimit(1)
-
-                            // Compact interactive scrub bar
-                            slimScrubber(snapshot: snapshot, displayedProgress: displayedProgress, elapsedTime: elapsedTime)
-                                .padding(.top, 3)
                         }
                     }
 
-                    // Transport Controls Row
-                    HStack(spacing: 14) {
+                    Spacer(minLength: 6)
+
+                    slimScrubber(snapshot: snapshot, displayedProgress: displayedProgress, elapsedTime: elapsedTime)
+
+                    Spacer(minLength: 4)
+
+                    HStack(spacing: 12) {
                         if mediaSettings?.nowPlayingAppearanceOptions.showsFavoriteButton ?? true {
                             FavoriteTrackButton(
                                 nowPlayingViewModel: nowPlayingViewModel,
-                                width: 26,
-                                height: 26,
-                                fontSize: 13
+                                width: 22,
+                                height: 22,
+                                fontSize: 11.5
                             )
                         }
 
@@ -912,9 +1131,9 @@ private struct ObservedNowPlayingStudioBody: View {
 
                         PlayerControlButton(
                             systemImage: "backward.fill",
-                            fontSize: 16,
-                            width: 30,
-                            height: 28,
+                            fontSize: 14,
+                            width: 26,
+                            height: 24,
                             feedbackStyle: .backward
                         ) {
                             nowPlayingViewModel.previousTrack()
@@ -922,9 +1141,9 @@ private struct ObservedNowPlayingStudioBody: View {
 
                         PlayerControlButton(
                             systemImage: snapshot.isPlaying ? "pause.fill" : "play.fill",
-                            fontSize: 21,
-                            width: 34,
-                            height: 30,
+                            fontSize: 18,
+                            width: 30,
+                            height: 26,
                             feedbackStyle: .playPause
                         ) {
                             nowPlayingViewModel.togglePlayPause()
@@ -932,9 +1151,9 @@ private struct ObservedNowPlayingStudioBody: View {
 
                         PlayerControlButton(
                             systemImage: "forward.fill",
-                            fontSize: 16,
-                            width: 30,
-                            height: 28,
+                            fontSize: 14,
+                            width: 26,
+                            height: 24,
                             feedbackStyle: .forward
                         ) {
                             nowPlayingViewModel.nextTrack()
@@ -945,13 +1164,12 @@ private struct ObservedNowPlayingStudioBody: View {
                         if mediaSettings?.nowPlayingAppearanceOptions.showsOutputDeviceButton ?? true {
                             AudioOutputRoutePickerButton(
                                 nowPlayingViewModel: nowPlayingViewModel,
-                                width: 26,
-                                height: 26,
-                                fontSize: 13
+                                width: 22,
+                                height: 22,
+                                fontSize: 11.5
                             )
                         }
                     }
-                    .padding(.leading, 4)
                 }
             }
         }
@@ -965,11 +1183,11 @@ private struct ObservedNowPlayingStudioBody: View {
             Image(nsImage: icon)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 22, height: 22)
+                .frame(width: 18, height: 18)
                 .clipShape(Circle())
                 .background(Circle().fill(Color.black.opacity(0.75)))
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8))
-                .shadow(color: .black.opacity(0.45), radius: 3, y: 1)
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 0.7))
+                .shadow(color: .black.opacity(0.45), radius: 2, y: 1)
         } else {
             ZStack {
                 Circle()
@@ -983,13 +1201,13 @@ private struct ObservedNowPlayingStudioBody: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 21, height: 21)
+                    .frame(width: 18, height: 18)
                 Image(systemName: "music.note")
-                    .font(.system(size: 10.5, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .overlay(Circle().strokeBorder(Color.black.opacity(0.55), lineWidth: 1.2))
-            .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
+            .overlay(Circle().strokeBorder(Color.black.opacity(0.55), lineWidth: 1.0))
+            .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
         }
     }
 
@@ -998,13 +1216,13 @@ private struct ObservedNowPlayingStudioBody: View {
         displayedProgress: CGFloat,
         elapsedTime: TimeInterval
     ) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 2.5) {
             GeometryReader { geo in
                 let width = max(1, geo.size.width)
                 ZStack(alignment: .leading) {
                     Capsule(style: .continuous)
                         .fill(Color.white.opacity(0.14))
-                        .frame(height: 4)
+                        .frame(height: 3.5)
 
                     Capsule(style: .continuous)
                         .fill(
@@ -1017,7 +1235,7 @@ private struct ObservedNowPlayingStudioBody: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(4, width * displayedProgress), height: 4)
+                        .frame(width: max(3.5, width * displayedProgress), height: 3.5)
                 }
                 .contentShape(Rectangle())
                 .gesture(
@@ -1035,17 +1253,15 @@ private struct ObservedNowPlayingStudioBody: View {
                         }
                 )
             }
-            .frame(height: 6)
+            .frame(height: 5)
 
-            if snapshot.duration > 0 {
-                HStack {
-                    Text(shortTimeString(elapsedTime))
-                    Spacer()
-                    Text("-" + shortTimeString(max(0, snapshot.duration - elapsedTime)))
-                }
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.42))
+            HStack {
+                Text(snapshot.duration > 0 ? shortTimeString(elapsedTime) : "0:00")
+                Spacer()
+                Text(snapshot.duration > 0 ? "-" + shortTimeString(max(0, snapshot.duration - elapsedTime)) : "-0:00")
             }
+            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.38))
         }
     }
 
@@ -1057,7 +1273,7 @@ private struct ObservedNowPlayingStudioBody: View {
 
     private func displayArtist(for snapshot: NowPlayingSnapshot) -> String {
         snapshot.artist.trimmed.isEmpty
-            ? privacyText("Play music or video", "미디어 대기 중")
+            ? privacyText("Play music or video", "재생 중인 미디어 없음")
             : snapshot.artist
     }
 
@@ -1079,7 +1295,7 @@ private struct ObservedNowPlayingStudioBody: View {
     }
 }
 
-// MARK: - Column 2: Month + 7-Day Week Strip & Schedule (NotchNook + OS 27)
+// MARK: - Column 2: Month + 7-Day Week Strip & Schedule Bento Card (Apple Liquid Glass)
 
 private struct NotchieCalendarScheduleColumn: View {
     var calendarViewModel: CalendarViewModel?
@@ -1097,9 +1313,9 @@ private struct NotchieCalendarScheduleColumn: View {
         Calendar.current.date(byAdding: .day, value: selectedDayOffset, to: Date()) ?? Date()
     }
 
-    private var monthAbbreviation: String {
+    private var monthHeaderTitle: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = Locale.preferredLanguages.first?.hasPrefix("ko") == true ? "M월" : "MMM"
+        formatter.dateFormat = Locale.preferredLanguages.first?.hasPrefix("ko") == true ? "yyyy년 M월" : "MMMM yyyy"
         return formatter.string(from: selectedDate)
     }
 
@@ -1129,24 +1345,101 @@ private struct NotchieCalendarScheduleColumn: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Top Row: Month Title + 7-Day Horizontal Strip (matches NotchNook screenshot)
-            HStack(alignment: .center, spacing: 8) {
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) {
-                        selectedDayOffset = 0
-                    }
-                } label: {
-                    Text(monthAbbreviation)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
+        let pendingTask = productivityStorage.todayTasks.first(where: { !$0.done }) ?? productivityStorage.todayTasks.first
 
-                HStack(spacing: 4) {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.075),
+                            Color.white.opacity(0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.20),
+                                    Color.white.opacity(0.06)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.85
+                        )
+                )
+
+            VStack(alignment: .leading, spacing: 6) {
+                // Header Row: Month Title + Quick Task / Today Button
+                HStack(alignment: .center, spacing: 6) {
+                    Button {
+                        withAnimation(.snappy(duration: 0.2)) {
+                            selectedDayOffset = 0
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .foregroundStyle(accentColor)
+                            Text(monthHeaderTitle)
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    if let task = pendingTask {
+                        Button {
+                            productivityStorage.toggleTask(task.id)
+                        } label: {
+                            HStack(spacing: 3.5) {
+                                Image(systemName: task.done ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 9.5, weight: .bold))
+                                    .foregroundStyle(task.done ? accentColor : .white.opacity(0.6))
+                                Text(task.text)
+                                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.85))
+                                    .strikethrough(task.done)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: 68, alignment: .leading)
+                            }
+                            .padding(.horizontal, 6.5)
+                            .padding(.vertical, 2.5)
+                            .background(Color.white.opacity(0.08), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Button(action: onSwitchToTasks) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 8.5, weight: .bold))
+                                    .foregroundStyle(accentColor)
+                                Text(text("Task", "할 일"))
+                                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.78))
+                            }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(Color.white.opacity(0.08), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // Middle Row: Precision 7-Day Horizontal Strip (Single-Line Guaranteed)
+                HStack(spacing: 2) {
                     ForEach(weekDays, id: \.offset) { item in
                         let isSelected = item.offset == selectedDayOffset
                         let isToday = item.offset == 0
+
                         Button {
                             withAnimation(.snappy(duration: 0.18)) {
                                 selectedDayOffset = item.offset
@@ -1154,44 +1447,68 @@ private struct NotchieCalendarScheduleColumn: View {
                         } label: {
                             VStack(spacing: 2) {
                                 Text(item.weekdayShort)
-                                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                                    .font(.system(size: 7.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(
                                         isSelected
-                                            ? Color(red: 0.26, green: 0.62, blue: 1.0)
+                                            ? .white
                                             : (isToday ? accentColor : .white.opacity(0.45))
                                     )
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
 
                                 Text(item.dayNumber)
-                                    .font(.system(size: 13, weight: isSelected ? .bold : .semibold, design: .rounded))
+                                    .font(.system(size: 12, weight: isSelected ? .bold : .semibold, design: .rounded))
+                                    .monospacedDigit()
                                     .foregroundStyle(
                                         isSelected
-                                            ? Color(red: 0.26, green: 0.62, blue: 1.0)
-                                            : .white.opacity(isToday ? 0.95 : 0.72)
+                                            ? .white
+                                            : .white.opacity(isToday ? 0.96 : 0.76)
                                     )
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
 
                                 Circle()
-                                    .fill(item.hasEvents ? accentColor : Color.clear)
-                                    .frame(width: 3.5, height: 3.5)
+                                    .fill(item.hasEvents ? (isSelected ? .white : accentColor) : Color.clear)
+                                    .frame(width: 3, height: 3)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 3)
+                            .padding(.vertical, 4)
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(isSelected ? Color(red: 0.2, green: 0.52, blue: 1.0).opacity(0.18) : Color.clear)
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .fill(
+                                        isSelected
+                                            ? LinearGradient(
+                                                colors: [
+                                                    Color(red: 0.24, green: 0.56, blue: 1.0),
+                                                    Color(red: 0.16, green: 0.42, blue: 0.92)
+                                                ],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                            : LinearGradient(
+                                                colors: [Color.clear, Color.clear],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                    )
                             )
                         }
                         .buttonStyle(.plain)
                     }
                 }
-            }
 
-            // Bottom Row: Selected Day's Event / Join Meeting OR "Nothing for today" + Today's Task Chip
-            let dayEvents = events(on: selectedDate)
-            if let primaryEvent = dayEvents.first ?? (selectedDayOffset == 0 ? calendarViewModel?.nextEvent : nil) {
-                eventDetailCard(for: primaryEvent)
-            } else {
-                emptyScheduleView
+                Spacer(minLength: 0)
+
+                // Bottom Row: Full-Width Event or Empty Schedule Pill (Never Squished)
+                let dayEvents = events(on: selectedDate)
+                if let primaryEvent = dayEvents.first ?? (selectedDayOffset == 0 ? calendarViewModel?.nextEvent : nil) {
+                    eventDetailCard(for: primaryEvent)
+                } else {
+                    emptyScheduleBar
+                }
             }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
         }
     }
 
@@ -1202,16 +1519,16 @@ private struct NotchieCalendarScheduleColumn: View {
         return HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 2)
                 .fill(accentColor)
-                .frame(width: 3.5, height: 34)
+                .frame(width: 3, height: 24)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
 
                 Text(eventTimeRangeText(for: event))
-                    .font(.system(size: 10.5, weight: .medium))
+                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.56))
                     .lineLimit(1)
             }
@@ -1221,15 +1538,15 @@ private struct NotchieCalendarScheduleColumn: View {
                 Button {
                     NSWorkspace.shared.open(meetingURL)
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3.5) {
                         Image(systemName: "video.fill")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                         Text(text("Join", "참여"))
-                            .font(.system(size: 10.5, weight: .bold))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(Color.blue, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1238,90 +1555,62 @@ private struct NotchieCalendarScheduleColumn: View {
                     calendarViewModel?.openCalendarEvent()
                 } label: {
                     Image(systemName: "arrow.up.right.circle.fill")
-                        .font(.system(size: 15))
+                        .font(.system(size: 14))
                         .foregroundStyle(.white.opacity(0.6))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.white.opacity(0.055))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.7)
                 )
         )
     }
 
-    private var emptyScheduleView: some View {
-        let pendingTask = productivityStorage.todayTasks.first(where: { !$0.done }) ?? productivityStorage.todayTasks.first
+    private var emptyScheduleBar: some View {
+        Button {
+            calendarViewModel?.openCalendarEvent()
+        } label: {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.white.opacity(0.24))
+                    .frame(width: 3, height: 22)
 
-        return HStack(spacing: 10) {
-            Button {
-                calendarViewModel?.openCalendarEvent()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.42))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(text("No upcoming events today", "오늘 예정된 일정 없음"))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .lineLimit(1)
 
-                    VStack(alignment: .leading, spacing: 1.5) {
-                        Text(text("Nothing for today", "오늘 예정된 일정 없음"))
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.55))
-                        Text(text("Tap to open Calendar", "클릭하여 캘린더 열기"))
-                            .font(.system(size: 9.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.34))
-                    }
+                    Text(text("Click to open Apple Calendar", "클릭하여 캘린더 열기"))
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.38))
             }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 4)
-
-            if let task = pendingTask {
-                Button {
-                    productivityStorage.toggleTask(task.id)
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: task.done ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(task.done ? accentColor : .white.opacity(0.6))
-                        Text(task.text)
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.82))
-                            .strikethrough(task.done)
-                            .lineLimit(1)
-                            .frame(maxWidth: 96, alignment: .leading)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.07), in: Capsule())
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.1), lineWidth: 0.7))
-                }
-                .buttonStyle(.plain)
-                .help(text("Toggle today's priority task", "오늘의 핵심 할 일 완료 토글"))
-            } else {
-                Button(action: onSwitchToTasks) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(accentColor)
-                        Text(text("Add Task", "할 일 추가"))
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.75))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.07), in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.white.opacity(0.045))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.7)
+                    )
+            )
         }
-        .frame(maxWidth: .infinity, minHeight: 44)
+        .buttonStyle(.plain)
     }
 
     private func eventTimeRangeText(for event: EKEvent) -> String {
@@ -1558,10 +1847,55 @@ private struct NotchieFlipClockWeatherColumn: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { context in
             let now = context.date
-            VStack(spacing: 4) {
-                topFlipClockHeroCard(now: now)
-                forecastFourDayStrip
-                bottomSunWindFooter
+            ZStack {
+                // Unified 136pt Apple Liquid Glass + Brushed Slate Bento Card
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.18, green: 0.20, blue: 0.24),
+                                Color(red: 0.10, green: 0.11, blue: 0.14),
+                                Color(red: 0.06, green: 0.07, blue: 0.09)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.24),
+                                        Color.white.opacity(0.07)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 0.85
+                            )
+                    )
+
+                VStack(spacing: 0) {
+                    topFlipClockHeroSection(now: now)
+                        .frame(height: 66)
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.09))
+                        .frame(height: 0.7)
+                        .padding(.horizontal, 8)
+
+                    forecastFourDayStrip
+                        .frame(height: 46)
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.07))
+                        .frame(height: 0.7)
+                        .padding(.horizontal, 8)
+
+                    bottomSunWindFooter
+                        .frame(height: 22)
+                }
             }
         }
         .onAppear {
@@ -1570,104 +1904,78 @@ private struct NotchieFlipClockWeatherColumn: View {
     }
 
     @ViewBuilder
-    private func topFlipClockHeroCard(now: Date) -> some View {
+    private func topFlipClockHeroSection(now: Date) -> some View {
         let hourText = Self.hourString(from: now)
         let minuteText = Self.minuteString(from: now)
         let dayHeader = Self.shortWeekdayDayString(from: now)
 
         ZStack(alignment: .top) {
-            // Metallic dark-slate hero background card
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.25, green: 0.28, blue: 0.31),
-                            Color(red: 0.14, green: 0.16, blue: 0.18),
-                            Color(red: 0.08, green: 0.09, blue: 0.11)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.32),
-                                    Color.white.opacity(0.08)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 0.9
-                        )
-                )
-                .shadow(color: .black.opacity(0.45), radius: 5, y: 2)
-
-            VStack(spacing: 2) {
+            VStack(spacing: 0) {
                 // Twin Split Flip-Clock Cards (HH | MM)
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     NotchieFlipDigitCardView(digits: hourText)
                     NotchieFlipDigitCardView(digits: minuteText)
                 }
-                .padding(.top, 3)
+                .padding(.top, 5)
+
+                Spacer(minLength: 0)
 
                 // Weather info row flanking the glowing center sun orb
                 HStack(alignment: .bottom, spacing: 2) {
-                    VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0.5) {
                         Text(weatherStore.snapshot.conditionLabel)
                             .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.88))
+                            .foregroundStyle(.white.opacity(0.76))
                             .lineLimit(1)
                         Text(weatherStore.snapshot.formattedCurrentTemp)
-                            .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
 
-                    Spacer(minLength: 34)
+                    Spacer(minLength: 36)
 
-                    VStack(alignment: .trailing, spacing: 1) {
+                    VStack(alignment: .trailing, spacing: 0.5) {
                         Text(dayHeader)
                             .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.82))
+                            .foregroundStyle(.white.opacity(0.76))
                             .lineLimit(1)
                         Text(weatherStore.snapshot.formattedHighLow)
                             .font(.system(size: 9.0, weight: .bold, design: .rounded))
                             .foregroundStyle(.white.opacity(0.92))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 4)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 5)
             }
 
-            // Center 3D Glowing Golden Sun / Weather Illustration overlapping the flip clock
-            NotchieGlowingWeatherOrbView(weatherCode: weatherStore.snapshot.weatherCode, size: 32)
-                .offset(y: 35)
+            // Center 3D Glowing Golden Sun / Weather Illustration
+            NotchieGlowingWeatherOrbView(weatherCode: weatherStore.snapshot.weatherCode, size: 28)
+                .offset(y: 34)
         }
-        .frame(height: 68)
     }
 
     private var forecastFourDayStrip: some View {
         HStack(spacing: 0) {
             ForEach(Array(weatherStore.snapshot.forecastDays.prefix(4).enumerated()), id: \.element.id) { index, day in
-                VStack(spacing: 1.5) {
+                VStack(spacing: 2) {
                     Text(day.dayTitle)
                         .font(.system(size: 7.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(.white.opacity(0.84))
                         .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
 
-                    NotchieGlowingWeatherOrbView(weatherCode: day.weatherCode, size: 13)
+                    NotchieGlowingWeatherOrbView(weatherCode: day.weatherCode, size: 12.5)
 
-                    Text(day.formattedHighLow)
-                        .font(.system(size: 6.5, weight: .semibold, design: .rounded))
+                    Text(String(format: "%.1f°/%.1f°", day.highTempC, day.lowTempC))
+                        .font(.system(size: 7.0, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
                         .foregroundStyle(.white.opacity(0.88))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -1676,48 +1984,43 @@ private struct NotchieFlipClockWeatherColumn: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.04),
-                                    Color.white.opacity(0.24),
-                                    Color.white.opacity(0.04)
+                                    Color.white.opacity(0.02),
+                                    Color.white.opacity(0.18),
+                                    Color.white.opacity(0.02)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
-                        .frame(width: 0.8, height: 28)
+                        .frame(width: 0.7, height: 30)
                 }
             }
         }
-        .padding(.vertical, 3)
-        .padding(.horizontal, 3)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.045))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.6)
-                )
-        )
+        .padding(.horizontal, 4)
     }
 
     private var bottomSunWindFooter: some View {
-        HStack(spacing: 5) {
-            HStack(spacing: 2) {
+        HStack(spacing: 6) {
+            HStack(spacing: 2.5) {
                 Image(systemName: "sunrise.fill")
                     .font(.system(size: 7.5))
                     .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.28))
                 Text(weatherStore.snapshot.sunriseText)
-                    .font(.system(size: 7.2, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.78))
+                    .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.76))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
 
-            HStack(spacing: 2) {
+            HStack(spacing: 2.5) {
                 Image(systemName: "sunset.fill")
                     .font(.system(size: 7.5))
                     .foregroundStyle(Color(red: 1.0, green: 0.56, blue: 0.24))
                 Text(weatherStore.snapshot.sunsetText)
-                    .font(.system(size: 7.2, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.78))
+                    .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.76))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
 
             Spacer(minLength: 2)
@@ -1725,20 +2028,21 @@ private struct NotchieFlipClockWeatherColumn: View {
             Button {
                 weatherStore.refreshIfNeeded(force: true)
             } label: {
-                HStack(spacing: 2) {
+                HStack(spacing: 2.5) {
                     Image(systemName: "wind")
                         .font(.system(size: 7.5, weight: .semibold))
                         .foregroundStyle(Color(red: 0.58, green: 0.82, blue: 1.0))
                     Text(weatherStore.snapshot.windText)
-                        .font(.system(size: 7.2, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.82))
+                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.84))
                         .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
             .buttonStyle(.plain)
             .help("Refresh Weather")
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 9)
     }
 
     private static func hourString(from date: Date) -> String {
@@ -1783,7 +2087,7 @@ private struct NotchieFlipDigitCardView: View {
                 .shadow(color: .black.opacity(0.38), radius: 2.5, y: 1.5)
 
             Text(digits)
-                .font(.system(size: 23, weight: .bold, design: .rounded))
+                .font(.system(size: 21, weight: .bold, design: .rounded))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
@@ -1801,22 +2105,22 @@ private struct NotchieFlipDigitCardView: View {
                 Spacer()
                 ZStack {
                     Rectangle()
-                        .fill(Color.black.opacity(0.28))
-                        .frame(height: 0.9)
+                        .fill(Color.black.opacity(0.26))
+                        .frame(height: 0.85)
                     HStack {
                         Rectangle()
                             .fill(Color.black.opacity(0.45))
-                            .frame(width: 2.2, height: 3.2)
+                            .frame(width: 2.0, height: 3.0)
                         Spacer()
                         Rectangle()
                             .fill(Color.black.opacity(0.45))
-                            .frame(width: 2.2, height: 3.2)
+                            .frame(width: 2.0, height: 3.0)
                     }
                 }
                 Spacer()
             }
         }
-        .frame(width: 48, height: 34)
+        .frame(width: 44, height: 31)
     }
 }
 
