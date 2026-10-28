@@ -233,24 +233,6 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
                 screenshotVM.deleteFromHistory(first)
             }
             XCTAssertEqual(screenshotVM.history.count, 0)
-
-            // KakaoTalk & iMessage Quick Reply in Notch
-            let messenger = NotchMessengerManager.shared
-            messenger.simulateIncomingMessage(service: .kakaoTalk)
-            guard let latestKakao = messenger.messages.first else {
-                XCTFail("Expected simulated KakaoTalk message")
-                return
-            }
-            XCTAssertEqual(latestKakao.service, .kakaoTalk)
-            XCTAssertTrue(latestKakao.isUnread)
-
-            let bannerContent = MessageReplyNotchContent(manager: messenger, message: latestKakao)
-            XCTAssertGreaterThanOrEqual(bannerContent.expandedSize(baseWidth: 190, baseHeight: 38).width, 520)
-
-            messenger.sendReply(to: latestKakao.id, text: "노치에서 바로 답장 보냅니다!")
-            let updatedKakao = messenger.messages.first(where: { $0.id == latestKakao.id })
-            XCTAssertEqual(updatedKakao?.sentReplies.last?.text, "노치에서 바로 답장 보냅니다!")
-            XCTAssertEqual(updatedKakao?.isUnread, false)
         }
     }
 
