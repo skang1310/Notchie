@@ -18,6 +18,7 @@
    - On interactive app launch (`!AppEnvironment.isRunningTests && !isRunningUITests`), `SettingsPermissionController.shared.evaluateStartupPermissions` requests undetermined permissions and, if any required permissions remain ungranted, presents both a temporary Notch warning banner (`MissingPermissionsNotchContent`) and a native `NSAlert` listing the missing permissions with a direct button to open `SettingsSubPage.permissions`.
 7. **Code Review, Optimization & Documentation Webpage (`docs/index.html`)**:
    - Cleaned up unused `SettingsSubPage.support` / `SettingsSubPage.softwareUpdate` routes, removed redundant Sparkle observer in `AppDelegate`, unified `privacyText(_:_:)` localization across custom views, shared `SettingsPermissionController.shared`, and removed staging icon archives.
+   - Simplified `MenuBarMenu.swift` (`Notchie-20261028-v4`) so the menu bar item contains only **Settings (`설정`)**, **Restart (`재시작`)**, and **Quit (`종료`)**.
    - Created `docs/index.html` and updated `README.md` with rendered screenshots (`docs/screenshots/*.png`) and open-source attributions.
 
 # Notchie branding and icon replacement — 2026-10-28
