@@ -3,6 +3,9 @@ import SwiftUI
 final class NotchHostingView: NSHostingView<AnyView> {
     required init(rootView: AnyView) {
         super.init(rootView: rootView)
+        if #available(macOS 13.0, *) {
+            self.sizingOptions = []
+        }
     }
 
     convenience init<Content: View>(rootView: Content) {

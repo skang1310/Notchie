@@ -321,16 +321,18 @@ struct NotchiePanoramicHubView: View {
     // MARK: - Top Header Bar (Flanking the Physical Camera Cutout)
 
     private var topWingHeaderBar: some View {
-        HStack(spacing: 4) {
-            // Left Wing: Primary Mode Pills (Nook, Shots, Talk, Tray)
+        HStack(spacing: 0) {
+            // Left Wing: Primary Mode Pills (Nook, Shots, Talk, Tray) — balanced width so the physical camera notch is dead-center
             HStack(spacing: 3) {
                 ForEach(leftWingModes) { mode in
                     modePillButton(for: mode)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Center Camera Cutout Safe Area
-            Spacer(minLength: isNotchlessScreen ? 10 : 158)
+            // Center Camera Cutout Safe Area (Dead-Center)
+            Color.clear
+                .frame(width: isNotchlessScreen ? 12 : 164)
 
             // Right Wing: Secondary Mode Pills (Clips, Notes, Tools) + App Icon Picker / Pin / Settings
             HStack(spacing: 4) {
@@ -390,6 +392,7 @@ struct NotchiePanoramicHubView: View {
                 .buttonStyle(.plain)
                 .help(text("Open Notchie Settings", "Notchie 설정 열기"))
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
@@ -483,10 +486,10 @@ struct NotchiePanoramicHubView: View {
         }
     }
 
-    // MARK: - 3-Column Nook Dashboard (Now Playing | 7-Day Calendar | Camera Mirror Pod)
+    // MARK: - 3-Column Nook Dashboard (Now Playing | 7-Day Calendar | Flip-Clock & Weather Widget)
 
     private var nookThreeColumnDashboard: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .center, spacing: 10) {
             // Column 1: Now Playing Studio
             NotchieNowPlayingStudioColumn(
                 nowPlayingViewModel: resolvedNowPlayingViewModel,
@@ -495,7 +498,7 @@ struct NotchiePanoramicHubView: View {
                 accentColor: accentColor,
                 onOpenPlaybackSource: onOpenPlaybackSource
             )
-            .frame(width: 244)
+            .frame(width: 208)
 
             // Subtle OS 27 vertical glass divider
             Rectangle()
@@ -509,7 +512,7 @@ struct NotchiePanoramicHubView: View {
                 .frame(width: 1)
                 .padding(.vertical, 8)
 
-            // Column 2: Month + 7-Day Week Strip & Schedule
+            // Column 2: Month + 7-Day Week Strip & Schedule (Centered)
             NotchieCalendarScheduleColumn(
                 calendarViewModel: store.calendarViewModel,
                 selectedDayOffset: $selectedDayOffset,
@@ -535,14 +538,11 @@ struct NotchiePanoramicHubView: View {
                 .frame(width: 1)
                 .padding(.vertical, 8)
 
-            // Column 3: Circular Camera Mirror & Focus Pod
-            NotchieCameraMirrorPodColumn(
-                store: store,
-                accentColor: accentColor
-            )
-            .frame(width: 92)
+            // Column 3: Classic Flip-Clock & Live Weather Widget (Replacing Camera Pod)
+            NotchieFlipClockWeatherColumn()
+                .frame(width: 218)
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 2)
     }
 
     // MARK: - Extended Mode Containers (Clips, Notes, Tools)
@@ -1334,242 +1334,551 @@ private struct NotchieCalendarScheduleColumn: View {
     }
 }
 
-// MARK: - Column 3: Circular Camera Mirror & Focus Pod (NotchNook + OS 27)
+// MARK: - Column 3: Flip-Clock & Weather Studio Widget (Reference Image Design)
 
-private struct NotchieCameraMirrorPodColumn: View {
-    @ObservedObject var store: QuickToolsStore
-    @ObservedObject private var focusController: FocusSessionController
-    @ObservedObject private var stopwatchController: StopwatchController
-    let accentColor: Color
+struct NotchieForecastDay: Identifiable, Equatable {
+    let id: String
+    let dayTitle: String
+    let weatherCode: Int
+    let highTempC: Double
+    let lowTempC: Double
 
-    init(store: QuickToolsStore, accentColor: Color) {
-        self.store = store
-        self._focusController = ObservedObject(wrappedValue: store.focus)
-        self._stopwatchController = ObservedObject(wrappedValue: store.stopwatch)
-        self.accentColor = accentColor
+    var formattedHighLow: String {
+        String(format: "%.1f°C / %.1f°C", highTempC, lowTempC)
+    }
+}
+
+struct NotchieWeatherSnapshot: Equatable {
+    var conditionLabel: String
+    var currentTempC: Double
+    var highTempC: Double
+    var lowTempC: Double
+    var weatherCode: Int
+    var forecastDays: [NotchieForecastDay]
+    var sunriseText: String
+    var sunsetText: String
+    var windText: String
+
+    var formattedCurrentTemp: String {
+        String(format: "%.1f °C", currentTempC)
     }
 
-    private func text(_ en: String, _ ko: String) -> String {
-        privacyText(en, ko)
+    var formattedHighLow: String {
+        String(format: "%.1f° / %.1f°", highTempC, lowTempC)
     }
+
+    static func defaultReferenceSnapshot(now: Date = .now) -> NotchieWeatherSnapshot {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE d"
+
+        let sampleCodes = [0, 1, 2, 0]
+        let sampleHighs = [23.8, 22.8, 17.8, 17.8]
+        let sampleLows = [5.5, 6.1, 6.1, 6.1]
+
+        let days: [NotchieForecastDay] = (0..<4).map { offset in
+            let date = calendar.date(byAdding: .day, value: offset, to: now) ?? now
+            let title = formatter.string(from: date)
+            return NotchieForecastDay(
+                id: "day-\(offset)",
+                dayTitle: title,
+                weatherCode: sampleCodes[offset],
+                highTempC: sampleHighs[offset],
+                lowTempC: sampleLows[offset]
+            )
+        }
+
+        return NotchieWeatherSnapshot(
+            conditionLabel: "Dark Sky",
+            currentTempC: 21.1,
+            highTempC: 23.8,
+            lowTempC: 5.5,
+            weatherCode: 0,
+            forecastDays: days,
+            sunriseText: "6:47 AM",
+            sunsetText: "7:59 PM",
+            windText: "W 10.8 km/h"
+        )
+    }
+
+    static func conditionName(for code: Int) -> String {
+        switch code {
+        case 0:
+            return "Dark Sky"
+        case 1, 2:
+            return "Partly Cloudy"
+        case 3:
+            return "Overcast"
+        case 45, 48:
+            return "Misty Fog"
+        case 51, 53, 55, 61, 63, 65, 80, 81, 82:
+            return "Light Rain"
+        case 71, 73, 75, 77, 85, 86:
+            return "Snowfall"
+        case 95, 96, 99:
+            return "Thunderstorm"
+        default:
+            return "Dark Sky"
+        }
+    }
+
+    static func compassDirection(for degrees: Double) -> String {
+        let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        let normalized = ((degrees.truncatingRemainder(dividingBy: 360)) + 360).truncatingRemainder(dividingBy: 360)
+        let index = Int((normalized + 22.5) / 45.0) % 8
+        return directions[index]
+    }
+}
+
+@MainActor
+final class NotchieWeatherStore: ObservableObject {
+    static let shared = NotchieWeatherStore()
+
+    @Published private(set) var snapshot: NotchieWeatherSnapshot = .defaultReferenceSnapshot()
+    @Published private(set) var isRefreshing: Bool = false
+    private var lastFetchDate: Date?
+
+    private init() {}
+
+    func refreshIfNeeded(force: Bool = false) {
+        guard !AppEnvironment.isRunningTests else { return }
+        if !force, let lastFetchDate, Date().timeIntervalSince(lastFetchDate) < 900 {
+            return
+        }
+        guard !isRefreshing else { return }
+        isRefreshing = true
+
+        guard let url = URL(
+            string: "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto&forecast_days=4"
+        ) else {
+            isRefreshing = false
+            return
+        }
+
+        Task {
+            defer { self.isRefreshing = false }
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { return }
+                if let parsed = Self.parseOpenMeteoResponse(data: data) {
+                    self.snapshot = parsed
+                    self.lastFetchDate = Date()
+                }
+            } catch {
+                // Keep existing snapshot when offline
+            }
+        }
+    }
+
+    nonisolated static func parseOpenMeteoResponse(data: Data) -> NotchieWeatherSnapshot? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let current = root["current"] as? [String: Any],
+              let daily = root["daily"] as? [String: Any] else {
+            return nil
+        }
+
+        let currentTemp = (current["temperature_2m"] as? NSNumber)?.doubleValue ?? 21.1
+        let currentCode = (current["weather_code"] as? NSNumber)?.intValue ?? 0
+        let windSpeed = (current["wind_speed_10m"] as? NSNumber)?.doubleValue ?? 10.8
+        let windDirDeg = (current["wind_direction_10m"] as? NSNumber)?.doubleValue ?? 270.0
+
+        let dailyTimes = daily["time"] as? [String] ?? []
+        let dailyCodes = (daily["weather_code"] as? [NSNumber])?.map(\.intValue) ?? []
+        let dailyHighs = (daily["temperature_2m_max"] as? [NSNumber])?.map(\.doubleValue) ?? []
+        let dailyLows = (daily["temperature_2m_min"] as? [NSNumber])?.map(\.doubleValue) ?? []
+        let sunrises = daily["sunrise"] as? [String] ?? []
+        let sunsets = daily["sunset"] as? [String] ?? []
+
+        let inDateFormatter = DateFormatter()
+        inDateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        inDateFormatter.dateFormat = "yyyy-MM-dd"
+
+        let outDayFormatter = DateFormatter()
+        outDayFormatter.locale = Locale(identifier: "en_US_POSIX")
+        outDayFormatter.dateFormat = "EEE d"
+
+        var forecastDays: [NotchieForecastDay] = []
+        let count = min(4, min(dailyTimes.count, min(dailyHighs.count, dailyLows.count)))
+        for idx in 0..<count {
+            let dateObj = inDateFormatter.date(from: dailyTimes[idx]) ?? Date()
+            let dayTitle = outDayFormatter.string(from: dateObj)
+            let code = idx < dailyCodes.count ? dailyCodes[idx] : currentCode
+            forecastDays.append(
+                NotchieForecastDay(
+                    id: dailyTimes[idx],
+                    dayTitle: dayTitle,
+                    weatherCode: code,
+                    highTempC: dailyHighs[idx],
+                    lowTempC: dailyLows[idx]
+                )
+            )
+        }
+
+        if forecastDays.isEmpty {
+            forecastDays = NotchieWeatherSnapshot.defaultReferenceSnapshot().forecastDays
+        }
+
+        let high0 = dailyHighs.first ?? 23.8
+        let low0 = dailyLows.first ?? 5.5
+        let sunriseText = formatSunTime(sunrises.first) ?? "6:47 AM"
+        let sunsetText = formatSunTime(sunsets.first) ?? "7:59 PM"
+        let compass = NotchieWeatherSnapshot.compassDirection(for: windDirDeg)
+        let windText = String(format: "%@ %.1f km/h", compass, windSpeed)
+
+        return NotchieWeatherSnapshot(
+            conditionLabel: NotchieWeatherSnapshot.conditionName(for: currentCode),
+            currentTempC: currentTemp,
+            highTempC: high0,
+            lowTempC: low0,
+            weatherCode: currentCode,
+            forecastDays: forecastDays,
+            sunriseText: sunriseText,
+            sunsetText: sunsetText,
+            windText: windText
+        )
+    }
+
+    nonisolated private static func formatSunTime(_ isoString: String?) -> String? {
+        guard let isoString else { return nil }
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        guard let date = parser.date(from: isoString) else { return nil }
+        let out = DateFormatter()
+        out.locale = Locale(identifier: "en_US_POSIX")
+        out.dateFormat = "h:mm a"
+        return out.string(from: date)
+    }
+}
+
+private struct NotchieFlipClockWeatherColumn: View {
+    @ObservedObject private var weatherStore = NotchieWeatherStore.shared
 
     var body: some View {
-        VStack(spacing: 6) {
-            ZStack(alignment: .bottomTrailing) {
-                Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                        store.isMirrorCameraActive.toggle()
-                    }
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [
-                                        Color.white.opacity(0.15),
-                                        Color.white.opacity(0.05),
-                                        Color.black.opacity(0.65)
-                                    ],
-                                    center: .topLeading,
-                                    startRadius: 4,
-                                    endRadius: 56
-                                )
-                            )
-                            .frame(width: 78, height: 78)
-
-                        if store.isMirrorCameraActive {
-                            NotchieMirrorCameraView()
-                                .frame(width: 78, height: 78)
-                                .clipShape(Circle())
-                        } else if focusController.phase == .focus || focusController.phase == .rest {
-                            VStack(spacing: 2) {
-                                Image(systemName: "timer")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(accentColor)
-                                Text(focusController.timer.formattedRemainingTime)
-                                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(.white)
-                            }
-                        } else if stopwatchController.state.isRunning {
-                            TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-                                VStack(spacing: 2) {
-                                    Image(systemName: "stopwatch.fill")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(accentColor)
-                                    Text(StopwatchState.formatted(stopwatchController.state.elapsed(at: .now)))
-                                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                        } else {
-                            // Sleek NotchNook-inspired mirrored portrait silhouette
-                            VStack(spacing: 3) {
-                                Image(systemName: "person.crop.circle.fill")
-                                    .font(.system(size: 32, weight: .light))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.white.opacity(0.75), .white.opacity(0.32)],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
-                                Text(text("Mirror", "미러"))
-                                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.55))
-                            }
-                        }
-
-                        Circle()
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.35),
-                                        store.isMirrorCameraActive ? accentColor.opacity(0.85) : Color.white.opacity(0.1)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.2
-                            )
-                            .frame(width: 78, height: 78)
-                    }
-                }
-                .buttonStyle(.plain)
-                .help(store.isMirrorCameraActive ? text("Stop Camera Mirror", "카메라 미러 끄기") : text("Start Live Camera Mirror", "실시간 카메라 미러 켜기"))
-
-                // Floating bottom-right badge matching NotchNook screenshot
-                Button {
-                    if store.isMirrorCameraActive {
-                        store.isMirrorCameraActive = false
-                    } else {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                            store.selectedTool = "focus"
-                            store.hubMode = .tools
-                        }
-                    }
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill( Color(red: 0.14, green: 0.16, blue: 0.22) )
-                            .frame(width: 24, height: 24)
-                        Circle()
-                            .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                            .frame(width: 24, height: 24)
-                        Image(systemName: store.isMirrorCameraActive ? "video.slash.fill" : "camera.fill")
-                            .font(.system(size: 10.5, weight: .bold))
-                            .foregroundStyle(Color(red: 0.26, green: 0.62, blue: 1.0))
-                    }
-                    .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
-                }
-                .buttonStyle(.plain)
-                .offset(x: 2, y: 2)
+        TimelineView(.periodic(from: .now, by: 1.0)) { context in
+            let now = context.date
+            VStack(spacing: 4) {
+                topFlipClockHeroCard(now: now)
+                forecastFourDayStrip
+                bottomSunWindFooter
             }
         }
+        .onAppear {
+            weatherStore.refreshIfNeeded()
+        }
+    }
+
+    @ViewBuilder
+    private func topFlipClockHeroCard(now: Date) -> some View {
+        let hourText = Self.hourString(from: now)
+        let minuteText = Self.minuteString(from: now)
+        let dayHeader = Self.shortWeekdayDayString(from: now)
+
+        ZStack(alignment: .top) {
+            // Metallic dark-slate hero background card
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.25, green: 0.28, blue: 0.31),
+                            Color(red: 0.14, green: 0.16, blue: 0.18),
+                            Color(red: 0.08, green: 0.09, blue: 0.11)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.32),
+                                    Color.white.opacity(0.08)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.9
+                        )
+                )
+                .shadow(color: .black.opacity(0.45), radius: 5, y: 2)
+
+            VStack(spacing: 2) {
+                // Twin Split Flip-Clock Cards (HH | MM)
+                HStack(spacing: 6) {
+                    NotchieFlipDigitCardView(digits: hourText)
+                    NotchieFlipDigitCardView(digits: minuteText)
+                }
+                .padding(.top, 3)
+
+                // Weather info row flanking the glowing center sun orb
+                HStack(alignment: .bottom, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(weatherStore.snapshot.conditionLabel)
+                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.88))
+                            .lineLimit(1)
+                        Text(weatherStore.snapshot.formattedCurrentTemp)
+                            .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+
+                    Spacer(minLength: 34)
+
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(dayHeader)
+                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.82))
+                            .lineLimit(1)
+                        Text(weatherStore.snapshot.formattedHighLow)
+                            .font(.system(size: 9.0, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.92))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 4)
+            }
+
+            // Center 3D Glowing Golden Sun / Weather Illustration overlapping the flip clock
+            NotchieGlowingWeatherOrbView(weatherCode: weatherStore.snapshot.weatherCode, size: 32)
+                .offset(y: 35)
+        }
+        .frame(height: 68)
+    }
+
+    private var forecastFourDayStrip: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(weatherStore.snapshot.forecastDays.prefix(4).enumerated()), id: \.element.id) { index, day in
+                VStack(spacing: 1.5) {
+                    Text(day.dayTitle)
+                        .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+
+                    NotchieGlowingWeatherOrbView(weatherCode: day.weatherCode, size: 13)
+
+                    Text(day.formattedHighLow)
+                        .font(.system(size: 6.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .frame(maxWidth: .infinity)
+
+                if index < 3 {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.04),
+                                    Color.white.opacity(0.24),
+                                    Color.white.opacity(0.04)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 0.8, height: 28)
+                }
+            }
+        }
+        .padding(.vertical, 3)
+        .padding(.horizontal, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.6)
+                )
+        )
+    }
+
+    private var bottomSunWindFooter: some View {
+        HStack(spacing: 5) {
+            HStack(spacing: 2) {
+                Image(systemName: "sunrise.fill")
+                    .font(.system(size: 7.5))
+                    .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.28))
+                Text(weatherStore.snapshot.sunriseText)
+                    .font(.system(size: 7.2, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.78))
+            }
+
+            HStack(spacing: 2) {
+                Image(systemName: "sunset.fill")
+                    .font(.system(size: 7.5))
+                    .foregroundStyle(Color(red: 1.0, green: 0.56, blue: 0.24))
+                Text(weatherStore.snapshot.sunsetText)
+                    .font(.system(size: 7.2, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.78))
+            }
+
+            Spacer(minLength: 2)
+
+            Button {
+                weatherStore.refreshIfNeeded(force: true)
+            } label: {
+                HStack(spacing: 2) {
+                    Image(systemName: "wind")
+                        .font(.system(size: 7.5, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.58, green: 0.82, blue: 1.0))
+                    Text(weatherStore.snapshot.windText)
+                        .font(.system(size: 7.2, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .lineLimit(1)
+                }
+            }
+            .buttonStyle(.plain)
+            .help("Refresh Weather")
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private static func hourString(from date: Date) -> String {
+        let comp = Calendar.current.component(.hour, from: date)
+        return String(format: "%02d", comp)
+    }
+
+    private static func minuteString(from date: Date) -> String {
+        let comp = Calendar.current.component(.minute, from: date)
+        return String(format: "%02d", comp)
+    }
+
+    private static func shortWeekdayDayString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE d"
+        return formatter.string(from: date)
     }
 }
 
-// MARK: - Live Front-Camera Mirror Preview (Opt-in on Click, Auto-Stop on Close)
+private struct NotchieFlipDigitCardView: View {
+    let digits: String
 
-private struct NotchieMirrorCameraView: NSViewRepresentable {
-    func makeNSView(context: Context) -> NotchieMirrorPreviewNSView {
-        let view = NotchieMirrorPreviewNSView()
-        view.startMirrorIfAuthorized()
-        return view
-    }
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(white: 0.98),
+                            Color(white: 0.88),
+                            Color(white: 0.95)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.35), lineWidth: 0.7)
+                )
+                .shadow(color: .black.opacity(0.38), radius: 2.5, y: 1.5)
 
-    func updateNSView(_ nsView: NotchieMirrorPreviewNSView, context: Context) {}
+            Text(digits)
+                .font(.system(size: 23, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color(white: 0.08),
+                            Color(white: 0.22)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .monospacedDigit()
 
-    static func dismantleNSView(_ nsView: NotchieMirrorPreviewNSView, coordinator: ()) {
-        nsView.stopMirror()
+            // Horizontal split flip seam + side hinge notches
+            VStack(spacing: 0) {
+                Spacer()
+                ZStack {
+                    Rectangle()
+                        .fill(Color.black.opacity(0.28))
+                        .frame(height: 0.9)
+                    HStack {
+                        Rectangle()
+                            .fill(Color.black.opacity(0.45))
+                            .frame(width: 2.2, height: 3.2)
+                        Spacer()
+                        Rectangle()
+                            .fill(Color.black.opacity(0.45))
+                            .frame(width: 2.2, height: 3.2)
+                    }
+                }
+                Spacer()
+            }
+        }
+        .frame(width: 48, height: 34)
     }
 }
 
-private final class NotchieMirrorPreviewNSView: NSView {
-    private let session = AVCaptureSession()
-    private let sessionQueue = DispatchQueue(label: "com.notchie.mirror.camera.queue")
-    private var previewLayer: AVCaptureVideoPreviewLayer?
+private struct NotchieGlowingWeatherOrbView: View {
+    let weatherCode: Int
+    let size: CGFloat
 
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.black.cgColor
-    }
+    var body: some View {
+        ZStack {
+            // Warm golden outer glow matching reference screenshot
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.84, blue: 0.28).opacity(0.75),
+                            Color(red: 1.0, green: 0.58, blue: 0.12).opacity(0.28),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 1,
+                        endRadius: size * 0.72
+                    )
+                )
+                .frame(width: size * 1.35, height: size * 1.35)
 
-    required init?(coder: NSCoder) {
-        return nil
-    }
-
-    override func layout() {
-        super.layout()
-        previewLayer?.frame = bounds
-    }
-
-    func startMirrorIfAuthorized() {
-        guard !AppEnvironment.isRunningTests else { return }
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        if status == .authorized {
-            configureAndStart()
-        } else if status == .notDetermined {
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                guard granted else { return }
-                DispatchQueue.main.async {
-                    self?.configureAndStart()
-                }
-            }
+            // Sun rays + glowing 3D golden sphere
+            Image(systemName: symbolName)
+                .symbolRenderingMode(.multicolor)
+                .font(.system(size: size * 0.78, weight: .semibold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.95, blue: 0.55),
+                            Color(red: 0.98, green: 0.68, blue: 0.12)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .shadow(color: Color(red: 1.0, green: 0.72, blue: 0.18).opacity(0.85), radius: size * 0.22)
         }
+        .frame(width: size, height: size)
     }
 
-    private func configureAndStart() {
-        if previewLayer == nil {
-            let layer = AVCaptureVideoPreviewLayer(session: session)
-            layer.videoGravity = .resizeAspectFill
-            layer.frame = bounds
-            layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-            if let connection = layer.connection, connection.isVideoMirroringSupported {
-                connection.automaticallyAdjustsVideoMirroring = false
-                connection.isVideoMirrored = true
-            }
-            self.layer?.addSublayer(layer)
-            self.previewLayer = layer
-        }
-
-        let captureSession = self.session
-        sessionQueue.async { [weak self] in
-            guard !captureSession.isRunning else { return }
-            captureSession.beginConfiguration()
-            captureSession.sessionPreset = .medium
-            if captureSession.inputs.isEmpty,
-               let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) ?? AVCaptureDevice.default(for: .video),
-               let input = try? AVCaptureDeviceInput(device: camera),
-               captureSession.canAddInput(input) {
-                captureSession.addInput(input)
-            }
-            captureSession.commitConfiguration()
-            captureSession.startRunning()
-            DispatchQueue.main.async {
-                if let connection = self?.previewLayer?.connection, connection.isVideoMirroringSupported {
-                    connection.automaticallyAdjustsVideoMirroring = false
-                    connection.isVideoMirrored = true
-                }
-            }
-        }
-    }
-
-    func stopMirror() {
-        let captureSession = self.session
-        sessionQueue.async {
-            if captureSession.isRunning {
-                captureSession.stopRunning()
-            }
-        }
-    }
-
-    deinit {
-        let captureSession = self.session
-        sessionQueue.async {
-            if captureSession.isRunning {
-                captureSession.stopRunning()
-            }
+    private var symbolName: String {
+        switch weatherCode {
+        case 0:
+            return "sun.max.fill"
+        case 1, 2:
+            return "cloud.sun.fill"
+        case 3:
+            return "cloud.fill"
+        case 45, 48:
+            return "cloud.fog.fill"
+        case 51, 53, 55, 61, 63, 65, 80, 81, 82:
+            return "cloud.sun.rain.fill"
+        case 71, 73, 75, 77, 85, 86:
+            return "cloud.snow.fill"
+        case 95, 96, 99:
+            return "cloud.bolt.rain.fill"
+        default:
+            return "sun.max.fill"
         }
     }
 }
@@ -1798,13 +2107,13 @@ struct QuickToolsNotchContent: NotchContentProtocol {
     }
 
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = store.hubMode.requiresExtendedHeight ? 210 : 154
-        return CGSize(width: max(688, baseWidth + 488), height: baseHeight + extraHeight)
+        let extraHeight: CGFloat = store.hubMode.requiresExtendedHeight ? 210 : 172
+        return CGSize(width: max(712, baseWidth + 512), height: baseHeight + extraHeight)
     }
 
     func expandedDynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = store.hubMode.requiresExtendedHeight ? 200 : 146
-        return CGSize(width: max(668, baseWidth + 468), height: baseHeight + extraHeight)
+        let extraHeight: CGFloat = store.hubMode.requiresExtendedHeight ? 200 : 164
+        return CGSize(width: max(692, baseWidth + 492), height: baseHeight + extraHeight)
     }
 
     func expandedCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {

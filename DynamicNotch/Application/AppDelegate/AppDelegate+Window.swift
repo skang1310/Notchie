@@ -31,6 +31,8 @@ extension AppDelegate {
                 settingsViewModel: settingsViewModel
             )
         )
+        hostingView.frame = NSRect(origin: .zero, size: OverlayWindowLayout.appCanvasSize)
+        hostingView.autoresizingMask = [.width, .height]
 
         window.contentView = hostingView
         window.collectionBehavior = OverlayPanelFactory.collectionBehavior(
@@ -55,7 +57,7 @@ extension AppDelegate {
 
         let targetFrame = OverlayWindowLayout.topAnchoredFrame(
             on: screen,
-            size: window.frame.size
+            size: OverlayWindowLayout.appCanvasSize
         )
 
         window.collectionBehavior = OverlayPanelFactory.collectionBehavior(

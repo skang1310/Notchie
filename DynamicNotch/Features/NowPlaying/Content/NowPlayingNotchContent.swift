@@ -51,13 +51,13 @@ struct NowPlayingNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     }
     
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 210 : 154
-        return .init(width: max(688, baseWidth + 488), height: baseHeight + extraHeight)
+        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 210 : 172
+        return .init(width: max(712, baseWidth + 512), height: baseHeight + extraHeight)
     }
     
     func expandedDynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 200 : 146
-        return .init(width: max(668, baseWidth + 468), height: baseHeight + extraHeight)
+        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 200 : 164
+        return .init(width: max(692, baseWidth + 492), height: baseHeight + extraHeight)
     }
     
     func expandedCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {

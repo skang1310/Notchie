@@ -177,8 +177,8 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
         store.hubMode = .nook
         let hubContent = QuickToolsNotchContent(store: store, openedFromIdleHover: true)
         let nookSize = hubContent.expandedSize(baseWidth: 190, baseHeight: 38)
-        XCTAssertGreaterThanOrEqual(nookSize.width, 688)
-        XCTAssertEqual(nookSize.height, 38 + 154)
+        XCTAssertGreaterThanOrEqual(nookSize.width, 712)
+        XCTAssertEqual(nookSize.height, 38 + 172)
         XCTAssertEqual(hubContent.expandedCornerRadius(baseRadius: 12).top, 19)
         XCTAssertEqual(hubContent.expandedCornerRadius(baseRadius: 12).bottom, 28)
 
@@ -356,7 +356,7 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
                     applicationSettings: appSettings,
                     onOpenPlaybackSource: {}
                 )
-                .frame(width: 688, height: 192)
+                .frame(width: 712, height: 210)
                 .background(
                     NotchBackgroundSurface(
                         style: .black,
@@ -366,7 +366,7 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
                         dynamicIslandCornerRadius: 24,
                         strokeColor: Color.white.opacity(0.18),
                         strokeWidth: 1.2,
-                        height: 192,
+                        height: 210,
                         baseWidth: 190,
                         baseHeight: 38
                     )
@@ -376,5 +376,57 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
             width: 760,
             height: 260
         )
+    }
+
+    @MainActor
+    func testCenteredOverlayWindowAndFlipClockWeatherSnapshot() throws {
+        // 1. Verify NotchHostingView disables automatic window resizing so midX stays centered
+        let hostingView = NotchHostingView(rootView: EmptyView())
+        XCTAssertTrue(hostingView.sizingOptions.isEmpty)
+
+        // 2. Verify OverlayWindowLayout centers the canvas horizontally on the screen
+        if let screen = NSScreen.main ?? NSScreen.screens.first {
+            let windowFrame = OverlayWindowLayout.topAnchoredFrame(on: screen, size: OverlayWindowLayout.appCanvasSize)
+            XCTAssertEqual(windowFrame.midX, screen.frame.midX, accuracy: 1.0)
+            XCTAssertEqual(windowFrame.maxY, screen.frame.maxY, accuracy: 1.0)
+        }
+
+        // 3. Verify default reference weather snapshot matches the user's reference layout
+        let snapshot = NotchieWeatherSnapshot.defaultReferenceSnapshot()
+        XCTAssertEqual(snapshot.conditionLabel, "Dark Sky")
+        XCTAssertEqual(snapshot.formattedCurrentTemp, "21.1 °C")
+        XCTAssertEqual(snapshot.formattedHighLow, "23.8° / 5.5°")
+        XCTAssertEqual(snapshot.forecastDays.count, 4)
+        XCTAssertEqual(snapshot.sunriseText, "6:47 AM")
+        XCTAssertEqual(snapshot.sunsetText, "7:59 PM")
+        XCTAssertEqual(snapshot.windText, "W 10.8 km/h")
+
+        // 4. Verify Open-Meteo JSON parsing
+        let sampleJSON = """
+        {
+          "current": {
+            "temperature_2m": 21.1,
+            "weather_code": 0,
+            "wind_speed_10m": 10.8,
+            "wind_direction_10m": 270
+          },
+          "daily": {
+            "time": ["2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01"],
+            "weather_code": [0, 1, 2, 0],
+            "temperature_2m_max": [23.8, 22.8, 17.8, 17.8],
+            "temperature_2m_min": [5.5, 6.1, 6.1, 6.1],
+            "sunrise": ["2026-10-29T06:47", "2026-10-30T06:48", "2026-10-31T06:49", "2026-11-01T06:50"],
+            "sunset": ["2026-10-29T19:59", "2026-10-30T19:58", "2026-10-31T19:57", "2026-11-01T19:56"]
+          }
+        }
+        """.data(using: .utf8)!
+        let parsed = try XCTUnwrap(NotchieWeatherStore.parseOpenMeteoResponse(data: sampleJSON))
+        XCTAssertEqual(parsed.conditionLabel, "Dark Sky")
+        XCTAssertEqual(parsed.formattedCurrentTemp, "21.1 °C")
+        XCTAssertEqual(parsed.forecastDays.count, 4)
+        XCTAssertEqual(parsed.forecastDays.first?.formattedHighLow, "23.8°C / 5.5°C")
+        XCTAssertEqual(parsed.sunriseText, "6:47 AM")
+        XCTAssertEqual(parsed.sunsetText, "7:59 PM")
+        XCTAssertEqual(parsed.windText, "W 10.8 km/h")
     }
 }
