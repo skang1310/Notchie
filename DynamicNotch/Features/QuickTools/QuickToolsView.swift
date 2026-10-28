@@ -310,7 +310,7 @@ struct NotchiePanoramicHubView: View {
                 }
 
                 primaryWingTabButton(
-                    title: "Tray",
+                    title: text("Tray", "트레이"),
                     systemImage: "tray.full.fill",
                     isSelected: store.hubMode == .tray || store.hubMode == .shots,
                     badgeCount: (store.fileTrayViewModel?.count ?? 0) + (store.screenshotViewModel?.history.count ?? 0),
@@ -325,7 +325,7 @@ struct NotchiePanoramicHubView: View {
 
             // Center Camera Cutout Safe Area (Strictly Centered)
             Color.clear
-                .frame(width: isNotchlessScreen ? 16 : 172)
+                .frame(width: isNotchlessScreen ? 16 : 148)
 
             // Right Wing: 2 Primary Tabs (Clips | Tools) + Unified Glass Utility Rail
             HStack(spacing: 6) {
@@ -333,7 +333,7 @@ struct NotchiePanoramicHubView: View {
                     title: text("Clips", "클립"),
                     systemImage: "doc.on.clipboard.fill",
                     isSelected: store.hubMode == .clips || store.hubMode == .notes,
-                    badgeCount: 0,
+                    badgeCount: ProductivityStorage.shared.document.snippets.count,
                     badgeIsAlert: false
                 ) {
                     if store.hubMode != .clips && store.hubMode != .notes {
@@ -343,10 +343,10 @@ struct NotchiePanoramicHubView: View {
 
                 primaryWingTabButton(
                     title: text("Tools", "도구"),
-                    systemImage: "square.grid.2x2.fill",
+                    systemImage: "wrench.and.screwdriver.fill",
                     isSelected: store.hubMode == .tools,
-                    badgeCount: 0,
-                    badgeIsAlert: false
+                    badgeCount: (store.focus.timer.isActive ? 1 : 0),
+                    badgeIsAlert: store.focus.timer.isActive
                 ) {
                     store.hubMode = .tools
                 }
@@ -436,28 +436,28 @@ struct NotchiePanoramicHubView: View {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle(isSelected ? accentColor : .white.opacity(0.55))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isSelected ? accentColor : .white.opacity(0.85))
 
                 Text(title)
-                    .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.62))
+                    .font(.system(size: 11.5, weight: isSelected ? .bold : .semibold, design: .rounded))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.92))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
 
                 if badgeCount > 0 {
                     Text("\(badgeCount)")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(badgeIsAlert ? .black : .white)
+                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(badgeIsAlert ? .black : (isSelected ? .white : accentColor))
                         .padding(.horizontal, 4.5)
                         .padding(.vertical, 1)
                         .background(
-                            (badgeIsAlert ? Color(red: 0.99, green: 0.90, blue: 0.0) : accentColor.opacity(0.85)),
+                            (badgeIsAlert ? Color(red: 0.99, green: 0.90, blue: 0.0) : (isSelected ? accentColor : Color.white.opacity(0.12))),
                             in: Capsule()
                         )
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 9)
             .padding(.vertical, 4.5)
             .background(
                 ZStack {
@@ -466,8 +466,8 @@ struct NotchiePanoramicHubView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.16),
-                                        Color.white.opacity(0.08)
+                                        accentColor.opacity(0.35),
+                                        accentColor.opacity(0.18)
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -477,17 +477,20 @@ struct NotchiePanoramicHubView: View {
                             .strokeBorder(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.32),
-                                        accentColor.opacity(0.45)
+                                        accentColor,
+                                        accentColor.opacity(0.55)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 0.85
+                                lineWidth: 1.0
                             )
+                            .shadow(color: accentColor.opacity(0.35), radius: 3, y: 1)
                     } else {
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.035))
+                            .fill(Color.white.opacity(0.09))
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.85)
                     }
                 }
             )
@@ -519,6 +522,25 @@ struct NotchiePanoramicHubView: View {
                 }
 
                 Spacer()
+
+                Button {
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.84)) {
+                        store.hubMode = .nook
+                    }
+                } label: {
+                    HStack(spacing: 3.5) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 9, weight: .bold))
+                        Text(text("Back to Nook", "Nook으로 돌아가기"))
+                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.09), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
             }
 
             if store.hubMode == .shots {
@@ -537,7 +559,7 @@ struct NotchiePanoramicHubView: View {
         }
     }
 
-    // MARK: - Unified Studio Container (Clipboard · Notes · Tools)
+    // MARK: - Unified Studio Container (Clipboard · Notes)
 
     private var studioUnifiedContainer: some View {
         VStack(spacing: 6) {
@@ -545,7 +567,7 @@ struct NotchiePanoramicHubView: View {
                 subModeSegmentButton(
                     title: text("Clipboard", "클립보드"),
                     icon: "doc.on.clipboard.fill",
-                    count: 0,
+                    count: ProductivityStorage.shared.document.snippets.count,
                     isSelected: store.hubMode == .clips
                 ) {
                     store.hubMode = .clips
@@ -560,15 +582,6 @@ struct NotchiePanoramicHubView: View {
                     store.hubMode = .notes
                 }
 
-                subModeSegmentButton(
-                    title: text("Tools", "생산성 도구"),
-                    icon: "wrench.and.screwdriver.fill",
-                    count: 0,
-                    isSelected: store.hubMode == .tools
-                ) {
-                    store.hubMode = .tools
-                }
-
                 Spacer()
 
                 Button {
@@ -576,16 +589,17 @@ struct NotchiePanoramicHubView: View {
                         store.hubMode = .nook
                     }
                 } label: {
-                    HStack(spacing: 3) {
+                    HStack(spacing: 3.5) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 9, weight: .bold))
-                        Text("Nook")
+                        Text(text("Back to Nook", "Nook으로 돌아가기"))
                             .font(.system(size: 10.5, weight: .semibold, design: .rounded))
                     }
-                    .foregroundStyle(.white.opacity(0.68))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3.5)
-                    .background(Color.white.opacity(0.08), in: Capsule())
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.09), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8))
                 }
                 .buttonStyle(.plain)
             }
@@ -602,7 +616,7 @@ struct NotchiePanoramicHubView: View {
                                         .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
                                 )
                         )
-                } else if store.hubMode == .notes {
+                } else {
                     QuickNotesView(store: store.notes)
                         .padding(8)
                         .background(
@@ -613,8 +627,6 @@ struct NotchiePanoramicHubView: View {
                                         .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
                                 )
                         )
-                } else {
-                    panoramicToolsBrowser
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -636,34 +648,34 @@ struct NotchiePanoramicHubView: View {
             HStack(spacing: 4.5) {
                 Image(systemName: icon)
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(isSelected ? accentColor : .white.opacity(0.52))
+                    .foregroundStyle(isSelected ? accentColor : .white.opacity(0.82))
                 Text(title)
-                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.62))
+                    .font(.system(size: 10.5, weight: isSelected ? .bold : .semibold, design: .rounded))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.90))
                 if count > 0 {
                     Text("\(count)")
                         .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .padding(.horizontal, 4)
+                        .foregroundStyle(.white.opacity(0.95))
+                        .padding(.horizontal, 4.5)
                         .padding(.vertical, 0.5)
-                        .background(accentColor.opacity(0.75), in: Capsule())
+                        .background(accentColor.opacity(0.85), in: Capsule())
                 }
             }
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
             .background(
                 Capsule(style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.14) : Color.white.opacity(0.05))
+                    .fill(isSelected ? Color.white.opacity(0.18) : Color.white.opacity(0.08))
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(isSelected ? accentColor.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 0.75)
+                            .strokeBorder(isSelected ? accentColor.opacity(0.8) : Color.white.opacity(0.14), lineWidth: 0.8)
                     )
             )
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - 3-Column Apple Liquid Glass Bento Dashboard (Now Playing | Calendar | Flip-Clock Weather)
+    // MARK: - 3-Column Apple Liquid Glass Bento Dashboard (Now Playing | Calendar | Weather & Golden Hour)
 
     private var nookThreeColumnDashboard: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -677,11 +689,21 @@ struct NotchiePanoramicHubView: View {
             )
             .frame(width: 210, height: 136)
 
-            // Bento Card 2: 7-Day Calendar & Schedule (Flexible Center × 136pt)
+            // Bento Card 2: 7-Day Calendar & Schedule / Quick Shortcuts (Flexible Center × 136pt)
             NotchieCalendarScheduleColumn(
                 calendarViewModel: store.calendarViewModel,
                 selectedDayOffset: $selectedDayOffset,
                 accentColor: accentColor,
+                onSwitchToClips: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                        store.hubMode = .clips
+                    }
+                },
+                onSwitchToTools: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                        store.hubMode = .tools
+                    }
+                },
                 onSwitchToTasks: {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
                         store.selectedTool = "tasks"
@@ -692,7 +714,7 @@ struct NotchiePanoramicHubView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 136)
 
-            // Bento Card 3: Apple Weather Widget (222pt × 136pt)
+            // Bento Card 3: Apple Weather & Golden Hour Widget (222pt × 136pt)
             NotchieAppleWeatherWidgetColumn()
                 .frame(width: 222, height: 136)
         }
@@ -748,37 +770,60 @@ struct NotchiePanoramicHubView: View {
 
     private var panoramicToolsBrowser: some View {
         VStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(store.visibleTabs) { tab in
-                        let isSelected = store.selectedTool == tab.id
-                        Button {
-                            withAnimation(.snappy(duration: 0.2)) {
-                                store.selectedTool = tab.id
+            HStack(spacing: 6) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(store.visibleTabs) { tab in
+                            let isSelected = store.selectedTool == tab.id
+                            Button {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    store.selectedTool = tab.id
+                                }
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: tab.systemImage)
+                                        .font(.system(size: 11, weight: .semibold))
+                                    Text(LocalizedStringKey(tab.titleKey))
+                                        .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+                                        .lineLimit(1)
+                                }
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 4.5)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(isSelected ? accentColor.opacity(0.26) : Color.white.opacity(0.07))
+                                )
+                                .overlay(
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(isSelected ? accentColor.opacity(0.8) : Color.white.opacity(0.08), lineWidth: 0.85)
+                                )
+                                .foregroundStyle(isSelected ? accentColor : .white.opacity(0.78))
                             }
-                        } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: tab.systemImage)
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text(LocalizedStringKey(tab.titleKey))
-                                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
-                                    .lineLimit(1)
-                            }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4.5)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(isSelected ? accentColor.opacity(0.26) : Color.white.opacity(0.07))
-                            )
-                            .overlay(
-                                Capsule(style: .continuous)
-                                    .strokeBorder(isSelected ? accentColor.opacity(0.8) : Color.white.opacity(0.08), lineWidth: 0.85)
-                            )
-                            .foregroundStyle(isSelected ? accentColor : .white.opacity(0.78))
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
+
+                Spacer(minLength: 4)
+
+                Button {
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.84)) {
+                        store.hubMode = .nook
+                    }
+                } label: {
+                    HStack(spacing: 3.5) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 9, weight: .bold))
+                        Text(text("Back to Nook", "Nook으로 돌아가기"))
+                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.09), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
             }
 
             QuickToolDetailSwitcherView(store: store)
@@ -1296,6 +1341,8 @@ private struct NotchieCalendarScheduleColumn: View {
     var calendarViewModel: CalendarViewModel?
     @Binding var selectedDayOffset: Int
     let accentColor: Color
+    let onSwitchToClips: () -> Void
+    let onSwitchToTools: () -> Void
     let onSwitchToTasks: () -> Void
 
     @ObservedObject private var productivityStorage = ProductivityStorage.shared
@@ -1494,12 +1541,12 @@ private struct NotchieCalendarScheduleColumn: View {
 
                 Spacer(minLength: 0)
 
-                // Bottom Row: Full-Width Event or Empty Schedule Pill (Never Squished)
+                // Bottom Row: Full-Width Event or High-Efficiency Productivity Hub
                 let dayEvents = events(on: selectedDate)
                 if let primaryEvent = dayEvents.first ?? (selectedDayOffset == 0 ? calendarViewModel?.nextEvent : nil) {
                     eventDetailCard(for: primaryEvent)
                 } else {
-                    emptyScheduleBar
+                    quickProductivityActionRow
                 }
             }
             .padding(.horizontal, 11)
@@ -1568,44 +1615,93 @@ private struct NotchieCalendarScheduleColumn: View {
         )
     }
 
-    private var emptyScheduleBar: some View {
-        Button {
-            calendarViewModel?.openCalendarEvent()
-        } label: {
-            HStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.24))
-                    .frame(width: 3, height: 22)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(text("No upcoming events today", "오늘 예정된 일정 없음"))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.82))
-                        .lineLimit(1)
-
-                    Text(text("Click to open Apple Calendar", "클릭하여 캘린더 열기"))
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
-                        .lineLimit(1)
+    private var quickProductivityActionRow: some View {
+        HStack(spacing: 6) {
+            Button(action: onSwitchToClips) {
+                HStack(spacing: 5) {
+                    Image(systemName: "doc.on.clipboard.fill")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.38, green: 0.82, blue: 1.0))
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 3) {
+                            Text(text("Clips", "클립"))
+                                .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            if productivityStorage.document.snippets.count > 0 {
+                                Text("\(productivityStorage.document.snippets.count)")
+                                    .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.9))
+                                    .padding(.horizontal, 3.5)
+                                    .padding(.vertical, 0.5)
+                                    .background(Color.blue.opacity(0.45), in: Capsule())
+                            }
+                        }
+                        Text(latestSnippetPreview)
+                            .font(.system(size: 8, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.35))
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9.5, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.38))
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Color.white.opacity(0.055))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.7)
+                        )
+                )
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(0.045))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.7)
-                    )
-            )
+            .buttonStyle(.plain)
+
+            Button(action: onSwitchToTools) {
+                HStack(spacing: 5) {
+                    Image(systemName: "wrench.and.screwdriver.fill")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.32))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(text("Tools", "도구함"))
+                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Text(text("Timer · Calc", "타이머 · 계산기"))
+                            .font(.system(size: 8, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.35))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Color.white.opacity(0.055))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.7)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+    }
+
+    private var latestSnippetPreview: String {
+        if let text = productivityStorage.document.snippets.first?.text.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
+            return text.replacingOccurrences(of: "\n", with: " ")
+        }
+        return text("No clips yet", "복사 기록 없음")
     }
 
     private func eventTimeRangeText(for event: EKEvent) -> String {
@@ -2623,13 +2719,38 @@ struct QuickToolsCompactView: View {
     private var accentColor: Color {
         ApplicationSettingsStore.currentCustomAccentColor()
     }
+
     var body: some View {
-        HStack {
-            Image(systemName: "square.grid.2x2").foregroundStyle(accentColor)
+        HStack(spacing: 8) {
+            // Left Wing: Core Pillars (Nook & File Tray)
+            HStack(spacing: 7) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(store.hubMode == .nook ? accentColor : .white.opacity(0.85))
+
+                Image(systemName: "tray.fill")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle((store.hubMode == .tray || store.hubMode == .shots) ? accentColor : .white.opacity(0.85))
+            }
+
             Spacer()
-            if store.selectedTool == "focus" { FocusCompactView(controller: store.focus) }
-            else { Image(systemName: "pencil.and.outline").foregroundStyle(accentColor) }
-        }.padding(.horizontal, 14)
+
+            // Right Wing: Core Pillars (Clips & Tools)
+            HStack(spacing: 7) {
+                if store.focus.timer.isActive {
+                    FocusCompactView(controller: store.focus)
+                }
+
+                Image(systemName: "doc.on.clipboard.fill")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle((store.hubMode == .clips || store.hubMode == .notes) ? accentColor : .white.opacity(0.85))
+
+                Image(systemName: "wrench.and.screwdriver.fill")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(store.hubMode == .tools ? accentColor : .white.opacity(0.85))
+            }
+        }
+        .padding(.horizontal, 14)
     }
 }
 

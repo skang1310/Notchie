@@ -92,6 +92,10 @@ class LocalTimerViewModel: ObservableObject {
         }
     }
     
+    var isActive: Bool {
+        state != .stopped
+    }
+    
     var formattedRemainingTime: String {
         return formatTime(remainingTime)
     }
