@@ -24,7 +24,15 @@ fi
 # Quarantine and all security settings are deliberately preserved.
 xattr -dr com.apple.FinderInfo "$staging/DynamicNotch.app" 2>/dev/null || true
 xattr -dr com.apple.ResourceFork "$staging/DynamicNotch.app" 2>/dev/null || true
-codesign --force --deep --sign - --timestamp=none "$staging/DynamicNotch.app"
+signing_identity=$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development:/ {print $2; exit}')
+if [[ -z "$signing_identity" ]]; then
+    signing_identity="-"
+fi
+entitlements_file="DynamicNotch/Application/DynamicNotch.entitlements"
+codesign --force --deep --sign "$signing_identity" --timestamp=none "$staging/DynamicNotch.app"
+if [[ -f "$entitlements_file" ]]; then
+    codesign --force --sign "$signing_identity" --entitlements "$entitlements_file" --timestamp=none "$staging/DynamicNotch.app"
+fi
 codesign --verify --deep --strict "$staging/DynamicNotch.app"
 if [[ -d "$target_app" ]]; then
     current_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$target_app/Contents/Info.plist")
@@ -36,9 +44,14 @@ fi
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 "$lsregister" -u "$source_app" 2>/dev/null || true
 "$lsregister" -u "$staging/DynamicNotch.app" 2>/dev/null || true
-for previous in ../build/installed-backups.noindex/*.app(N); do
-    "$lsregister" -u "$previous" 2>/dev/null || true
+for extra_app in \
+    build/**/DynamicNotch.app(N) \
+    ../build/**/DynamicNotch.app(N) \
+    ~/Library/Developer/Xcode/DerivedData/DynamicNotch-*/Build/Products/*/DynamicNotch.app(N) \
+    ../build/installed-backups.noindex/*.app(N)
+do
+    "$lsregister" -u "$extra_app" 2>/dev/null || true
 done
 mv "$staging/DynamicNotch.app" "$target_app"
 "$lsregister" -f "$target_app"
-print "Installed and ad-hoc signature verified: $target_app"
+print "Installed and signature verified ($signing_identity): $target_app"

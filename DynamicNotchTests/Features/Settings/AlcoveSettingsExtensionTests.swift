@@ -1,5 +1,6 @@
 import XCTest
 import AppKit
+import EventKit
 import SwiftUI
 @testable import DynamicNotch
 
@@ -158,7 +159,37 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
             let alertContent = MissingPermissionsNotchContent(missingCount: 3)
             XCTAssertEqual(alertContent.id, "settings.permissions.missingAlert")
             XCTAssertEqual(alertContent.compactSize(baseWidth: 180, baseHeight: 32).width, 340)
+
+            XCTAssertTrue(SettingsPermissionController.isCalendarAuthorized(.fullAccess))
+            XCTAssertTrue(SettingsPermissionController.isCalendarAuthorized(.writeOnly))
+            XCTAssertTrue(SettingsPermissionController.isCalendarAuthorized(.authorized))
+            XCTAssertFalse(SettingsPermissionController.isCalendarAuthorized(.denied))
+            XCTAssertFalse(SettingsPermissionController.isCalendarAuthorized(.notDetermined))
+            XCTAssertFalse(FullDiskAccessAuthorization.hasPermission())
         }
+    }
+
+    func testPanoramicNotchHubGeometryAndNowPlayingHoverExpansion() async {
+        let defaults = UserDefaults(suiteName: "DynamicNotch.PanoramicHubTests.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: "DynamicNotch.PanoramicHubTests") }
+
+        let store = QuickToolsStore(defaults: defaults)
+        store.hubMode = .nook
+        let hubContent = QuickToolsNotchContent(store: store, openedFromIdleHover: true)
+        let nookSize = hubContent.expandedSize(baseWidth: 190, baseHeight: 38)
+        XCTAssertGreaterThanOrEqual(nookSize.width, 688)
+        XCTAssertEqual(nookSize.height, 38 + 154)
+        XCTAssertEqual(hubContent.expandedCornerRadius(baseRadius: 12).top, 19)
+        XCTAssertEqual(hubContent.expandedCornerRadius(baseRadius: 12).bottom, 28)
+
+        store.hubMode = .clips
+        let clipsSize = hubContent.expandedSize(baseWidth: 190, baseHeight: 38)
+        XCTAssertEqual(clipsSize.height, 38 + 210)
+        store.hubMode = .nook
+
+        let appSettings = ApplicationSettingsStore(defaults: defaults)
+        XCTAssertEqual(appSettings.notchExpandInteraction, .hover)
+        XCTAssertEqual(appSettings.notchCollapseInteraction, .hoverLeaves)
     }
 
     func testGenerateDocumentationScreenshotsIfRequested() throws {
@@ -250,6 +281,38 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
             name: "quick-tools-clipboard.png",
             width: 780,
             height: 540
+        )
+
+        quickStore.hubMode = .nook
+        try render(
+            ZStack {
+                Color(red: 0.08, green: 0.09, blue: 0.13)
+                NotchiePanoramicHubView(
+                    store: quickStore,
+                    nowPlayingViewModel: nil,
+                    mediaSettings: nil,
+                    applicationSettings: appSettings,
+                    onOpenPlaybackSource: {}
+                )
+                .frame(width: 688, height: 192)
+                .background(
+                    NotchBackgroundSurface(
+                        style: .black,
+                        topCornerRadius: 19,
+                        bottomCornerRadius: 28,
+                        isDynamicIsland: false,
+                        dynamicIslandCornerRadius: 24,
+                        strokeColor: Color.white.opacity(0.18),
+                        strokeWidth: 1.2,
+                        height: 192,
+                        baseWidth: 190,
+                        baseHeight: 38
+                    )
+                )
+            },
+            name: "panoramic-notch-hub.png",
+            width: 760,
+            height: 260
         )
     }
 }

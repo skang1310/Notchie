@@ -228,7 +228,7 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
                 assetImageName: nil,
                 systemImage: "calendar",
                 tintColor: .blue,
-                isGranted: calendarAuthorization == .fullAccess,
+                isGranted: Self.isCalendarAuthorized(calendarAuthorization),
                 actionTitleKey: calendarActionTitleKey,
                 fallbackActionTitle: calendarFallbackActionTitle,
                 accessibilityIdentifier: "settings.permissions.calendar"
@@ -273,6 +273,15 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
             .joined(separator: ", ")
     }
 
+    static func isCalendarAuthorized(_ status: EKAuthorizationStatus) -> Bool {
+        switch status {
+        case .fullAccess, .writeOnly, .authorized:
+            return true
+        default:
+            return false
+        }
+    }
+
     func requestUndeterminedPermissions() {
         guard !AppEnvironment.isRunningTests else { return }
         refresh()
@@ -298,6 +307,58 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
         refresh()
     }
 
+    func resetAndReRequestMissingPermissions() {
+        guard !AppEnvironment.isRunningTests else { return }
+        refresh()
+
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.Jackson.DynamicNotch"
+        var servicesToReset: [String] = []
+
+        if !isAccessibilityTrusted || !canPostMediaKeyEvents {
+            servicesToReset.append("Accessibility")
+            servicesToReset.append("PostEvent")
+            didPromptForAccessibility = false
+            didPromptForPostEventAccess = false
+        }
+        if cameraAuthorization != .authorized {
+            servicesToReset.append("Camera")
+            didPromptForCameraAccess = false
+        }
+        if !Self.isCalendarAuthorized(calendarAuthorization) {
+            servicesToReset.append("Calendar")
+            didPromptForCalendarAccess = false
+        }
+        if bluetoothAuthorization != .allowedAlways {
+            servicesToReset.append("BluetoothAlways")
+            bluetoothPermissionRequester = nil
+        }
+        if !isAutomationAccessGranted {
+            servicesToReset.append("AppleEvents")
+            didPromptForAutomationAccess = false
+        }
+
+        for service in servicesToReset {
+            Self.runTCCReset(service: service, bundleIdentifier: bundleID)
+        }
+
+        refresh()
+        requestUndeterminedPermissions()
+
+        if !isFullDiskAccessGranted {
+            Self.openFullDiskAccessPrivacySettings()
+        } else if !isAccessibilityTrusted {
+            Self.openPrivacySettings()
+        }
+    }
+
+    private static func runTCCReset(service: String, bundleIdentifier: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        process.arguments = ["reset", service, bundleIdentifier]
+        try? process.run()
+        process.waitUntilExit()
+    }
+
     func evaluateStartupPermissions(
         applicationSettings: ApplicationSettingsStore,
         notchViewModel: NotchViewModel?,
@@ -308,7 +369,7 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
 
         requestUndeterminedPermissions()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
             guard let self else { return }
             self.refresh()
             let missing = self.missingPermissionItems
@@ -319,11 +380,17 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
                 let alertContent = MissingPermissionsNotchContent(missingCount: missing.count)
                 notchViewModel.send(.showTemporaryNotification(alertContent, duration: 5.0))
             }
-            self.presentMissingPermissionsAlert(missingItems: missing)
+            self.presentMissingPermissionsAlert(
+                missingItems: missing,
+                applicationSettings: applicationSettings
+            )
         }
     }
 
-    func presentMissingPermissionsAlert(missingItems: [PermissionItem]? = nil) {
+    func presentMissingPermissionsAlert(
+        missingItems: [PermissionItem]? = nil,
+        applicationSettings: ApplicationSettingsStore? = nil
+    ) {
         guard !AppEnvironment.isRunningTests else { return }
         refresh()
         let items = missingItems ?? missingPermissionItems
@@ -346,20 +413,25 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
             "Notchie 권한 설정 필요 (\(items.count)개 미설정)"
         )
         alert.informativeText = privacyText(
-            "Some system permissions are not yet granted. Please configure the following permissions so all notch features (HUD, Media, Camera Face Unlock, Calendar, Bluetooth) work properly:\n\n\(bulletList)",
-            "일부 필수 권한이 아직 허용되지 않았습니다. 노치의 모든 기능(볼륨·밝기 HUD, 미디어 제어, 카메라 얼굴 잠금 해제, 캘린더, 블루투스 등)이 정상 작동하도록 아래 권한을 설정해 주세요:\n\n\(bulletList)"
+            "Some permissions are not yet active:\n\n\(bulletList)\n\nTip: If a permission is already switched ON in System Settings from an earlier build, click \"Fix Permission Sync\" or toggle that switch OFF and ON once in System Settings.",
+            "일부 권한이 아직 활성화되지 않았습니다:\n\n\(bulletList)\n\n참고: 시스템 설정에서 이미 켜져 있는데도 미설정으로 뜬다면(이전 빌드 서명 캐시), 아래 '권한 인식 오류 해결'을 누르거나 시스템 설정에서 스위치를 한 번 껐다가 다시 켜 주세요."
         )
         alert.addButton(withTitle: privacyText("Open Permissions Settings", "권한 설정 페이지 열기"))
-        alert.addButton(withTitle: privacyText("Request All Again", "권한 다시 요청하기"))
+        alert.addButton(withTitle: privacyText("Fix Permission Sync (Re-request)", "권한 인식 오류 해결 (재요청)"))
         alert.addButton(withTitle: privacyText("Remind Me Later", "나중에"))
+        if applicationSettings != nil {
+            alert.addButton(withTitle: privacyText("Don't Ask on Startup", "시작 시 다시 묻지 않기"))
+        }
 
         NSApp.activate(ignoringOtherApps: true)
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             SettingsWindowController.shared.showWindow(selecting: .permissions)
         } else if response == .alertSecondButtonReturn {
-            requestUndeterminedPermissions()
+            resetAndReRequestMissingPermissions()
             SettingsWindowController.shared.showWindow(selecting: .permissions)
+        } else if response.rawValue == NSApplication.ModalResponse.alertThirdButtonReturn.rawValue + 1 {
+            applicationSettings?.isStartupPermissionCheckEnabled = false
         }
     }
 
@@ -483,7 +555,7 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
 
     private var calendarActionTitleKey: String? {
         switch calendarAuthorization {
-        case .fullAccess, .writeOnly:
+        case .fullAccess, .writeOnly, .authorized:
             return nil
         case .notDetermined:
             return "settings.permissions.action.grantAccess"
@@ -496,7 +568,7 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
 
     private var calendarFallbackActionTitle: String? {
         switch calendarAuthorization {
-        case .fullAccess, .writeOnly:
+        case .fullAccess, .writeOnly, .authorized:
             return nil
         case .notDetermined:
             return "Grant Access"
@@ -609,7 +681,7 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
     private static func currentPostEventAccessState() -> Bool {
         guard !AppEnvironment.isRunningTests else { return false }
         #if canImport(ApplicationServices)
-        return CGPreflightPostEventAccess()
+        return CGPreflightPostEventAccess() || AXIsProcessTrusted()
         #else
         true
         #endif

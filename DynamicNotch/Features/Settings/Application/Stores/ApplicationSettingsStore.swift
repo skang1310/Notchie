@@ -138,7 +138,7 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
     @StoredDefault(key: GeneralSettingsStorage.Keys.notchExpandInteraction, defaultValue: .hover)
     var notchExpandInteraction: NotchExpandInteraction
 
-    @StoredDefault(key: GeneralSettingsStorage.Keys.notchCollapseInteraction, defaultValue: .click)
+    @StoredDefault(key: GeneralSettingsStorage.Keys.notchCollapseInteraction, defaultValue: .hoverLeaves)
     var notchCollapseInteraction: NotchCollapseInteraction
 
     @StoredDefault(

@@ -115,3 +115,23 @@ Canonical app is /Applications/DynamicNotch.app. On 2026-10-28 duplicate app reg
 - CSV A/B group reconciliation with exact Decimal sums, explicit keys/metric, missing-row distinction, duplicate counts and no automatic timezone/currency conversion.
 - Local screenshot case board: selected imports/paste, SHA-256 dedup, session-only selected-folder watcher, thumbnails, two-image compare, captions, on-demand local OCR, opaque redaction and evidence folder export. Export reencodes images and excludes OCR text/original image metadata. Original images remain preserved locally.
 - No customer content fetched, uploaded, or sent. No permission granted automatically. Alcove assets/executable are not copied.
+
+## Notchie-20261028-v6 — OS 27 Liquid Glass Panoramic Notch Hub & Hover Expansion
+- **Hover-to-Expand on Active Now Playing & Idle Notch (`NotchViewModel`, `GeneralSettingsStorage`, `ApplicationSettingsStore`)**:
+  - Updated default `notchExpandInteraction` to `.hover` and `notchCollapseInteraction` to `.hoverLeaves`.
+  - Updated `NotchViewModel.shouldExpandActiveContentOnHover` and `shouldCollapseActiveContentOnHoverLeaves` so hovering over the notch **while Now Playing (`자동 재생`) is active** (as well as when idle) expands smoothly on hover and collapses when the cursor leaves unless pinned (`QuickToolsStore.shared.isNotchHubPinned`).
+- **OS 27 Liquid Glass Panoramic Notch Hub (`NotchiePanoramicHubView`, `NowPlayingExpandedNotchView`, `QuickToolsView`, `NotchBackgroundSurface`)**:
+  - Redesigned the expanded notch into a sleek, widescreen `688pt` horizontal dashboard (`cornerRadius: (top: 19, bottom: 28)`) inspired by NotchNook (`https://getnotchnook.com`) and 2026 macOS notch apps with macOS 27 (OS 27) Liquid Glass aesthetics:
+    1. **Top Wing Header Bar (flanking the physical camera cutout)**: Left mode pills (`Nook`, `Tray` with item count badge, `Clips`, `Notes`, `Tools`), a clear center camera cutout safe gap, and right-side live Mini-Player pill (on non-`Nook` tabs) + `Pin`, `Customize Tabs`, and `Settings` (`gearshape.fill`) buttons.
+    2. **Left Column — Now Playing Studio**: `66×66` rounded album artwork with ambient palette glow + floating bottom-right source app icon badge, track title/artist, live equalizer, interactive slim scrubber, and transport controls (`backward.fill`, `play.fill`/`pause.fill`, `forward.fill`, favorite, audio output route).
+    3. **Center Column — Month + 7-Day Week Strip & Schedule**: Bold month header + interactive 7-day strip (`SUN..SAT` + day numbers with selected/today highlight and event indicator dots), upcoming event card with 1-click **Join Meeting** button OR `"Nothing for today"` (`"오늘 예정된 일정 없음"`) + Today's Task quick toggle chip.
+    4. **Right Column — Circular Camera Mirror & Focus Pod**: `78×78` circular OS 27 Liquid Glass pod with bottom-right `camera.fill` badge that toggles an opt-in live mirrored front-camera preview (`NotchieMirrorCameraView`, auto-stopping on close) or shows active Focus/Stopwatch progress.
+
+## Notchie-20261028-v5 — Custom Edition & Permission Sync Fixes
+- Rebranded user-facing app name and icons to `Notchie` (`Notchie-macOS-Icons`), customized `AboutAppSettingsView`, removed Support & Software Update pages, and simplified `MenuBarMenu` to Settings, Restart, and Quit.
+- Added NotchNook-style idle notch hover menu (`isIdleNotchHoverMenuEnabled`), customizable Notch Hub tabs (`QuickToolsStore.enabledTabIDs`), clipboard search + one-click re-copy + opt-in auto-capture, custom accent color picker (`customAccentColorHex`), and Face Unlock Original (Full Badge Scan) vs. Minimal selector + live notch preview.
+- Fixed permission detection bugs:
+  1. Removed the hardcoded `DynamicNotchLocalBuild == true` short-circuit in `FullDiskAccessAuthorization.hasPermission()` that forced Full Disk Access to always return `false` even when enabled in System Settings.
+  2. Unified Media Controls (`canPostEventAccessState`) with `AXIsProcessTrusted()` and updated Calendar `isGranted` to accept `.fullAccess`, `.writeOnly`, and `.authorized`.
+  3. Updated `scripts/install-local.sh` to sign `/Applications/DynamicNotch.app` with the local `Apple Development` certificate + `DynamicNotch.entitlements` (instead of an ad-hoc `--sign -` signature whose changing `CDHash` invalidated macOS TCC permissions on every rebuild) and unregister build/DerivedData app copies from LaunchServices.
+  4. Added live 1.5s permission status refresh while `PermissionsSettingsView` is visible and a "Fix Sync (`권한 인식 오류 해결`)" action (`resetAndReRequestMissingPermissions()`) to clear stale ad-hoc TCC entries and re-link permissions.

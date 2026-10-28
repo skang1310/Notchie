@@ -2,6 +2,35 @@ import Foundation
 internal import AppKit
 import Combine
 
+enum NotchHubMode: String, CaseIterable, Identifiable {
+    case nook
+    case tray
+    case clips
+    case notes
+    case tools
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .nook: return "sparkles.rectangle.stack.fill"
+        case .tray: return "tray.and.arrow.down.fill"
+        case .clips: return "doc.on.clipboard.fill"
+        case .notes: return "note.text"
+        case .tools: return "square.grid.2x2.fill"
+        }
+    }
+
+    var requiresExtendedHeight: Bool {
+        switch self {
+        case .nook, .tray:
+            return false
+        case .clips, .notes, .tools:
+            return true
+        }
+    }
+}
+
 struct QuickToolTab: Identifiable, Equatable {
     let id: String
     let titleKey: String
@@ -43,9 +72,24 @@ final class QuickToolsStore: ObservableObject {
     let jobs = LocalJobRunner()
 
     @Published var selectedTool = "notes"
+    @Published var hubMode: NotchHubMode = .nook {
+        didSet {
+            guard oldValue != hubMode else { return }
+            notchViewModel?.refreshPresentationGeometry()
+        }
+    }
     @Published var isNotchHubPinned = false
+    @Published var isMirrorCameraActive = false
     @Published private(set) var enabledTabIDs: [String]
     @Published private(set) var sampledColor: String?
+
+    weak var nowPlayingViewModel: NowPlayingViewModel?
+    weak var calendarViewModel: CalendarViewModel?
+    weak var fileTrayViewModel: FileTrayViewModel?
+    weak var airDropViewModel: AirDropNotchViewModel?
+    weak var mediaSettings: MediaAndFilesSettingsStore?
+    weak var applicationSettings: ApplicationSettingsStore?
+    weak var notchViewModel: NotchViewModel?
 
     private let defaults: UserDefaults
     private let colorSampler = NSColorSampler()
@@ -62,6 +106,16 @@ final class QuickToolsStore: ObservableObject {
         if !self.enabledTabIDs.contains(selectedTool), let first = self.enabledTabIDs.first {
             self.selectedTool = first
         }
+    }
+
+    func bind(container: AppContainer) {
+        self.nowPlayingViewModel = container.nowPlayingViewModel
+        self.calendarViewModel = container.calendarViewModel
+        self.fileTrayViewModel = container.fileTrayViewModel
+        self.airDropViewModel = container.airDropViewModel
+        self.mediaSettings = container.settingsViewModel.mediaAndFiles
+        self.applicationSettings = container.settingsViewModel.application
+        self.notchViewModel = container.notchViewModel
     }
 
     var visibleTabs: [QuickToolTab] {

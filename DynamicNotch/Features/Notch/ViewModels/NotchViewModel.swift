@@ -130,9 +130,18 @@ final class NotchViewModel: ObservableObject {
     }
 
     var shouldExpandActiveContentOnHover: Bool {
-        settings.isNotchTapToExpandEnabled &&
-        settings.notchExpandInteraction == .hover &&
-        canExpandActiveLiveActivity
+        guard settings.isNotchTapToExpandEnabled, canExpandActiveLiveActivity else {
+            return false
+        }
+        if settings.notchExpandInteraction == .hover {
+            return true
+        }
+        if settings.isIdleNotchHoverMenuEnabled {
+            if !hasRealDisplayedContent || displayedContent?.id == NotchContentRegistry.Media.nowPlaying.id {
+                return true
+            }
+        }
+        return false
     }
 
     var notchExpandInteraction: NotchExpandInteraction {
@@ -141,8 +150,15 @@ final class NotchViewModel: ObservableObject {
 
     var shouldCollapseActiveContentOnHoverLeaves: Bool {
         guard isDisplayingExpandedLiveActivity else { return false }
+        if QuickToolsStore.shared.isNotchHubPinned {
+            return false
+        }
         if let hub = displayedContent as? QuickToolsNotchContent,
-           hub.openedFromIdleHover && !hub.store.isNotchHubPinned {
+           hub.openedFromIdleHover {
+            return true
+        }
+        if displayedContent?.id == NotchContentRegistry.Media.nowPlaying.id,
+           settings.isIdleNotchHoverMenuEnabled {
             return true
         }
         return settings.notchCollapseInteraction == .hoverLeaves
@@ -378,6 +394,10 @@ final class NotchViewModel: ObservableObject {
     
     func send(_ notchState: NotchState) {
         engine.send(notchState)
+    }
+
+    func refreshPresentationGeometry() {
+        engine.refreshPresentationGeometry()
     }
 
     func setActivityPresentationHidden(_ isHidden: Bool) {

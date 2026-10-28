@@ -122,5 +122,6 @@ final class AppContainer {
                 LockScreenSoundPlayer()
         )
         self.externalDrivesMonitor = ExternalDrivesMonitor()
+        QuickToolsStore.shared.bind(container: self)
     }
 }

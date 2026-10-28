@@ -30,6 +30,10 @@ struct NowPlayingNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     
     var isExpandable: Bool { true }
 
+    var pinsExpandedInteraction: Bool {
+        QuickToolsStore.shared.isNotchHubPinned
+    }
+
     var windowLink: (@MainActor () -> Void)? {
         guard nowPlayingViewModel.canOpenPlaybackSource else { return nil }
 
@@ -47,15 +51,17 @@ struct NowPlayingNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     }
     
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        .init(width: baseWidth + 190, height: baseHeight + 160)
+        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 210 : 154
+        return .init(width: max(688, baseWidth + 488), height: baseHeight + extraHeight)
     }
     
     func expandedDynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        .init(width: baseWidth + 230, height: baseHeight + 150)
+        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 200 : 146
+        return .init(width: max(668, baseWidth + 468), height: baseHeight + extraHeight)
     }
     
     func expandedCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {
-        (top: 34, bottom: 44)
+        (top: 19, bottom: 28)
     }
 
     func dynamicIslandCornerRadius(baseHeight: CGFloat) -> CGFloat {

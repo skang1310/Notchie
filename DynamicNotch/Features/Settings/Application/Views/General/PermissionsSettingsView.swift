@@ -1,9 +1,11 @@
+import Combine
 import SwiftUI
 
 struct PermissionsSettingsView: View {
     @ObservedObject var permissionController: SettingsPermissionController
     @ObservedObject var applicationSettings: ApplicationSettingsStore
     @State private var imageAppear = false
+    private let refreshTimer = Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()
 
     private func localized(_ key: String, fallback: String) -> String {
         applicationSettings.appLanguage.locale.dn(key, fallback: fallback)
@@ -22,6 +24,9 @@ struct PermissionsSettingsView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 imageAppear = true
             }
+            permissionController.refresh()
+        }
+        .onReceive(refreshTimer) { _ in
             permissionController.refresh()
         }
     }
@@ -63,13 +68,36 @@ struct PermissionsSettingsView: View {
                 Spacer(minLength: 8)
 
                 if !missing.isEmpty {
-                    Button(text("Request All Missing", "미설정 권한 모두 요청")) {
-                        permissionController.requestUndeterminedPermissions()
+                    HStack(spacing: 6) {
+                        Button(text("Fix Sync", "권한 인식 오류 해결")) {
+                            permissionController.resetAndReRequestMissingPermissions()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help(text(
+                            "Resets stale permission cache from older builds and re-requests permissions.",
+                            "이전 빌드 서명으로 꼬인 macOS 권한 캐시를 초기화하고 다시 연결합니다."
+                        ))
+                        .accessibilityIdentifier("settings.permissions.fixSync")
+
+                        Button(text("Request All Missing", "미설정 권한 모두 요청")) {
+                            permissionController.requestUndeterminedPermissions()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("settings.permissions.requestAll")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .accessibilityIdentifier("settings.permissions.requestAll")
                 }
+            }
+
+            if !missing.isEmpty {
+                Text(text(
+                    "Tip: If a permission is already turned ON in System Settings from an earlier build, click \"Fix Sync\" above or toggle its switch OFF and ON once in System Settings so macOS links it to the current certificate.",
+                    "안내: 시스템 설정에서 이미 켜져 있는데도 '접근 필요'로 표시된다면, 위 [권한 인식 오류 해결] 버튼을 누르거나 시스템 설정에서 해당 스위치를 한 번 껐다가 다시 켜면 현재 인증서로 영구 연결됩니다."
+                ))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider().opacity(0.6)

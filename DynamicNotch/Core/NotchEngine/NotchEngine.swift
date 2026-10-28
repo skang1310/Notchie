@@ -123,6 +123,12 @@ final class NotchEngine: ObservableObject {
         notchModel.updateToken = UUID()
     }
 
+    func refreshPresentationGeometry() {
+        withAnimation(animations.updateContent) {
+            notchModel.updateToken = UUID()
+        }
+    }
+
     /// Dispatches a state transition event driving the Live Activity / Alert lifecycle.
     ///
     /// Corresponds to Apple's `ActivityKit` lifecycle management (`Activity.request`, `update`, `end`, and Dynamic Island dismissal).

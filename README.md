@@ -26,6 +26,14 @@
 
 ## ✨ 주요 커스텀 기능 (What's New in Notchie)
 
+### 0. 🌌 OS 27 Liquid Glass 파노라마 노치 허브 (NotchNook 스타일 와이드 대시보드)
+- **자동 재생(Now Playing) 중에도 노치 호버 시 전체 허브 동시 표시**: 음악·영상이 재생 중일 때나 유휴 상태일 때 노치에 마우스를 올리면(`Hover`) 가로로 길고 세련된 **688pt 파노라마 노치 대시보드**가 부드럽게 펼쳐집니다.
+- **카메라 컷아웃 양옆 상단 헤더 바**: 왼쪽에는 `Nook` · `Tray` · `Clips` · `Notes` · `Tools` 모드 캡슐 탭이, 오른쪽에는 실시간 미니 플레이어 및 **고정(`Pin`) · 탭 설정 · 환경설정(`⚙`)** 버튼이 물리 카메라를 가리지 않고 배치됩니다.
+- **3단 파노라마 `Nook` 레이아웃 (`Now Playing | 7-Day Calendar | Camera Mirror`)**:
+  1. **좌측 (Now Playing 스튜디오)**: 앨범 아트워크 + 우측 하단 재생 소스 앱 배지, 곡/아티스트, 실시간 이퀄라이저, 인터랙티브 슬림 스크러버 및 재생 컨트롤.
+  2. **중앙 (월별 + 7일 주간 캘린더 & 일정/할 일)**: `Oct / 10월` + 7일 주간 스트립(`SUN~SAT`), 예정된 일정 및 원클릭 화상회의 **`참여(Join)`** 버튼 또는 **`오늘 예정된 일정 없음(Nothing for today)`** + 오늘의 할 일 원클릭 체크칩.
+  3. **우측 (원형 카메라 미러 & 집중 포드)**: 클릭 시에만 켜지고 노치가 닫히면 즉시 꺼지는 **실시간 전면 카메라 거울(Live Camera Mirror)** 원형 포드 및 집중 타이머/스톱워치 상태 링.
+
 ### 1. 🧲 노치 호버 메뉴 & 맞춤 탭 구성 (Notch Hover Shelf)
 - 라이브 액티비티가 없는 유휴(Idle) 상태에서도 상단 노치에 마우스를 올리면(`isIdleNotchHoverMenuEnabled`) 즉시 **빠른 도구 허브(Notch Hub)**가 펼쳐집니다.
 - 상단 가로형 아이콘 탭 바와 **표시할 탭 선택(Tab Customizer)** 기능을 통해 원하는 탭(메모, 클립보드, 오늘 할 일, 집중 세션, 스톱워치, 잠자기 방지, 색상 추출, 계산기, 단축어, ZIP, 개발자 도구 등)만 골라 배치할 수 있습니다.
@@ -55,6 +63,11 @@
 ---
 
 ## 📸 스크린샷 (Screenshots)
+
+### 0) OS 27 파노라마 노치 허브 (Now Playing + 7일 캘린더 + 원형 카메라 미러)
+<p align="center">
+  <img src="docs/screenshots/panoramic-notch-hub.png" alt="Notchie Panoramic Notch Hub" width="88%" />
+</p>
 
 ### 1) 일반 → 정보 (Notchie Custom Edition)
 <p align="center">
