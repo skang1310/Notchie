@@ -692,8 +692,8 @@ struct NotchiePanoramicHubView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 136)
 
-            // Bento Card 3: Flip-Clock & Weather Studio (222pt × 136pt)
-            NotchieFlipClockWeatherColumn()
+            // Bento Card 3: Apple Weather Widget (222pt × 136pt)
+            NotchieAppleWeatherWidgetColumn()
                 .frame(width: 222, height: 136)
         }
     }
@@ -1836,61 +1836,232 @@ final class NotchieWeatherStore: ObservableObject {
     }
 }
 
-private struct NotchieFlipClockWeatherColumn: View {
+// MARK: - Column 3: Apple Weather Widget (Official macOS / iOS Weather Widget Design)
+
+private struct NotchieAppleWeatherWidgetColumn: View {
     @ObservedObject private var weatherStore = NotchieWeatherStore.shared
 
+    private var isKorean: Bool {
+        Locale.preferredLanguages.first?.hasPrefix("ko") == true
+    }
+
+    private var locationTitle: String {
+        isKorean ? "서울" : "Seoul"
+    }
+
+    private var localizedCondition: String {
+        switch weatherStore.snapshot.weatherCode {
+        case 0:
+            return isKorean ? "대체로 맑음" : "Clear"
+        case 1, 2:
+            return isKorean ? "대체로 흐림" : "Partly Cloudy"
+        case 3:
+            return isKorean ? "흐림" : "Overcast"
+        case 45, 48:
+            return isKorean ? "안개" : "Fog"
+        case 51, 53, 55, 61, 63, 65, 80, 81, 82:
+            return isKorean ? "비" : "Rain"
+        case 71, 73, 75, 77, 85, 86:
+            return isKorean ? "눈" : "Snow"
+        case 95, 96, 99:
+            return isKorean ? "뇌우" : "Thunderstorm"
+        default:
+            return isKorean ? "맑음" : weatherStore.snapshot.conditionLabel
+        }
+    }
+
+    private var formattedHighLow: String {
+        let high = Int(round(weatherStore.snapshot.highTempC))
+        let low = Int(round(weatherStore.snapshot.lowTempC))
+        return isKorean ? "최고:\(high)°  최저:\(low)°" : "H:\(high)°  L:\(low)°"
+    }
+
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            let now = context.date
-            ZStack {
-                // Unified 136pt Apple Liquid Glass + Brushed Slate Bento Card
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.18, green: 0.20, blue: 0.24),
-                                Color(red: 0.10, green: 0.11, blue: 0.14),
-                                Color(red: 0.06, green: 0.07, blue: 0.09)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
+        ZStack {
+            // Authentic Apple Weather Atmospheric Sky / Midnight Gradient
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.14, green: 0.38, blue: 0.74),
+                            Color(red: 0.08, green: 0.22, blue: 0.50),
+                            Color(red: 0.05, green: 0.11, blue: 0.32)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    // Subtle ambient celestial radiance
+                    RadialGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.88, blue: 0.45).opacity(0.20),
+                            Color.clear
+                        ],
+                        center: .topTrailing,
+                        startRadius: 5,
+                        endRadius: 90
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                )
+                .overlay(
+                    // Liquid Glass Specular Rim Border
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.32),
+                                    Color.white.opacity(0.10)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.85
                         )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.24),
-                                        Color.white.opacity(0.07)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 0.85
-                            )
-                    )
+                )
 
-                VStack(spacing: 0) {
-                    topFlipClockHeroSection(now: now)
-                        .frame(height: 66)
+            VStack(spacing: 0) {
+                // 1. Header: Location + Refresh Indicator
+                HStack(alignment: .center) {
+                    HStack(spacing: 3.5) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 9.0, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.88))
+                        Text(locationTitle)
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                    }
 
-                    Rectangle()
-                        .fill(Color.white.opacity(0.09))
-                        .frame(height: 0.7)
-                        .padding(.horizontal, 8)
+                    Spacer()
 
-                    forecastFourDayStrip
-                        .frame(height: 46)
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.07))
-                        .frame(height: 0.7)
-                        .padding(.horizontal, 8)
-
-                    bottomSunWindFooter
-                        .frame(height: 22)
+                    Button {
+                        weatherStore.refreshIfNeeded(force: true)
+                    } label: {
+                        if weatherStore.isRefreshing {
+                            ProgressView()
+                                .controlSize(.mini)
+                                .scaleEffect(0.65)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 9.0, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .help(isKorean ? "날씨 새로고침" : "Refresh Weather")
                 }
+                .padding(.horizontal, 10)
+                .padding(.top, 6)
+                .frame(height: 18)
+
+                // 2. Upper Hero: Large Display Temp + Condition & High/Low
+                HStack(alignment: .center, spacing: 6) {
+                    Text("\(Int(round(weatherStore.snapshot.currentTempC)))°")
+                        .font(.system(size: 32, weight: .light, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+
+                    Spacer(minLength: 4)
+
+                    VStack(alignment: .trailing, spacing: 1) {
+                        HStack(spacing: 3.5) {
+                            NotchieAppleWeatherSymbolView(weatherCode: weatherStore.snapshot.weatherCode, size: 16)
+                            Text(localizedCondition)
+                                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                        }
+
+                        Text(formattedHighLow)
+                            .font(.system(size: 9.0, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.82))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 34)
+
+                // Frosted Divider
+                Rectangle()
+                    .fill(Color.white.opacity(0.18))
+                    .frame(height: 0.65)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+
+                // 3. Middle: 4-Day Forecast Columns (Apple Weather Widget Strip)
+                HStack(spacing: 0) {
+                    ForEach(Array(weatherStore.snapshot.forecastDays.prefix(4).enumerated()), id: \.element.id) { index, day in
+                        VStack(spacing: 2) {
+                            Text(displayDayTitle(for: index))
+                                .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.88))
+                                .lineLimit(1)
+
+                            NotchieAppleWeatherSymbolView(weatherCode: day.weatherCode, size: 14)
+                                .frame(height: 16)
+
+                            VStack(spacing: 0.5) {
+                                Text("\(Int(round(day.highTempC)))°")
+                                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Text("\(Int(round(day.lowTempC)))°")
+                                    .font(.system(size: 8.0, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.65))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .frame(height: 52)
+
+                // Frosted Divider
+                Rectangle()
+                    .fill(Color.white.opacity(0.12))
+                    .frame(height: 0.65)
+                    .padding(.horizontal, 8)
+
+                // 4. Micro Bottom Info: Sunrise, Sunset, Wind
+                HStack(spacing: 6) {
+                    HStack(spacing: 2.0) {
+                        Image(systemName: "sunrise.fill")
+                            .font(.system(size: 7.5))
+                            .foregroundStyle(Color(red: 1.0, green: 0.82, blue: 0.32))
+                        Text(weatherStore.snapshot.sunriseText)
+                            .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.78))
+                            .lineLimit(1)
+                    }
+
+                    HStack(spacing: 2.0) {
+                        Image(systemName: "sunset.fill")
+                            .font(.system(size: 7.5))
+                            .foregroundStyle(Color(red: 1.0, green: 0.58, blue: 0.28))
+                        Text(weatherStore.snapshot.sunsetText)
+                            .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.78))
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 2)
+
+                    HStack(spacing: 2.0) {
+                        Image(systemName: "wind")
+                            .font(.system(size: 7.5, weight: .semibold))
+                            .foregroundStyle(Color(red: 0.62, green: 0.86, blue: 1.0))
+                        Text(weatherStore.snapshot.windText)
+                            .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.82))
+                            .lineLimit(1)
+                    }
+                }
+                .padding(.horizontal, 9)
+                .frame(height: 20)
             }
         }
         .onAppear {
@@ -1898,266 +2069,27 @@ private struct NotchieFlipClockWeatherColumn: View {
         }
     }
 
-    @ViewBuilder
-    private func topFlipClockHeroSection(now: Date) -> some View {
-        let hourText = Self.hourString(from: now)
-        let minuteText = Self.minuteString(from: now)
-        let dayHeader = Self.shortWeekdayDayString(from: now)
-
-        ZStack(alignment: .top) {
-            VStack(spacing: 0) {
-                // Twin Split Flip-Clock Cards (HH | MM)
-                HStack(spacing: 5) {
-                    NotchieFlipDigitCardView(digits: hourText)
-                    NotchieFlipDigitCardView(digits: minuteText)
-                }
-                .padding(.top, 5)
-
-                Spacer(minLength: 0)
-
-                // Weather info row flanking the glowing center sun orb
-                HStack(alignment: .bottom, spacing: 2) {
-                    VStack(alignment: .leading, spacing: 0.5) {
-                        Text(weatherStore.snapshot.conditionLabel)
-                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.76))
-                            .lineLimit(1)
-                        Text(weatherStore.snapshot.formattedCurrentTemp)
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-
-                    Spacer(minLength: 36)
-
-                    VStack(alignment: .trailing, spacing: 0.5) {
-                        Text(dayHeader)
-                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.76))
-                            .lineLimit(1)
-                        Text(weatherStore.snapshot.formattedHighLow)
-                            .font(.system(size: 9.0, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.92))
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.bottom, 5)
-            }
-
-            // Center 3D Glowing Golden Sun / Weather Illustration
-            NotchieGlowingWeatherOrbView(weatherCode: weatherStore.snapshot.weatherCode, size: 28)
-                .offset(y: 34)
+    private func displayDayTitle(for index: Int) -> String {
+        if index == 0 {
+            return isKorean ? "오늘" : "Today"
         }
-    }
-
-    private var forecastFourDayStrip: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(weatherStore.snapshot.forecastDays.prefix(4).enumerated()), id: \.element.id) { index, day in
-                VStack(spacing: 2) {
-                    Text(day.dayTitle)
-                        .font(.system(size: 7.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.84))
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-
-                    NotchieGlowingWeatherOrbView(weatherCode: day.weatherCode, size: 12.5)
-
-                    Text(String(format: "%.1f°/%.1f°", day.highTempC, day.lowTempC))
-                        .font(.system(size: 7.0, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.88))
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                .frame(maxWidth: .infinity)
-
-                if index < 3 {
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.02),
-                                    Color.white.opacity(0.18),
-                                    Color.white.opacity(0.02)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(width: 0.7, height: 30)
-                }
-            }
-        }
-        .padding(.horizontal, 4)
-    }
-
-    private var bottomSunWindFooter: some View {
-        HStack(spacing: 6) {
-            HStack(spacing: 2.5) {
-                Image(systemName: "sunrise.fill")
-                    .font(.system(size: 7.5))
-                    .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.28))
-                Text(weatherStore.snapshot.sunriseText)
-                    .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.76))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-
-            HStack(spacing: 2.5) {
-                Image(systemName: "sunset.fill")
-                    .font(.system(size: 7.5))
-                    .foregroundStyle(Color(red: 1.0, green: 0.56, blue: 0.24))
-                Text(weatherStore.snapshot.sunsetText)
-                    .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.76))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-
-            Spacer(minLength: 2)
-
-            Button {
-                weatherStore.refreshIfNeeded(force: true)
-            } label: {
-                HStack(spacing: 2.5) {
-                    Image(systemName: "wind")
-                        .font(.system(size: 7.5, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.58, green: 0.82, blue: 1.0))
-                    Text(weatherStore.snapshot.windText)
-                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.84))
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-            }
-            .buttonStyle(.plain)
-            .help("Refresh Weather")
-        }
-        .padding(.horizontal, 9)
-    }
-
-    private static func hourString(from date: Date) -> String {
-        let comp = Calendar.current.component(.hour, from: date)
-        return String(format: "%02d", comp)
-    }
-
-    private static func minuteString(from date: Date) -> String {
-        let comp = Calendar.current.component(.minute, from: date)
-        return String(format: "%02d", comp)
-    }
-
-    private static func shortWeekdayDayString(from date: Date) -> String {
+        let date = Calendar.current.date(byAdding: .day, value: index, to: Date()) ?? Date()
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "EEE d"
+        formatter.locale = Locale.autoupdatingCurrent
+        formatter.dateFormat = isKorean ? "E" : "EEE"
         return formatter.string(from: date)
     }
 }
 
-private struct NotchieFlipDigitCardView: View {
-    let digits: String
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(white: 0.98),
-                            Color(white: 0.88),
-                            Color(white: 0.95)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.35), lineWidth: 0.7)
-                )
-                .shadow(color: .black.opacity(0.38), radius: 2.5, y: 1.5)
-
-            Text(digits)
-                .font(.system(size: 21, weight: .bold, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Color(white: 0.08),
-                            Color(white: 0.22)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .monospacedDigit()
-
-            // Horizontal split flip seam + side hinge notches
-            VStack(spacing: 0) {
-                Spacer()
-                ZStack {
-                    Rectangle()
-                        .fill(Color.black.opacity(0.26))
-                        .frame(height: 0.85)
-                    HStack {
-                        Rectangle()
-                            .fill(Color.black.opacity(0.45))
-                            .frame(width: 2.0, height: 3.0)
-                        Spacer()
-                        Rectangle()
-                            .fill(Color.black.opacity(0.45))
-                            .frame(width: 2.0, height: 3.0)
-                    }
-                }
-                Spacer()
-            }
-        }
-        .frame(width: 44, height: 31)
-    }
-}
-
-private struct NotchieGlowingWeatherOrbView: View {
+private struct NotchieAppleWeatherSymbolView: View {
     let weatherCode: Int
     let size: CGFloat
 
     var body: some View {
-        ZStack {
-            // Warm golden outer glow matching reference screenshot
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color(red: 1.0, green: 0.84, blue: 0.28).opacity(0.75),
-                            Color(red: 1.0, green: 0.58, blue: 0.12).opacity(0.28),
-                            Color.clear
-                        ],
-                        center: .center,
-                        startRadius: 1,
-                        endRadius: size * 0.72
-                    )
-                )
-                .frame(width: size * 1.35, height: size * 1.35)
-
-            // Sun rays + glowing 3D golden sphere
-            Image(systemName: symbolName)
-                .symbolRenderingMode(.multicolor)
-                .font(.system(size: size * 0.78, weight: .semibold))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 1.0, green: 0.95, blue: 0.55),
-                            Color(red: 0.98, green: 0.68, blue: 0.12)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .shadow(color: Color(red: 1.0, green: 0.72, blue: 0.18).opacity(0.85), radius: size * 0.22)
-        }
-        .frame(width: size, height: size)
+        Image(systemName: symbolName)
+            .symbolRenderingMode(.multicolor)
+            .font(.system(size: size, weight: .semibold))
+            .shadow(color: glowColor, radius: size * 0.28)
     }
 
     private var symbolName: String {
@@ -2180,7 +2112,21 @@ private struct NotchieGlowingWeatherOrbView: View {
             return "sun.max.fill"
         }
     }
+
+    private var glowColor: Color {
+        switch weatherCode {
+        case 0, 1, 2:
+            return Color(red: 1.0, green: 0.76, blue: 0.20).opacity(0.45)
+        case 95, 96, 99:
+            return Color(red: 0.95, green: 0.80, blue: 0.25).opacity(0.35)
+        default:
+            return Color.black.opacity(0.25)
+        }
+    }
 }
+
+// Backward compatibility alias
+private typealias NotchieFlipClockWeatherColumn = NotchieAppleWeatherWidgetColumn
 
 // MARK: - Panoramic Tray Section (File Shelf + AirDrop Drop Zone)
 
