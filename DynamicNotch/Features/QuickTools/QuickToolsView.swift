@@ -327,20 +327,8 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: 2 Primary Tabs (Clips | Tools) + Unified Glass Utility Rail
-            HStack(spacing: 6) {
-                primaryWingTabButton(
-                    title: text("Clips", "클립"),
-                    systemImage: "doc.on.clipboard.fill",
-                    isSelected: store.hubMode == .clips || store.hubMode == .notes,
-                    badgeCount: ProductivityStorage.shared.document.snippets.count,
-                    badgeIsAlert: false
-                ) {
-                    if store.hubMode != .clips && store.hubMode != .notes {
-                        store.hubMode = .clips
-                    }
-                }
-
+            // Right Wing: Tools Tab + Unified Glass Utility Rail
+            HStack(spacing: 8) {
                 primaryWingTabButton(
                     title: text("Tools", "도구"),
                     systemImage: "wrench.and.screwdriver.fill",
@@ -351,7 +339,7 @@ struct NotchiePanoramicHubView: View {
                     store.hubMode = .tools
                 }
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 6)
 
                 // Unified Apple Glass Utility Pill (Icon Theme · Pin · Settings)
                 HStack(spacing: 2) {
@@ -694,11 +682,6 @@ struct NotchiePanoramicHubView: View {
                 calendarViewModel: store.calendarViewModel,
                 selectedDayOffset: $selectedDayOffset,
                 accentColor: accentColor,
-                onSwitchToClips: {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                        store.hubMode = .clips
-                    }
-                },
                 onSwitchToTools: {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
                         store.hubMode = .tools
@@ -1341,7 +1324,6 @@ private struct NotchieCalendarScheduleColumn: View {
     var calendarViewModel: CalendarViewModel?
     @Binding var selectedDayOffset: Int
     let accentColor: Color
-    let onSwitchToClips: () -> Void
     let onSwitchToTools: () -> Void
     let onSwitchToTasks: () -> Void
 
@@ -1616,92 +1598,45 @@ private struct NotchieCalendarScheduleColumn: View {
     }
 
     private var quickProductivityActionRow: some View {
-        HStack(spacing: 6) {
-            Button(action: onSwitchToClips) {
-                HStack(spacing: 5) {
-                    Image(systemName: "doc.on.clipboard.fill")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.38, green: 0.82, blue: 1.0))
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(spacing: 3) {
-                            Text(text("Clips", "클립"))
-                                .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            if productivityStorage.document.snippets.count > 0 {
-                                Text("\(productivityStorage.document.snippets.count)")
-                                    .font(.system(size: 7.5, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.9))
-                                    .padding(.horizontal, 3.5)
-                                    .padding(.vertical, 0.5)
-                                    .background(Color.blue.opacity(0.45), in: Capsule())
-                            }
-                        }
-                        Text(latestSnippetPreview)
-                            .font(.system(size: 8, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.55))
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.35))
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(Color.white.opacity(0.055))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.7)
-                        )
-                )
-            }
-            .buttonStyle(.plain)
+        Button(action: onSwitchToTools) {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(red: 1.0, green: 0.78, blue: 0.32))
+                    .frame(width: 3, height: 22)
 
-            Button(action: onSwitchToTools) {
-                HStack(spacing: 5) {
-                    Image(systemName: "wrench.and.screwdriver.fill")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.32))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(text("Tools", "도구함"))
-                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                        Text(text("Timer · Calc", "타이머 · 계산기"))
-                            .font(.system(size: 8, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.55))
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.35))
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(Color.white.opacity(0.055))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.7)
-                        )
-                )
-            }
-            .buttonStyle(.plain)
-        }
-    }
+                Image(systemName: "wrench.and.screwdriver.fill")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.32))
 
-    private var latestSnippetPreview: String {
-        if let text = productivityStorage.document.snippets.first?.text.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
-            return text.replacingOccurrences(of: "\n", with: " ")
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(text("Quick Tools Hub", "생산성 도구함"))
+                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(text("Timer · Calculator · Quick Notes · Dev", "타이머 · 계산기 · 빠른 메모 · 개발 도구"))
+                        .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.38))
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.white.opacity(0.055))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.7)
+                    )
+            )
         }
-        return text("No clips yet", "복사 기록 없음")
+        .buttonStyle(.plain)
     }
 
     private func eventTimeRangeText(for event: EKEvent) -> String {
@@ -2735,18 +2670,14 @@ struct QuickToolsCompactView: View {
 
             Spacer()
 
-            // Right Wing: Core Pillars (Clips & Tools)
+            // Right Wing: Tools & Focus Session
             HStack(spacing: 7) {
                 if store.focus.timer.isActive {
                     FocusCompactView(controller: store.focus)
                 }
 
-                Image(systemName: "doc.on.clipboard.fill")
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle((store.hubMode == .clips || store.hubMode == .notes) ? accentColor : .white.opacity(0.85))
-
                 Image(systemName: "wrench.and.screwdriver.fill")
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(store.hubMode == .tools ? accentColor : .white.opacity(0.85))
             }
         }
