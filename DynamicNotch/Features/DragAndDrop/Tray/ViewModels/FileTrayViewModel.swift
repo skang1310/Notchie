@@ -323,7 +323,12 @@ final class FileTrayViewModel: ObservableObject {
 
 private enum FileTrayStorage {
     static var rootURL: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        if AppEnvironment.isRunningUnitTests {
+            return FileManager.default.temporaryDirectory
+                .appendingPathComponent("DynamicNotch-tests-\(ProcessInfo.processInfo.processIdentifier)", isDirectory: true)
+                .appendingPathComponent("FileTray", isDirectory: true)
+        }
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("DynamicNotch", isDirectory: true)
             .appendingPathComponent("FileTray", isDirectory: true)
     }

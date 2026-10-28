@@ -42,12 +42,9 @@ final class NotchTransitionMetricsTests: XCTestCase {
         )
     }
 
-    func testCompactScaleYReturnsScaleXWhenGivenAndBelow1_0() {
-        XCTAssertEqual(
-            NotchTransitionMetrics.compactScaleY(for: 38, baseHeight: 38, compactScaleX: 0.8),
-            0.8,
-            accuracy: 0.001
-        )
+    func testBaseHeightRemainsFullHeightWhenWidthIsCompressed() {
+        XCTAssertEqual(NotchTransitionMetrics.compactScaleX(for: 250, baseWidth: 200), 0.8, accuracy: 0.001)
+        XCTAssertEqual(NotchTransitionMetrics.compactScaleY(for: 38, baseHeight: 38), 1.0, accuracy: 0.001)
     }
 
     func testCompactScaleYReturns1_0ForBaseHeightOrLess() {

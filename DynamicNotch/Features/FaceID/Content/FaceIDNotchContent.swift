@@ -13,29 +13,50 @@ struct FaceIDNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     var style: FaceIDPresentationStyle = .expanded
 
     var strokeColor: Color {
+        let accent = ApplicationSettingsStore.currentCustomAccentColor()
         if service.state.isSuccess {
-            return .green.opacity(0.3)
+            return accent.opacity(0.45)
         } else if service.state.isFailed {
-            return .red.opacity(0.3)
+            return .red.opacity(0.35)
         } else {
-            return .white.opacity(0.2)
+            return accent.opacity(0.28)
         }
     }
 
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        CGSize(width: baseWidth + 40, height: baseHeight + 125)
+        switch style {
+        case .expanded:
+            return CGSize(width: baseWidth + 46, height: baseHeight + 130)
+        case .compact:
+            return CGSize(width: baseWidth + 95, height: baseHeight + 10)
+        }
     }
 
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        CGSize(width: baseWidth + 40, height: baseHeight + 120)
+        switch style {
+        case .expanded:
+            return CGSize(width: baseWidth + 46, height: baseHeight + 124)
+        case .compact:
+            return CGSize(width: baseWidth + 95, height: baseHeight + 10)
+        }
     }
 
     func compactCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {
-        (top: 24, bottom: 44)
+        switch style {
+        case .expanded:
+            return (top: 24, bottom: 44)
+        case .compact:
+            return (top: max(4, baseRadius - 2), bottom: baseRadius + 3)
+        }
     }
 
     func dynamicIslandCornerRadius(baseHeight: CGFloat) -> CGFloat {
-        baseHeight * 0.25
+        switch style {
+        case .expanded:
+            return baseHeight * 0.25
+        case .compact:
+            return (baseHeight + 6) * 0.5
+        }
     }
 
     @MainActor

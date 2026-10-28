@@ -318,6 +318,20 @@ final class NotchEngine: ObservableObject {
         }
     }
 
+    /// Presents and immediately expands a Notch Hub activity from the idle notch state.
+    func presentIdleHoverContent(_ content: NotchContentProtocol) {
+        guard notchModel.content == nil else { return }
+        dismissedLiveActivityIDs.removeAll(where: { $0 == content.id })
+        updateLiveActivityStack(with: content)
+
+        withAnimation(animations.expandLiveActivity) {
+            notchModel.liveActivityContent = content
+            notchModel.isLiveActivityExpanded = true
+            notchModel.updateToken = UUID()
+        }
+        handleStrokeVisibility()
+    }
+
     /// Apple LiveActivity equivalent: Expands the Dynamic Island into expanded mode.
     func expand() {
         handleActiveContentTap()
@@ -325,7 +339,7 @@ final class NotchEngine: ObservableObject {
 
     /// Apple LiveActivity equivalent: Collapses the Dynamic Island back to compact mode.
     func collapse() {
-        handleOutsideClick()
+        handleOutsideClick(force: true)
     }
 
     /// Apple LiveActivity equivalent: Dismisses the currently presented activity or alert.
@@ -344,7 +358,8 @@ final class NotchEngine: ObservableObject {
     }
 
     /// Handles user clicks outside the expanded island to collapse it back to Compact presentation mode.
-    func handleOutsideClick() {
+    func handleOutsideClick(force: Bool = false) {
+        guard force || notchModel.content?.pinsExpandedInteraction != true else { return }
         if UserDefaults.standard.bool(forKey: "isNotchLocked") {
             return
         }
@@ -373,6 +388,27 @@ final class NotchEngine: ObservableObject {
         }
 
         guard let liveActivityContent = notchModel.liveActivityContent else { return }
+
+        if let quickTools = liveActivityContent as? QuickToolsNotchContent,
+           quickTools.openedFromIdleHover {
+            activeLiveActivities.removeAll(where: { $0.id == quickTools.id })
+            let nextBest = highestPriorityVisibleActivity
+            transition(
+                hide: {
+                    withAnimation(self.animations.collapseLiveActivity) {
+                        self.notchModel.isLiveActivityExpanded = false
+                        self.notchModel.liveActivityContent = nil
+                    }
+                },
+                show: {
+                    withAnimation(self.animations.showContent) {
+                        self.notchModel.liveActivityContent = nextBest
+                    }
+                    self.handleStrokeVisibility()
+                }
+            )
+            return
+        }
 
         transition(
             hide: {

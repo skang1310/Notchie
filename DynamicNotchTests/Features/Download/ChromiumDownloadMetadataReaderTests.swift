@@ -112,8 +112,9 @@ final class ChromiumDownloadMetadataReaderTests: XCTestCase {
 
         let expectation = expectation(description: "publishes exact chromium download progress")
 
+        let gate = ChromiumExpectationGate()
         monitor.onSnapshotChange = { transfers in
-            guard let transfer = transfers.first else { return }
+            guard let transfer = transfers.first, gate.claim() else { return }
             XCTAssertEqual(transfer.displayName, "dataset.zip")
             XCTAssertEqual(transfer.estimatedTotalByteCount, totalBytes)
             XCTAssertEqual(transfer.byteCount, Int64(currentBytes))
@@ -192,5 +193,15 @@ private extension ChromiumDownloadMetadataReaderTests {
         sqlite3_bind_int(stmt, 5, state)
 
         XCTAssertEqual(sqlite3_step(stmt), SQLITE_DONE)
+    }
+}
+
+private final class ChromiumExpectationGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fulfilled = false
+    func claim() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard !fulfilled else { return false }
+        fulfilled = true; return true
     }
 }

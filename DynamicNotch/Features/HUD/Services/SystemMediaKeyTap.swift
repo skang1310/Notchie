@@ -115,7 +115,7 @@ final class SystemMediaKeyTap {
             return true
         }
 
-        requestAccessibilityPermissionIfNeeded()
+        // Request Accessibility only from the explicit Permissions action, never on monitor startup.
 
         guard let systemDefinedEvent else {
             NSLog("Failed to resolve the system-defined CGEvent type.")

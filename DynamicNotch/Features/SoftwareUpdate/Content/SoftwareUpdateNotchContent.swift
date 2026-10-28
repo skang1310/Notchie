@@ -47,7 +47,7 @@ struct SoftwareUpdateNotchContent: NotchContentProtocol, DynamicIslandCustomizab
             SettingsWindowController.shared.showWindow()
             NotificationCenter.default.post(
                 name: NSNotification.Name("SelectSettingsSubPage"),
-                object: SettingsSubPage.softwareUpdate
+                object: SettingsSubPage.about
             )
         }
     }

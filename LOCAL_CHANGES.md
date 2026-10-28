@@ -1,0 +1,116 @@
+# Notchie custom edition features — 2026-10-28
+
+1. **About page & removal of Support / Software Update pages**:
+   - Removed the Support (`후원`) and Software Update (`소프트웨어 업데이트`) navigation rows from `GeneralSettingsView`, removed `Check for Updates` from `MenuBarMenu`, and removed the update badge from `SettingsRootView`.
+   - Redesigned `AboutAppSettingsView` (`일반 - 정보`) as **Notchie Custom Edition**, showcasing the user's added features, local build revision (`Notchie-20261028-v2`), and open-source attributions (`DynamicNotch` GPL-3.0 and `HeyMac` MIT) without the upstream author's personal Telegram, email, or donation links.
+2. **NotchNook-style Idle Notch Hover Menu & Customizable Tabs**:
+   - Added persisted `isIdleNotchHoverMenuEnabled` (default `true`) in `ApplicationSettingsStore` (`GeneralSettingsStorage.Keys.idleNotchHoverMenuEnabled`), exposed in General Quick Controls and Gestures settings.
+   - Extended `NotchViewModel` and `NotchEngine` (`presentIdleHoverContent`) so hovering over (or clicking) the idle notch expands the Notch Hub (`QuickToolsNotchContent`) with a top horizontal icon-tab bar (`QuickToolsView`), pin toggle (`isNotchHubPinned`), and automatic collapse back to the idle notch when the cursor leaves or on outside click.
+   - Added customizable tab visibility (`QuickToolTab` / `QuickToolsStore.enabledTabIDs`) persisted in `UserDefaults`.
+3. **Clipboard History Search, One-Click Re-copy & Opt-in Auto-Capture**:
+   - Upgraded `ClipboardSnippetsView` and `ProductivityStorage` with real-time search filtering (`filteredSnippets(query:)`), one-click row/button re-copy with visual `"Copied!"` feedback, and an opt-in `"Auto-save copied items while running"` toggle (`isAutoCaptureClipboardEnabled`, default `false`, excluding concealed/transient pasteboard types).
+4. **Custom Accent Color Picker**:
+   - Added `customAccentColorHex` (default `"#34C759"`) and `customAccentColor` in `ApplicationSettingsStore` and `AppearanceSettingsView` with preset color swatches + native macOS `ColorPicker`, applied across the Notch Hub tabs, active indicators, and Face Unlock scan animations.
+5. **Face Unlock Original (Full Badge Scan) vs. Minimal Style & Live Notch Preview**:
+   - Added the **Notch Unlock Style & Preview (`노치 잠금 해제 스타일 및 미리보기`)** card in `FaceIDSettingsView` with side-by-side live visual previews for **Original (`FaceIDPresentationStyle.expanded` — full badge that plays the scan)** and **Minimal (`FaceIDPresentationStyle.compact` — compact lock + scan bar)** using `ScanAnimationView` (`idleanimation.mp4` / `unlockanimation.mp4`), plus **"Preview in Notch (`노치에서 미리보기`)"** buttons (`FaceIDService.playNotchPreview`) that animate the chosen style directly in the top notch.
+6. **Startup Permission Check & Missing-Permission Alert (`Notchie-20261028-v3`)**:
+   - Added persisted `isStartupPermissionCheckEnabled` (default `true`) in `ApplicationSettingsStore` (`GeneralSettingsStorage.Keys.startupPermissionCheckEnabled`) and exposed the **Startup Permission Check & Alert (`앱 시작 시 권한 확인 및 알림`)** card in `PermissionsSettingsView`.
+   - On interactive app launch (`!AppEnvironment.isRunningTests && !isRunningUITests`), `SettingsPermissionController.shared.evaluateStartupPermissions` requests undetermined permissions and, if any required permissions remain ungranted, presents both a temporary Notch warning banner (`MissingPermissionsNotchContent`) and a native `NSAlert` listing the missing permissions with a direct button to open `SettingsSubPage.permissions`.
+7. **Code Review, Optimization & Documentation Webpage (`docs/index.html`)**:
+   - Cleaned up unused `SettingsSubPage.support` / `SettingsSubPage.softwareUpdate` routes, removed redundant Sparkle observer in `AppDelegate`, unified `privacyText(_:_:)` localization across custom views, shared `SettingsPermissionController.shared`, and removed staging icon archives.
+   - Created `docs/index.html` and updated `README.md` with rendered screenshots (`docs/screenshots/*.png`) and open-source attributions.
+
+# Notchie branding and icon replacement — 2026-10-28
+
+Renamed user-facing app display/bundle name to `Notchie` (`Info.plist`, `InfoPlist.xcstrings`, `Localizable.xcstrings`, `AboutAppSettingsView`, `SoftwareUpdateSettingsView`, `AppVersionText`, and FaceID/AppPrivacy strings) while retaining internal module/executable/bundle ID `com.Jackson.DynamicNotch` and `/Applications/DynamicNotch.app` bundle path to preserve existing settings, Keychain items, and TCC permissions. Removed legacy `AppIcon`, `logo`, and `simplifiedLogo` PNGs and replaced them with the Light and Dark icon sets from `Notchie-macOS-Icons`.
+
+# HeyMac app privacy extension — 2026-10-28
+
+Added opt-in app privacy cover using existing vendored HeyMac app store/session/auth/system fallback engines. Per-app every-switch and 5/15 minute total/focus-loss relock policies, explicit registered-face preference, native Touch ID/password fallback without saving credentials, lock-all, bounded pause, recovery exclusions, native app picker and cover preview. No extra protected permission, launch agent or automatic enabling. Opaque native covers hide the target app and cancel stale auth results; sleep/lock/termination revoke sessions. Reused existing settings page via two segments and menu controls. Also corrected stale Privacy login-password text.
+
+During development a LocalTests bootstrap EXC_BAD_ACCESS occurred repeatedly with stale incremental app artifacts; initializer cleanup + clean build passed all 265 app tests. Exact compiler/runtime cause remains unproven. Added a quiet unit-test menu path and scripts/test-app.sh (clean, one worker, distinct display name, no debug dylib). The production installed build was a different process. See TEST_REPORT.md for final evidence.
+
+# HeyMac face unlock extension — 2026-10-28
+
+User requested persistent /Applications delivery, Alcove-like behavior and HeyMac face unlock. Existing Alcove settings, activities, gestures and tools retained. Added explicit opt-in camera registration, live confirmation, face-only test, encrypted password saving, permission settings link, enable/disable and confirmed removal. HeyMac core/engine/models are vendored at 8cfbe360dc1cccd5cae42f44727da68685e549dc with MIT/model notices; separate Keychain, preferences and support directory. No automatic enrollment, permission request, login launch or activation. No Face ID/TrueDepth security claim. Engine events feed the existing notch presentation. Private lock-state API remains documented in Vendor/HeyMac/LOCAL_INTEGRATION.md. New post-match cancellation gate prevents typing after stop/disable.
+
+# DynamicNotch local extension
+
+Base: https://github.com/jackson-storm/DynamicNotch
+Revision: ec927e198550fd6c731b9135c159736c8ab0e0cf
+Upstream app version: 1.6.3. License: GPL-3.0; original notices retained.
+Installed target: /Applications/DynamicNotch.app (local ad-hoc signature; not Developer ID notarized).
+
+## Alcove-inspired changes
+
+Observed reference: installed Alcove 1.7.7 build 199, General/Sound/Now Playing/Lock Screen settings and official tryalcove.com demo. Observation record: ../Documentation/ALCOVE_OBSERVATIONS.md. No Alcove executable or assets copied.
+
+- Reopening the installed app opens Settings; a standard Command-comma Settings command is available.
+- General Quick controls: hover/click expansion, hover haptics and hiding media when its source is frontmost. Bindings reuse the existing settings and engine.
+- Independent hover expansion delay, 0.05–1.50 seconds, separated from press-and-hold timing, sanitized and persisted.
+- Mouse drag and trackpad swipe preferences now persist and affect the engine; upstream accessors previously always returned true and ignored writes.
+- Separate swipe-dismiss and swipe-restore controls, retaining the existing combined shortcut.
+- Hide-when-source-active is also exposed on the Now Playing page; its pre-existing implementation is reused.
+- English and Korean text for new controls, retaining upstream localization structure.
+- Login launch and FaceID are not enabled for fresh local installs. Test construction no longer changes login registration.
+- Local-build marker disables Sparkle checks/downloads so upstream updates cannot silently replace this extension; update settings explain the local build.
+- Repaired a stale upstream transition test calling a removed compactScaleX parameter.
+
+## Existing upstream capabilities preserved
+
+Media, artwork, audio outputs/visualization, calendar, downloads, tray/AirDrop, timers, HUDs, battery/connectivity/focus, priorities, display selection, gesture/physics engine, fullscreen handling, lock-screen and localization settings are reused. Their presence is not a claim of physical end-to-end verification. Upstream uses private/system-specific integration techniques (including its MediaRemote adapter); this patch adds no new private framework.
+
+## Remaining Alcove differences / validation gates
+
+No claim of complete Alcove parity. Automatic Quick Peek on track change, arbitrary idle None/Playing/Calendar/Duo selection, hide-in-Mission-Control/game policies and lock-screen weather are not added by this patch. Do not expose unsupported toggles merely to resemble the reference. FaceID/password enrollment is not authorized or configured. Hardware HUD, real playback/source-hiding and physical gestures require runtime/hardware verification with user-authorized permissions.
+
+## Rebuild / update / uninstall
+
+Build Release with Xcode; scripts/install-local.sh copies it into Applications and verifies an ad-hoc signature. Existing locally installed versions are backed up under ../build/installed-backups.noindex/. No Gatekeeper/quarantine/security settings are weakened. Local modified sources remain here under GPL-3.0. To uninstall: quit, disable login launch if enabled by the user, then remove the app; settings remain unless explicitly removed. No shell/Codex configuration changes.
+
+Build/test/runtime evidence will be recorded in ../TEST_REPORT.md and local logs under ../build/checkpoints/.
+
+## Repeated folder-permission fix
+
+The upstream default download monitor scanned Downloads, Desktop, Documents, Movies, Music and Pictures automatically. This local build starts with no monitored locations and downloads monitoring off. Downloads settings let the user choose exactly one folder using NSOpenPanel; a security-scoped bookmark persists that choice. Folder changes stop and restart the existing monitor and release scoped access when stopped. Browser-profile metadata lookup is separately opt-in and off by default. Full Disk Access status is not guessed by opening protected TCC/Focus databases. Accessibility prompts are triggered only by the explicit permission action, not background HUD startup. Test-host detection includes modern XCTest injection markers; verification app instances are not left running beside the installed app.
+
+## Security review and useful local tools — 2026-10-28
+
+No confirmed malware/exfiltration was identified in the reviewed source. This is not a guarantee about precompiled upstream dependencies. See Documentation/DYNAMICNOTCH_SECURITY_REVIEW.md and Documentation/NOTCH_APP_COMPARISON_20261028.md (also retained in the parent workspace).
+
+- Removed password-based Face Unlock, credential collection/storage service, simulated face success and lock-screen password injection. The compatibility scan always fails; settings explain removal. Existing saved Keychain items are neither read nor deleted by this change.
+- Added Privacy & Security with off-by-default network consent for online lyrics, public-IP country lookup and localhost YouTube Music remote. Network recipients/data are described.
+- Added real Quick Tools in Settings/menu bar/the existing notch engine: local notes with atomic persistence/pin/search/corruption protection; monotonic stopwatch; 15/30/60-minute Keep Awake with expiry/stop/quit release; system color picker with explicit HEX copy.
+- Local notes reuse our own previously tested utility implementation with a separate DynamicNotch storage location. Standalone NookFlow remains cancelled and is not installed.
+- Added regression tests for security defaults, disabled credential unlock, denied IP lookup, notes persistence, stopwatch, assertion lifecycle and color formatting.
+- The user's existing /Users/davidkang/DynamicNotch Xcode project team settings are preserved when syncing this patch.
+
+## Approved productivity extensions — 2026-10-28
+
+1. Explicit Quick Tools session takes precedence over other ongoing activities. Temporary system alerts still preempt; Return to automatic removes only the tools session. Expansion waits for selected content instead of expanding the previous activity.
+2. Searchable tool/saved-note palette, menu entry, Command-Shift-K while app is active and Control-Option-Space global registration with its own hotkey ID. Timer shortcut is preserved. App launch uses a user-selected application, never a shell command. Unsaved note drafts are not overwritten by palette selection.
+3. Focus/break sessions reuse LocalTimerViewModel and KeepAwakeController; optional display-awake defaults off, pause/stop releases it, completed-focus history persists. App termination ends active sessions; it does not pretend to resume them.
+4. Existing calendar join UI now extracts HTTPS links from event URL/notes/location, matches supported service hosts safely, and displays relative start time. No auto-join or new calendar permission grant.
+5. Local day-based top-three priorities, completion and explicit removal.
+6. Existing tray context menu exports PNG copies or JPEG copies resized to at most 1600 px. Save dialog; original path rejected; JPEG transparency flattened white. Static images only; no cloud upload.
+7. Clipboard snippets captured only by explicit button, no polling. Concealed password-manager items excluded. Local 0600 JSON is not encrypted; 100 items and 100 KB/item maximum; explicit copy/removal.
+8. Local exact-bundle-ID display hide rules, using existing window presenter and public workspace activation notifications. Own app excluded; removing a rule restores automatic display.
+9. Explicitly selected project/scheme Xcode build or file SHA-256 process, no shell. Actual exit code/duration and bounded local output; completion opens results, cancellation requests process interrupt. Project build scripts are disclosed in UI.
+10. Permission/optional-connection/folder/Keep Awake state and controls to disable optional connections, release assertions and stop media/download/recording/timer monitors. Read-only permission checks never request grants.
+
+Additional safety repair: upstream automatic screenshot interception scanned Desktop, redirected macOS screenshot output, changed floating-thumbnail preference and restarted SystemUIServer. It is disabled for local builds and all test hosts, visibly explained in screen capture settings; screen recording activity detection is separate. No attempt is made to guess or overwrite pre-existing system capture preferences.
+
+Tests: focus/storage, URL lookalike rejection, app rules, real image output dimensions, and actual SHA-256/nonzero process results are covered. Full build/test/installed verification remains separately documented in TEST_REPORT.md and parent source-of-truth trackers.
+
+Test infrastructure: use a separate PRODUCT_BUNDLE_IDENTIFIER=com.Jackson.DynamicNotch.LocalTests, DYNAMICNOTCH_TEST_HOST=YES and per-process temporary tray storage. Real screenshot interception is excluded from test hosts. Download publication callbacks are invalidated on stop/restart; test expectations accept one qualifying notification. Lock-screen integration test explicitly enables its prerequisite instead of depending on user preferences. Earlier legacy tests changed app-language preferences; the observed Korean Settings preference was restored through the installed UI.
+
+Canonical app is /Applications/DynamicNotch.app. On 2026-10-28 duplicate app registrations were removed and old installed backups preserved under build/installed-backups.noindex in the original workspace. Development outputs remain; opening them can register them again.
+
+## Support-20261028 — local support workflow
+- Manual Quick Tools pin expanded interaction until explicit dismissal; About shows local revision and bundle path.
+- Existing timer publisher uses one-second updates (two in Low Power Mode); serial thumbnail decoder and bounded cache. CPU/battery improvement is not yet measured.
+- Offline calculator/units; explicit Apple Shortcuts list/run; ZIP creation and ZIP32 extraction with path/link/encryption checks, full bounded deflate/CRC validation and extraction from an immutable private copy.
+- JSON formatting/minification/structural diff, query decoding, pattern-based secret masking and local Singular payload structure hints. Masking is a review aid, not a guarantee.
+- CSV A/B group reconciliation with exact Decimal sums, explicit keys/metric, missing-row distinction, duplicate counts and no automatic timezone/currency conversion.
+- Local screenshot case board: selected imports/paste, SHA-256 dedup, session-only selected-folder watcher, thumbnails, two-image compare, captions, on-demand local OCR, opaque redaction and evidence folder export. Export reencodes images and excludes OCR text/original image metadata. Original images remain preserved locally.
+- No customer content fetched, uploaded, or sent. No permission granted automatically. Alcove assets/executable are not copied.

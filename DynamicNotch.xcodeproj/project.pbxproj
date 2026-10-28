@@ -10,6 +10,7 @@
 		E2761738300A66E900E79207 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E2761737300A66E900E79207 /* Sparkle */; };
 		E2A100022F90000000000001 /* DynamicNotch/Resources/MediaRemoteAdapter/MediaRemoteAdapter.framework in Embed MediaRemote Adapter */ = {isa = PBXBuildFile; fileRef = E2A100012F90000000000001 /* DynamicNotch/Resources/MediaRemoteAdapter/MediaRemoteAdapter.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E2C135B72F59FA8100348421 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = E2C135B62F59FA8100348421 /* Lottie */; };
+		FACA00000000000000000001 /* HeyMacEngine in Frameworks */ = {isa = PBXBuildFile; productRef = FACA00000000000000000002 /* HeyMacEngine */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -117,6 +118,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E2761738300A66E900E79207 /* Sparkle in Frameworks */,
+				FACA00000000000000000001 /* HeyMacEngine in Frameworks */,
 				E2C135B72F59FA8100348421 /* Lottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -200,6 +202,7 @@
 			packageProductDependencies = (
 				E2C135B62F59FA8100348421 /* Lottie */,
 				E2761737300A66E900E79207 /* Sparkle */,
+				FACA00000000000000000002 /* HeyMacEngine */,
 			);
 			productName = DynamicNotch;
 			productReference = E2EF78512EDDB60E00F96D1E /* DynamicNotch.app */;
@@ -322,6 +325,7 @@
 			mainGroup = E2EF78482EDDB60E00F96D1E;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				FACA00000000000000000003 /* HeyMac */,
 				E2C135B52F59FA8100348421 /* XCRemoteSwiftPackageReference "lottie-ios" */,
 				E2761736300A66E900E79207 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
@@ -566,7 +570,7 @@
 				CURRENT_PROJECT_VERSION = 25;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "DynamicNotch/Resources/Preview\\ Content";
-				DEVELOPMENT_TEAM = WZHZ6LB2F6;
+				DEVELOPMENT_TEAM = AXCMBMA992;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -584,12 +588,14 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DynamicNotch/Application/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Notchie;
+				INFOPLIST_KEY_CFBundleName = Notchie;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "We need access to media data for display in Notch.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "The app requires Bluetooth access to check the status of devices.";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "DynamicNotch needs access to your calendar to display upcoming events in the notch.";
-				INFOPLIST_KEY_NSCalendarsUsageDescription = "DynamicNotch needs access to your calendar to display upcoming events in the notch.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "DynamicNotch needs access to your camera to display a camera preview in the notch.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Notchie needs access to your calendar to display upcoming events in the notch.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Notchie needs access to your calendar to display upcoming events in the notch.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Notchie needs access to your camera to display a camera preview in the notch.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "The app requires local network access to determine the name of your current Wi-Fi network.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -631,7 +637,7 @@
 				CURRENT_PROJECT_VERSION = 25;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "DynamicNotch/Resources/Preview\\ Content";
-				DEVELOPMENT_TEAM = WZHZ6LB2F6;
+				DEVELOPMENT_TEAM = AXCMBMA992;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -649,12 +655,14 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DynamicNotch/Application/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Notchie;
+				INFOPLIST_KEY_CFBundleName = Notchie;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "We need access to media data for display in Notch.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "The app requires Bluetooth access to check the status of devices.";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "DynamicNotch needs access to your calendar to display upcoming events in the notch.";
-				INFOPLIST_KEY_NSCalendarsUsageDescription = "DynamicNotch needs access to your calendar to display upcoming events in the notch.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "DynamicNotch needs access to your camera to display a camera preview in the notch.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Notchie needs access to your calendar to display upcoming events in the notch.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Notchie needs access to your calendar to display upcoming events in the notch.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Notchie needs access to your camera to display a camera preview in the notch.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "The app requires local network access to determine the name of your current Wi-Fi network.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -826,6 +834,10 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		FACA00000000000000000003 /* HeyMac */ = {isa = XCLocalSwiftPackageReference; relativePath = Vendor/HeyMac; };
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		E2761736300A66E900E79207 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -856,6 +868,7 @@
 			package = E2C135B52F59FA8100348421 /* XCRemoteSwiftPackageReference "lottie-ios" */;
 			productName = Lottie;
 		};
+		FACA00000000000000000002 /* HeyMacEngine */ = {isa = XCSwiftPackageProductDependency; productName = HeyMacEngine; };
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E2EF78492EDDB60E00F96D1E /* Project object */;

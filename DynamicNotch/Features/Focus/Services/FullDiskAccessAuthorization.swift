@@ -9,6 +9,8 @@ enum FullDiskAccessAuthorization {
     ]
 
     static func hasPermission() -> Bool {
+        // Do not read protected TCC/Focus databases just to guess permission in local builds.
+        if Bundle.main.object(forInfoDictionaryKey: "DynamicNotchLocalBuild") as? Bool == true { return false }
         for url in probeURLs {
             if canReadProtectedResource(at: url) {
                 return true

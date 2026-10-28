@@ -79,8 +79,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol, @unche
     private init() {
         print("🎧 [BluetoothAudioManager] Initializing...")
         setupBluetoothObservers()
-        checkInitialDevices()
-        startPollingForChanges()
     }
 
     deinit {

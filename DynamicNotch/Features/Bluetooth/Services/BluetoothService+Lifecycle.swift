@@ -8,14 +8,23 @@ extension BluetoothService {
     func setupBluetoothObservers() {
         print("🎧 [BluetoothAudioManager] Setting up Bluetooth observers...")
 
-        connectNotification = IOBluetoothDevice.register(
-            forConnectNotifications: self,
-            selector: #selector(handleDeviceConnected(_:fromDevice:))
-        )
-
-        registerDisconnectObserversForPairedDevices()
-        setupCoreAudioObservers()
-        print("🎧 [BluetoothAudioManager] ✅ Native IOBluetooth and CoreAudio observers registered")
+        // IOBluetooth's first registration can synchronously wait for its
+        // CoreBluetooth coordinator. Keep the app's main run loop available.
+        DispatchQueue.global(qos: .utility).async { @Sendable [weak self] in
+            guard let self else { return }
+            let notification = IOBluetoothDevice.register(
+                forConnectNotifications: self,
+                selector: #selector(self.handleDeviceConnected(_:fromDevice:))
+            )
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { notification?.unregister(); return }
+                self.connectNotification = notification
+                self.registerDisconnectObserversForPairedDevices()
+                self.setupCoreAudioObservers()
+                self.checkInitialDevices()
+                self.startPollingForChanges()
+            }
+        }
     }
 
     func registerDisconnectObserversForPairedDevices() {

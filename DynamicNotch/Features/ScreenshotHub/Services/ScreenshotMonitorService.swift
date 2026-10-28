@@ -22,7 +22,9 @@ final class ScreenshotMonitorService {
     }
     
     func startMonitoring(disableSystemThumbnail: Bool = true) {
-        guard !isMonitoring else { return }
+        // Upstream interception changes macOS screenshot preferences and scans Desktop.
+        // Local builds preserve system capture behavior; tests never touch real folders/preferences.
+        guard !AppEnvironment.isRunningTests, !AppEnvironment.isLocalBuild, !isMonitoring else { return }
         isMonitoring = true
         
         self.originalScreenshotLocation = Self.getSystemScreenshotLocation()

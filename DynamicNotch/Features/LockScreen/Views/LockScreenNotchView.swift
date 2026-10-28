@@ -33,13 +33,14 @@ struct LockScreenNotchView: View {
     }
 
     private var headlineColor: Color {
+        let accent = ApplicationSettingsStore.currentCustomAccentColor()
         switch faceIDService.state {
         case .searching, .scanning, .success:
-            return .green
+            return accent
         case .failed:
             return .white.opacity(0.2)
         default:
-            return .green
+            return accent
         }
     }
     
@@ -51,12 +52,23 @@ struct LockScreenNotchView: View {
         isFaceIDActive ? 18 : 14
     }
 
+    private var lockIconName: String {
+        if faceIDService.state.isActivelyEvaluating {
+            return "lock.fill"
+        }
+        if lockScreenManager.didUnlockWithFaceID || faceIDService.state.isSuccess || !lockScreenManager.isShowingLockPresentation {
+            return "lock.open.fill"
+        }
+        return "lock.fill"
+    }
+
     var body: some View {
         HStack {
-            Image(systemName: (lockScreenManager.didUnlockWithFaceID || faceIDService.state.isSuccess || !lockScreenManager.isShowingLockPresentation) ? "lock.open.fill" : "lock.fill")
+            Image(systemName: lockIconName)
+                .contentTransition(.symbolEffect(.replace))
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .scaleEffect(isFaceIDActive ? 1.4 : 1.0)
+                .foregroundStyle(faceIDService.state.isSuccess ? headlineColor : .white)
+                .scaleEffect(isFaceIDActive ? 1.35 : 1.0)
             
             Spacer()
 

@@ -1,0 +1,112 @@
+[
+  {
+    "id": "01-teum",
+    "index": 1,
+    "title": "Teum · 틈 — 블루 포털과 작은 틈",
+    "name": "Teum · 틈",
+    "caption": "작은 공간에서 Mac의 흐름을 연결하는 도구",
+    "src": "01-teum/icon.png",
+    "href": "01-teum/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "01-teum/prompt.txt"
+  },
+  {
+    "id": "02-nori",
+    "index": 2,
+    "title": "Nori · 노리 — 하늘색과 부드러운 표정",
+    "name": "Nori · 노리",
+    "caption": "친근하게 곁에 머무는 Mac 도우미",
+    "src": "02-nori/icon.png",
+    "href": "02-nori/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "02-nori/prompt.txt"
+  },
+  {
+    "id": "03-pico",
+    "index": 3,
+    "title": "Pico · 피코 — 코랄색과 겹친 캡슐",
+    "name": "Pico · 피코",
+    "caption": "작고 빠른 일상 도구",
+    "src": "03-pico/icon.png",
+    "href": "03-pico/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "03-pico/prompt.txt"
+  },
+  {
+    "id": "04-sway",
+    "index": 4,
+    "title": "Sway · 스웨이 — 에메랄드 리본",
+    "name": "Sway · 스웨이",
+    "caption": "제스처와 자연스러운 작업 흐름",
+    "src": "04-sway/icon.png",
+    "href": "04-sway/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "04-sway/prompt.txt"
+  },
+  {
+    "id": "05-luma",
+    "index": 5,
+    "title": "Luma · 루마 — 골드와 작은 빛",
+    "name": "Luma · 루마",
+    "caption": "상태를 은은하게 알려주는 빛",
+    "src": "05-luma/icon.png",
+    "href": "05-luma/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "05-luma/prompt.txt"
+  },
+  {
+    "id": "06-halo",
+    "index": 6,
+    "title": "Halo · 헤일로 — 보랏빛 링과 작은 점",
+    "name": "Halo · 헤일로",
+    "caption": "노치 주변으로 이어지는 활동",
+    "src": "06-halo/icon.png",
+    "href": "06-halo/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "06-halo/prompt.txt"
+  },
+  {
+    "id": "07-nesto",
+    "index": 7,
+    "title": "Nesto · 네스토 — 보라색 포켓과 카드",
+    "name": "Nesto · 네스토",
+    "caption": "여러 도구가 모이는 작은 둥지",
+    "src": "07-nesto/icon.png",
+    "href": "07-nesto/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "07-nesto/prompt.txt"
+  },
+  {
+    "id": "08-pebble",
+    "index": 8,
+    "title": "Pebble · 페블 — 실버와 매끈한 조약돌",
+    "name": "Pebble · 페블",
+    "caption": "작고 단단한 데스크 도구",
+    "src": "08-pebble/icon.png",
+    "href": "08-pebble/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "08-pebble/prompt.txt"
+  },
+  {
+    "id": "09-veil",
+    "index": 9,
+    "title": "Veil · 베일 — 세이지색과 겹친 패널",
+    "name": "Veil · 베일",
+    "caption": "필요할 때만 보여주는 프라이버시",
+    "src": "09-veil/icon.png",
+    "href": "09-veil/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "09-veil/prompt.txt"
+  },
+  {
+    "id": "10-glint",
+    "index": 10,
+    "title": "Glint · 글린트 — 인디고와 둥근 별",
+    "name": "Glint · 글린트",
+    "caption": "중요한 순간을 알려주는 반짝임",
+    "src": "10-glint/icon.png",
+    "href": "10-glint/icon.png",
+    "route": "built-in-imagegen",
+    "promptPath": "10-glint/prompt.txt"
+  }
+]

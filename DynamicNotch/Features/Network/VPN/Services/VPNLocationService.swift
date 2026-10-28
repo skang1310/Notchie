@@ -16,8 +16,10 @@ final class VPNLocationService: Sendable {
     static let shared = VPNLocationService()
     
     private let session: URLSession
+    private let allowLookup: @Sendable () -> Bool
     
-    init() {
+    init(allowLookup: @escaping @Sendable () -> Bool = { PrivacyPolicy.allows(PrivacyPolicy.ipLookupKey) }) {
+        self.allowLookup = allowLookup
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 4.0
         config.timeoutIntervalForResource = 5.0
@@ -25,6 +27,7 @@ final class VPNLocationService: Sendable {
     }
     
     func fetchCurrentLocation() async -> VPNLocationInfo? {
+        guard allowLookup() else { return nil }
         // 1. Try https://api.country.is
         if let info = await fetchFromCountryIs() {
             return info

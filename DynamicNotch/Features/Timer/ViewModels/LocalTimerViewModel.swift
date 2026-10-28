@@ -54,7 +54,8 @@ class LocalTimerViewModel: ObservableObject {
         }
         pausedRemaining = nil
         
-        timer = Timer.publish(every: 0.1, on: .main, in: .common)
+        let interval: TimeInterval = ProcessInfo.processInfo.isLowPowerModeEnabled ? 2 : 1
+        timer = Timer.publish(every: interval, tolerance: interval * 0.15, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self = self else { return }

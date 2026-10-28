@@ -122,6 +122,12 @@ struct TrayExpandedActiveNotchView: View {
                     }
                 }
             )
+            .contextMenu {
+                if ["png", "jpg", "jpeg", "heic", "heif", "tif", "tiff"].contains(item.url.pathExtension.lowercased()) {
+                    Button("productivity.image.png") { LocalImageConverter.export(item.url, format: .png) }
+                    Button("productivity.image.jpeg") { LocalImageConverter.export(item.url, format: .jpeg, maxEdge: 1600) }
+                }
+            }
             .transition(
                 .blurAndFade
                     .combined(with: .scale)

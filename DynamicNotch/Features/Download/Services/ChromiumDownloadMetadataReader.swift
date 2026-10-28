@@ -59,6 +59,8 @@ nonisolated final class ChromiumDownloadMetadataReader: @unchecked Sendable {
     /// Looks up download metadata (total file size and target path) for the given file URL
     /// across installed Chromium-based browsers.
     func downloadInfo(for fileURL: URL) -> ChromiumDownloadInfo? {
+        // Browser profile data is opt-in. Explicit databases are test-owned fixtures.
+        guard explicitDatabaseURLs != nil || UserDefaults.standard.bool(forKey: DownloadFolderAuthorization.browserMetadataKey) else { return nil }
         let databases = resolvedDatabaseURLs()
         guard !databases.isEmpty else { return nil }
 

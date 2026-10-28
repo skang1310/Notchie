@@ -177,6 +177,11 @@ final class SettingsViewModel: ObservableObject, NotchSettingsProviding {
         set { application.notchCollapseInteraction = newValue }
     }
 
+    var notchHoverExpandDelay: TimeInterval {
+        get { application.notchHoverExpandDelay }
+        set { application.notchHoverExpandDelay = newValue }
+    }
+
     var notchPressHoldDuration: TimeInterval {
         get { application.notchPressHoldDuration }
         set { application.notchPressHoldDuration = newValue }

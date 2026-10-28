@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let globalClickMonitor = GlobalClickMonitor()
     var hideWindowWorkItem: DispatchWorkItem?
     var cancellables = Set<AnyCancellable>()
+    private var quickToolsPresentation: AnyCancellable?
     var isPrimaryWindowSuspendedForLock = false
     var expansionTime: Date = .distantPast
     
@@ -68,6 +69,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeLockScreenWindowHandoff()
         
         SettingsWindowController.shared.setupDependencies(appDelegate: self)
+        NotificationCenter.default.publisher(for: .showQuickToolsInNotch)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.quickToolsPresentation = self.notchViewModel.$notchModel
+                    .receive(on: RunLoop.main)
+                    .filter { $0.content?.id == "local.quickTools" }
+                    .first()
+                    .sink { [weak self] _ in self?.notchViewModel.expandActiveLiveActivity() }
+                self.notchViewModel.send(.showLiveActivity(QuickToolsNotchContent(store: QuickToolsStore.shared)))
+            }.store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .closeQuickToolsInNotch)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.quickToolsPresentation?.cancel()
+                self?.notchViewModel.send(.hideLiveActivity(id: "local.quickTools"))
+            }.store(in: &cancellables)
+        NotificationCenter.default.publisher(for: .presentationRuleChanged)
+            .receive(on: RunLoop.main).sink { [weak self] _ in self?.updateWindowFrame() }.store(in: &cancellables)
+        NotificationCenter.default.publisher(for: .pauseLocalMonitors)
+            .receive(on: RunLoop.main).sink { [weak self] _ in
+                guard let self else { return }
+                self.settingsViewModel.mediaAndFiles.isDownloadsLiveActivityEnabled = false
+                self.settingsViewModel.mediaAndFiles.isNowPlayingLiveActivityEnabled = false
+                self.settingsViewModel.lockScreen.isLockScreenMediaPanelEnabled = false
+                self.settingsViewModel.screenRecording.isScreenRecordingLiveActivityEnabled = false
+                self.settingsViewModel.mediaAndFiles.isTimerLiveActivityEnabled = false
+            }.store(in: &cancellables)
+        NotificationCenter.default.publisher(for: .localJobCompleted)
+            .receive(on: RunLoop.main).sink { _ in
+                QuickToolsStore.shared.selectedTool = "jobs"
+                NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
+            }.store(in: &cancellables)
+        NotificationCenter.default.publisher(for: .focusSessionCompleted)
+            .receive(on: RunLoop.main).sink { _ in
+                QuickToolsStore.shared.selectedTool = "focus"
+                NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
+            }.store(in: &cancellables)
+        ProductivityCoordinator.shared.start()
+        HeyMacFaceUnlockController.shared.resumeIfAuthorized()
+        AppPrivacyController.shared.resume()
 
         if !isRunningUITests {
             createNotchWindow()
@@ -97,18 +140,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if !isRunningUITests {
             notchEventCoordinator.checkFirstLaunch()
-            SparkleUpdater.shared.$isUpdateAvailable
-                .receive(on: RunLoop.main)
-                .sink { [weak self] isAvailable in
-                    self?.notchEventCoordinator.handleSoftwareUpdateEvent(isAvailable ? .updateAvailable : .upToDate)
-                }
-                .store(in: &cancellables)
+            SettingsPermissionController.shared.evaluateStartupPermissions(
+                applicationSettings: settingsViewModel.application,
+                notchViewModel: notchViewModel
+            )
         }
 
         lockScreenManager.startMonitoring()
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard !AppEnvironment.isRunningTests else { return false }
+        SettingsWindowController.shared.showWindow()
+        return true
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
+        AppPrivacyController.shared.shutdown()
+        HeyMacFaceUnlockController.shared.shutdown()
+        ProductivityCoordinator.shared.shutdown()
+        QuickToolsStore.shared.shutdown()
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         container.lockScreenManager.stopMonitoring()

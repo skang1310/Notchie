@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct MenuBarMenu: View {
-    @ObservedObject private var updater = SparkleUpdater.shared
+    @ObservedObject private var privacy = AppPrivacyController.shared
     @AppStorage(GeneralSettingsStorage.Keys.appLanguage) private var appLanguageRaw: String = DynamicNotchLanguage.system.rawValue
 
     private var locale: Locale {
@@ -30,22 +30,24 @@ struct MenuBarMenu: View {
             Divider()
             
             Button {
-                updater.checkForUpdates()
-            } label: {
-                Image(systemName: "arrow.down.circle")
-                Text(locale.dn("menuBar.checkForUpdates", fallback: "Check for Updates"))
-            }
-            .disabled(!updater.canCheckForUpdates)
-            
-            Button {
                 SettingsWindowController.shared.showWindow()
             } label: {
                 Image(systemName: "gearshape")
                 Text(locale.dn("menuBar.settings", fallback: "Settings"))
             }
             
+            Button { NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil) } label: {
+                Label("settings.tools.title", systemImage: "square.grid.2x2")
+            }
+            Button("support.board.title") { SupportDeskCoordinator.shared.show() }
+            Button("productivity.palette") { ProductivityCoordinator.shared.showPalette() }
             Divider()
             
+            if privacy.enabled {
+                Button(privacyText("Relock private apps", "보호 앱 모두 다시 잠금")) { privacy.relockAll() }
+                Button(privacyText("Pause app privacy for 5 minutes", "앱 프라이버시 5분 일시 정지")) { privacy.pause(minutes: 5) }
+                Divider()
+            }
             Button(action: { AppRelauncher.restartApp() }) {
                 Image(systemName: "arrow.trianglehead.2.counterclockwise.rotate.90")
                 Text(locale.dn("menuBar.restart", fallback: "Restart"))

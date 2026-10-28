@@ -93,7 +93,7 @@ final class LockScreenFaceIDWindowManager {
             .receive(on: RunLoop.main)
             .sink { [weak self] state in
                 guard let self else { return }
-                if self.faceIDSettings.presentationStyle == .compact {
+                if self.faceIDSettings.presentationStyle == .compact && self.lockScreenManager.isShowingLockPresentation {
                     if state == .idle {
                         if self.lockScreenManager.didUnlockWithFaceID || !self.lockScreenManager.isShowingLockPresentation {
                             self.notchViewModel.send(.hideLiveActivity(id: NotchContentRegistry.LockScreen.activity.id))
@@ -154,7 +154,7 @@ final class LockScreenFaceIDWindowManager {
     }
 
     private func handleScreenWake() {
-        guard lockScreenManager.isShowingLockPresentation,
+        guard PrivacyPolicy.passwordUnlockSupported, lockScreenManager.isShowingLockPresentation,
               faceIDSettings.isFaceIDEnabled,
               faceIDSettings.isEnrolled,
               faceIDSettings.unlockOnWake else {
@@ -183,7 +183,7 @@ final class LockScreenFaceIDWindowManager {
         showButton: Bool
     ) {
         let isShowingLock = isLocked && !lockScreenManager.didUnlockWithFaceID
-        let isAvailable = faceIDSettings.isFaceIDEnabled && faceIDSettings.isEnrolled
+        let isAvailable = PrivacyPolicy.passwordUnlockSupported && faceIDSettings.isFaceIDEnabled && faceIDSettings.isEnrolled
 
         if isShowingLock && isAvailable && showButton {
             presentButton()
@@ -296,7 +296,7 @@ final class LockScreenFaceIDWindowManager {
             if success {
                 self.hideButton()
                 self.lockScreenManager.handleFaceIDUnlock()
-                FaceIDService.shared.unlockWithSavedPassword()
+                // OS password injection is intentionally not supported.
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                     self?.notchViewModel.hideTemporaryNotification()

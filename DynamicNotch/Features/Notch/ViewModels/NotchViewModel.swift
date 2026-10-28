@@ -111,7 +111,9 @@ final class NotchViewModel: ObservableObject {
                 return false
             }
         }
-        guard hasRealDisplayedContent else { return false }
+        if !hasRealDisplayedContent {
+            return settings.isIdleNotchHoverMenuEnabled && !notchModel.isExpanded
+        }
         return engine.canExpandActiveLiveActivity
     }
     
@@ -138,8 +140,12 @@ final class NotchViewModel: ObservableObject {
     }
 
     var shouldCollapseActiveContentOnHoverLeaves: Bool {
-        settings.notchCollapseInteraction == .hoverLeaves &&
-        isDisplayingExpandedLiveActivity
+        guard isDisplayingExpandedLiveActivity else { return false }
+        if let hub = displayedContent as? QuickToolsNotchContent,
+           hub.openedFromIdleHover && !hub.store.isNotchHubPinned {
+            return true
+        }
+        return settings.notchCollapseInteraction == .hoverLeaves
     }
 
     var notchPressHoldDuration: TimeInterval {
@@ -147,7 +153,7 @@ final class NotchViewModel: ObservableObject {
     }
 
     var notchHoverExpandDelay: TimeInterval {
-        settings.notchPressHoldDuration
+        settings.notchHoverExpandDelay
     }
     
     var canRestoreDismissedContent: Bool {
@@ -396,7 +402,7 @@ final class NotchViewModel: ObservableObject {
         }
 
         if notchModel.isLiveActivityExpanded {
-            engine.handleOutsideClick()
+            engine.handleOutsideClick(force: true)
             return
         }
         
@@ -553,7 +559,13 @@ final class NotchViewModel: ObservableObject {
             try? await Task.sleep(nanoseconds: ExpansionTransitionTiming.preparationDelay)
             guard let self, !Task.isCancelled else { return }
 
-            self.engine.handleActiveContentTap()
+            if !self.hasRealDisplayedContent && self.settings.isIdleNotchHoverMenuEnabled && !self.isLocked {
+                self.engine.presentIdleHoverContent(
+                    QuickToolsNotchContent(store: QuickToolsStore.shared, openedFromIdleHover: true)
+                )
+            } else {
+                self.engine.handleActiveContentTap()
+            }
 
             try? await Task.sleep(nanoseconds: ExpansionTransitionTiming.resetDelay)
             guard !Task.isCancelled else { return }

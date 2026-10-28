@@ -8,7 +8,7 @@ import Combine
 
 @MainActor
 final class FaceIDSettingsStore: SettingsStoreBase {
-    @StoredDefault(key: FaceIDSettings.enabledKey, defaultValue: true)
+    @StoredDefault(key: FaceIDSettings.enabledKey, defaultValue: false)
     var isFaceIDEnabled: Bool
 
     @StoredDefault(key: FaceIDSettings.isEnrolledKey, defaultValue: false)

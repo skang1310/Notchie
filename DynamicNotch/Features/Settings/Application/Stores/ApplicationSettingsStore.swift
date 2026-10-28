@@ -2,6 +2,7 @@ import Combine
 import Foundation
 internal import AppKit
 import ServiceManagement
+import SwiftUI
 
 extension SettingsAppearanceMode: StoredSettingValue {}
 extension NotchBackgroundStyle: StoredSettingValue {}
@@ -13,6 +14,7 @@ extension NotchCollapseInteraction: StoredSettingValue {}
 
 @MainActor
 final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding {
+    static let notchHoverExpandDelayRange: ClosedRange<Double> = 0.05...1.5
     static let notchPressHoldDurationRange: ClosedRange<Double> = 0.20...0.60
     static let notchPressHoldDurationStep: Double = 0.01
     static let defaultNotchPressHoldDuration: TimeInterval = 0.25
@@ -35,6 +37,15 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
 
     @StoredDefault(key: GeneralSettingsStorage.Keys.isBlueNightMode, defaultValue: false)
     var isBlueNightMode: Bool
+
+    @StoredDefault(key: GeneralSettingsStorage.Keys.customAccentColorHex, defaultValue: "#34C759")
+    var customAccentColorHex: String
+
+    @StoredDefault(key: GeneralSettingsStorage.Keys.idleNotchHoverMenuEnabled, defaultValue: true)
+    var isIdleNotchHoverMenuEnabled: Bool
+
+    @StoredDefault(key: GeneralSettingsStorage.Keys.startupPermissionCheckEnabled, defaultValue: true)
+    var isStartupPermissionCheckEnabled: Bool
 
     @StoredDefault(key: GeneralSettingsStorage.Keys.notchBackgroundStyle, defaultValue: .black)
     var notchBackgroundStyle: NotchBackgroundStyle
@@ -137,15 +148,15 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
     )
     var notchPressHoldDuration: TimeInterval
 
-    var isNotchMouseDragGesturesEnabled: Bool {
-        get { true }
-        set {}
-    }
+    @StoredDefault(key: GeneralSettingsStorage.Keys.notchHoverExpandDelay, defaultValue: 0.25,
+                   transform: ApplicationSettingsStore.clampNotchHoverExpandDelay)
+    var notchHoverExpandDelay: TimeInterval
 
-    var isNotchTrackpadSwipeGesturesEnabled: Bool {
-        get { true }
-        set {}
-    }
+    @StoredDefault(key: GeneralSettingsStorage.Keys.notchMouseDragGesturesEnabled, defaultValue: true)
+    var isNotchMouseDragGesturesEnabled: Bool
+
+    @StoredDefault(key: GeneralSettingsStorage.Keys.notchTrackpadSwipeGesturesEnabled, defaultValue: true)
+    var isNotchTrackpadSwipeGesturesEnabled: Bool
 
     @StoredDefault(key: GeneralSettingsStorage.Keys.notchSwipeDismissEnabled, defaultValue: true)
     var isNotchSwipeDismissEnabled: Bool
@@ -258,6 +269,7 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
             defaultString(for: GeneralSettingsStorage.Keys.appearanceMode)
         )
         isBlueNightMode = defaultBool(for: GeneralSettingsStorage.Keys.isBlueNightMode)
+        customAccentColorHex = defaultString(for: GeneralSettingsStorage.Keys.customAccentColorHex)
     }
 
     func resetDisplay() {
@@ -303,10 +315,14 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
         notchPressHoldDuration = Self.clampNotchPressHoldDuration(
             defaultDouble(for: GeneralSettingsStorage.Keys.notchPressHoldDuration)
         )
+        notchHoverExpandDelay = defaultDouble(for: GeneralSettingsStorage.Keys.notchHoverExpandDelay)
+        isNotchMouseDragGesturesEnabled = defaultBool(for: GeneralSettingsStorage.Keys.notchMouseDragGesturesEnabled)
+        isNotchTrackpadSwipeGesturesEnabled = defaultBool(for: GeneralSettingsStorage.Keys.notchTrackpadSwipeGesturesEnabled)
         isNotchSwipeDismissEnabled = defaultBool(for: GeneralSettingsStorage.Keys.notchSwipeDismissEnabled)
         isNotchSwipeRestoreEnabled = defaultBool(for: GeneralSettingsStorage.Keys.notchSwipeRestoreEnabled)
         isNotchHoverHapticEnabled = defaultBool(for: GeneralSettingsStorage.Keys.notchHoverHapticEnabled)
         isCloseAtFocusLiveActivityEnabled = defaultBool(for: GeneralSettingsStorage.Keys.closeAtFocusLiveActivityEnabled)
+        isIdleNotchHoverMenuEnabled = defaultBool(for: GeneralSettingsStorage.Keys.idleNotchHoverMenuEnabled)
     }
 
     func resetNotch() {
@@ -430,7 +446,13 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
         )
     }
 
+    static func clampNotchHoverExpandDelay(_ value: TimeInterval) -> TimeInterval {
+        guard value.isFinite else { return 0.25 }
+        return min(max(value, notchHoverExpandDelayRange.lowerBound), notchHoverExpandDelayRange.upperBound)
+    }
+
     private func updateLaunchAtLogin() {
+        guard !AppEnvironment.isRunningTests else { return }
         let instance = SMAppService.mainApp
 
         do {
@@ -483,5 +505,37 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
             NSScreen.availableNotchDisplays().first {
             selectPreferredDisplay(resolvedDisplay)
         }
+    }
+
+    var customAccentColor: Color {
+        get { Self.color(fromHex: customAccentColorHex) ?? Color.green }
+        set {
+            if let hex = Self.hexString(from: newValue) {
+                customAccentColorHex = hex
+            }
+        }
+    }
+
+    static func currentCustomAccentColor(defaults: UserDefaults = .standard) -> Color {
+        let hex = defaults.string(forKey: GeneralSettingsStorage.Keys.customAccentColorHex) ?? "#34C759"
+        return color(fromHex: hex) ?? .green
+    }
+
+    nonisolated static func color(fromHex hex: String) -> Color? {
+        let cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+        guard cleaned.count == 6, let value = UInt64(cleaned, radix: 16) else { return nil }
+        let r = Double((value >> 16) & 0xFF) / 255.0
+        let g = Double((value >> 8) & 0xFF) / 255.0
+        let b = Double(value & 0xFF) / 255.0
+        return Color(.sRGB, red: r, green: g, blue: b, opacity: 1.0)
+    }
+
+    static func hexString(from color: Color) -> String? {
+        guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return nil }
+        let r = Int((min(1, max(0, srgb.redComponent)) * 255).rounded())
+        let g = Int((min(1, max(0, srgb.greenComponent)) * 255).rounded())
+        let b = Int((min(1, max(0, srgb.blueComponent)) * 255).rounded())
+        return String(format: "#%02X%02X%02X", r, g, b)
     }
 }

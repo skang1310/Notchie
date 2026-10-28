@@ -9,8 +9,13 @@ struct PermissionsSettingsView: View {
         applicationSettings.appLanguage.locale.dn(key, fallback: fallback)
     }
 
+    private func text(_ en: String, _ ko: String) -> String {
+        privacyText(en, ko)
+    }
+
     var body: some View {
         SettingsPageScrollView {
+            startupPermissionGuardCard
             permissionsCard
         }
         .onAppear {
@@ -18,6 +23,74 @@ struct PermissionsSettingsView: View {
                 imageAppear = true
             }
             permissionController.refresh()
+        }
+    }
+
+    private var startupPermissionGuardCard: some View {
+        let missing = permissionController.missingPermissionItems
+        return SettingsCard(
+            verbatimTitle: text("Startup Permission Check & Alert", "앱 시작 시 권한 확인 및 알림"),
+            spacing: 12
+        ) {
+            HStack(spacing: 12) {
+                Image(systemName: missing.isEmpty ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(missing.isEmpty ? .green : .orange)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        (missing.isEmpty ? Color.green : Color.orange).opacity(0.14),
+                        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(
+                        missing.isEmpty
+                            ? text("All permissions are granted", "모든 권한이 허용되어 있습니다")
+                            : text("\(missing.count) permission(s) currently need configuration", "현재 \(missing.count)개의 권한 설정이 필요합니다")
+                    )
+                    .font(.system(size: 13.5, weight: .semibold))
+
+                    Text(
+                        missing.isEmpty
+                            ? text("Notchie has all required permissions to run every notch feature.", "모든 노치 기능을 제한 없이 사용할 수 있습니다.")
+                            : text("Missing: \(permissionController.missingPermissionSummary)", "미설정 권한: \(permissionController.missingPermissionSummary)")
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                if !missing.isEmpty {
+                    Button(text("Request All Missing", "미설정 권한 모두 요청")) {
+                        permissionController.requestUndeterminedPermissions()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings.permissions.requestAll")
+                }
+            }
+
+            Divider().opacity(0.6)
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text("Check & alert for missing permissions on app launch", "앱 시작 시 필수 권한 요청 및 미설정 알람 표시"))
+                        .font(.system(size: 13, weight: .medium))
+                    Text(text(
+                        "Automatically asks for unconfigured permissions when Notchie starts and alerts you if any remain disabled.",
+                        "Notchie를 시작할 때 필요한 권한을 자동으로 확인·요청하고, 설정되지 않은 권한이 있으면 알람으로 알려줍니다."
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $applicationSettings.isStartupPermissionCheckEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("settings.permissions.startupCheckToggle")
+            }
         }
     }
 

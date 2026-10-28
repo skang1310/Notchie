@@ -1,0 +1,7 @@
+# Local DynamicNotch extension
+
+This is the active implementation base selected by the user. Do not resume the cancelled parent NookFlow implementation. Read ../TASKS.md and ../FEATURE_REGISTRY.md at every session start and keep actual status there. The original authoritative workspace is /Users/davidkang/Documents/ChatGPT/myownnotch; when working from the user checkout /Users/davidkang/DynamicNotch, read those two trackers at that absolute original workspace path. Preserve GPL-3.0 and upstream notices. Current upstream revision is recorded in LOCAL_CHANGES.md.
+
+Reuse existing engines, settings stores and shared components. UI references come from observed Alcove 1.7.7 behavior and public metadata; do not copy its code/assets. Lazyweb was checked and is unavailable in this session. New settings must persist, affect the existing engine, have English/Korean text, and include meaningful regression coverage. Do not enable login launch, FaceID/password enrollment or new protected permissions automatically. Existing upstream private APIs are not proof of public API support and must remain separately documented. Local builds disable Sparkle updates to preserve the patch.
+
+Build with xcodebuild for DynamicNotch.xcodeproj / DynamicNotch, CODE_SIGNING_ALLOWED=NO. Run DynamicNotchTests. Install the final Release artifact with scripts/install-local.sh, then verify /Applications/DynamicNotch.app itself. Never claim test/build/install/runtime/hardware verification interchangeably. Keep unrelated upstream behavior unchanged.

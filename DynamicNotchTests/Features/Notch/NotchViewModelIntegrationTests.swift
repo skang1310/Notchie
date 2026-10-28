@@ -4,6 +4,21 @@ import SwiftUI
 
 final class NotchViewModelIntegrationTests: XCTestCase {
     @MainActor
+    func testManualToolsIgnoreAutomaticOutsideCollapseButAllowExplicitDismiss() async {
+        let model = NotchViewModel(settings: TestNotchSettings(), hideDelay: 0.01, queueDelay: 0)
+        TestLifetime.retain(model)
+        model.send(.showLiveActivity(QuickToolsNotchContent(store: QuickToolsStore())))
+        await assertEventually { await MainActor.run { model.notchModel.liveActivityContent?.id == "local.quickTools" } }
+        model.handleActiveContentTap()
+        await assertEventually { await MainActor.run { model.notchModel.isLiveActivityExpanded } }
+        model.handleOutsideClick()
+        try? await Task.sleep(for: .milliseconds(60))
+        XCTAssertTrue(model.notchModel.isLiveActivityExpanded)
+        model.dismissActiveContent()
+        await assertEventually { await MainActor.run { !model.notchModel.isLiveActivityExpanded } }
+    }
+
+    @MainActor
     func testHigherPriorityLiveActivityReplacesLowerPriority() async {
         let viewModel = NotchViewModel(
             settings: TestNotchSettings(),

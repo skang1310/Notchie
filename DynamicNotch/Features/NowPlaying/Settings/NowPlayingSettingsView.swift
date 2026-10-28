@@ -46,6 +46,13 @@ struct NowPlayingSettingsView: View {
                 accessibilityIdentifier: "settings.activities.live.nowPlaying.sourceFilter",
                 selection: $settings.nowPlayingSourceFilter
             )
+            Divider().opacity(0.6)
+            SettingsToggleRow(
+                title: "settings.local.quick.hideSource.title", description: "settings.local.quick.hideSource.desc",
+                systemImage: "macwindow", color: .purple,
+                isOn: $applicationSettings.isCloseAtFocusLiveActivityEnabled,
+                accessibilityIdentifier: "settings.activities.live.nowPlaying.hideActiveSource"
+            )
         }
     }
 

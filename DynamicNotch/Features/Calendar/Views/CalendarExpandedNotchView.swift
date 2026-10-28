@@ -91,7 +91,11 @@ struct CalendarExpandedNotchView: View {
     
     @ViewBuilder
     private func buttons(event: EKEvent) -> some View {
-        HStack {
+        VStack(spacing: 8) {
+          TimelineView(.periodic(from: .now, by: 30)) { _ in
+              Text(event.startDate, style: .relative).font(.caption).monospacedDigit()
+          }
+          HStack {
             Button {
                 calendarViewModel.dismissEvent(event)
                 notchViewModel.send(.hideLiveActivity(id: NotchContentRegistry.Calendar.upcoming.id))
@@ -102,7 +106,7 @@ struct CalendarExpandedNotchView: View {
             }
             .buttonStyle(PrimaryButtonStyle(width: 45, height: 45, backgroundColor: .gray.opacity(0.3)))
             
-            if let url = event.url, isVideoCall(url: url) {
+            if let url = MeetingLink.first(url: event.url, notes: event.notes, location: event.location) {
                 Button {
                     NSWorkspace.shared.open(url)
                     notchViewModel.send(.hideLiveActivity(id: NotchContentRegistry.Calendar.upcoming.id))
@@ -120,6 +124,7 @@ struct CalendarExpandedNotchView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
+          }
         }
     }
     
@@ -129,11 +134,4 @@ struct CalendarExpandedNotchView: View {
         return formatter.string(from: date)
     }
     
-    private func isVideoCall(url: URL) -> Bool {
-        let host = url.host?.lowercased() ?? ""
-        return host.contains("zoom.us") ||
-        host.contains("meet.google.com") ||
-        host.contains("teams.microsoft.com") ||
-        host.contains("webex.com")
-    }
 }

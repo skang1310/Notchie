@@ -41,7 +41,9 @@ nonisolated final class FolderFileDownloadMonitor: DownloadMonitoring, @unchecke
     }
 
     private let fileManager: FileManager
-    private let monitoredDirectories: [URL]
+    private let explicitDirectories: [URL]?
+    private var monitoredDirectories: [URL] = []
+    private var scopedDirectories: [URL] = []
     private let chromiumReader: ChromiumDownloadMetadataReader
     private let callbackQueue = DispatchQueue(
         label: "com.dynamicnotch.download.monitor",
@@ -53,6 +55,9 @@ nonisolated final class FolderFileDownloadMonitor: DownloadMonitoring, @unchecke
     private var trackedFiles: [String: TrackedFile] = [:]
     private var lastPublishedTransfers: [DownloadModel] = []
     private var isMonitoring = false
+    private let publicationLock = NSLock()
+    private var publicationEpoch = UUID()
+    private var publicationActive = false
 
     init(
         fileManager: FileManager = .default,
@@ -60,7 +65,7 @@ nonisolated final class FolderFileDownloadMonitor: DownloadMonitoring, @unchecke
         chromiumReader: ChromiumDownloadMetadataReader = ChromiumDownloadMetadataReader()
     ) {
         self.fileManager = fileManager
-        self.monitoredDirectories = monitoredDirectories ?? Self.defaultDirectories(using: fileManager)
+        self.explicitDirectories = monitoredDirectories
         self.chromiumReader = chromiumReader
     }
 
@@ -71,9 +76,15 @@ nonisolated final class FolderFileDownloadMonitor: DownloadMonitoring, @unchecke
     func startMonitoring() {
         guard !isMonitoring else { return }
         isMonitoring = true
+        publicationLock.lock(); publicationEpoch = UUID(); publicationActive = true; publicationLock.unlock()
 
         callbackQueue.async { [weak self] in
             guard let self, self.isMonitoring else { return }
+            self.monitoredDirectories = self.explicitDirectories ?? DownloadFolderAuthorization.resolve(
+                UserDefaults.standard.data(forKey: DownloadFolderAuthorization.bookmarkKey) ?? Data()
+            ).map { [$0] } ?? []
+            self.scopedDirectories = self.monitoredDirectories.filter { $0.startAccessingSecurityScopedResource() }
+            guard !self.monitoredDirectories.isEmpty else { return }
             self.setupDirectoryWatcher()
             self.primeBaseline()
             self.performScan()
@@ -83,6 +94,7 @@ nonisolated final class FolderFileDownloadMonitor: DownloadMonitoring, @unchecke
     func stopMonitoring() {
         guard isMonitoring || timer != nil || directoryWatcher != nil else { return }
         isMonitoring = false
+        publicationLock.lock(); publicationEpoch = UUID(); publicationActive = false; publicationLock.unlock()
 
         callbackQueue.async { [weak self] in
             guard let self else { return }
@@ -91,27 +103,14 @@ nonisolated final class FolderFileDownloadMonitor: DownloadMonitoring, @unchecke
             self.stopTimer()
             self.trackedFiles.removeAll()
             self.lastPublishedTransfers.removeAll()
+            self.scopedDirectories.forEach { $0.stopAccessingSecurityScopedResource() }
+            self.scopedDirectories = []
+            self.monitoredDirectories = []
         }
     }
 }
 
 private extension FolderFileDownloadMonitor {
-    static func defaultDirectories(using fileManager: FileManager) -> [URL] {
-        let directories: [FileManager.SearchPathDirectory] = [
-            .downloadsDirectory,
-            .desktopDirectory,
-            .documentDirectory,
-            .moviesDirectory,
-            .musicDirectory,
-            .picturesDirectory
-        ]
-
-        return directories
-            .compactMap { fileManager.urls(for: $0, in: .userDomainMask).first }
-            .map { $0.standardizedFileURL }
-            .removingDuplicatePaths()
-    }
-
     private func setupDirectoryWatcher() {
         directoryWatcher?.stop()
         directoryWatcher = DirectoryWatcher(
@@ -566,8 +565,17 @@ private extension FolderFileDownloadMonitor {
     }
 
     private func publish(_ transfers: [DownloadModel]) {
+        publicationLock.lock()
+        let token = publicationActive ? publicationEpoch : nil
+        publicationLock.unlock()
+        guard let token else { return }
         let handler = onSnapshotChange
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.publicationLock.lock()
+            let current = self.publicationActive && self.publicationEpoch == token
+            self.publicationLock.unlock()
+            guard current else { return }
             handler?(transfers)
         }
     }

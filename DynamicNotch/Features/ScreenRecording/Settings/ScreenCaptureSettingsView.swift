@@ -6,6 +6,9 @@ struct ScreenCaptureSettingsView: View {
     
     var body: some View {
         SettingsPageScrollView {
+            if AppEnvironment.isLocalBuild {
+                Text("productivity.screenshot.disabled").font(.caption).foregroundStyle(.secondary).padding(.horizontal)
+            }
             screenCaptureActivity
             screenshotDuration
             saveLocationSection
@@ -38,9 +41,9 @@ struct ScreenCaptureSettingsView: View {
                 description: "settings.screenRecording.screenshotActivity.desc",
                 systemImage: "viewfinder",
                 color: .gray,
-                isOn: $settings.isScreenshotActivityEnabled,
+                isOn: Binding(get: { AppEnvironment.isLocalBuild ? false : settings.isScreenshotActivityEnabled }, set: { settings.isScreenshotActivityEnabled = $0 }),
                 accessibilityIdentifier: "settings.activities.live.screenshot"
-            )
+            ).disabled(AppEnvironment.isLocalBuild)
         }
     }
 

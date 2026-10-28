@@ -303,6 +303,7 @@ final class NotchEventCoordinatorIntegrationTests: XCTestCase {
 
     func testChargerNotificationShowOnLockScreen() async {
         let context = makeContext()
+        context.settingsViewModel.lockScreen.isLockScreenLiveActivityEnabled = true
 
         context.lockScreenService.publish(isLocked: true)
         await assertEventually {

@@ -24,6 +24,7 @@ final class OvhLyricsProvider: LyricsProviding {
     }
 
     func lyrics(for snapshot: NowPlayingSnapshot) async throws -> TrackLyrics? {
+        guard PrivacyPolicy.allows(PrivacyPolicy.onlineLyricsKey) else { return nil }
         guard let trackKey = snapshot.lyricsLookupKey else { return nil }
 
         if let cached = cache[trackKey] {

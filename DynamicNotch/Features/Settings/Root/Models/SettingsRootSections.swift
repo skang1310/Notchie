@@ -72,6 +72,8 @@ extension SettingsRootViewModel {
 
     enum Section: String, CaseIterable, Identifiable {
         case general
+        case privacy
+        case quickTools
         #if DEBUG
         case debug
         #endif
@@ -216,6 +218,10 @@ private enum SettingsSectionCatalog {
 
     static func sectionDescriptor(for section: SettingsRootViewModel.Section) -> SettingsSectionDescriptor {
         switch section {
+        case .privacy:
+            return .init(sidebarGroup: .application, titleKey: "settings.security.title", fallbackTitle: "Privacy & Security", subtitleKey: "settings.security.subtitle", fallbackSubtitle: "Permissions and optional network access.", searchKeywords: ["privacy", "security", "network", "permissions", "개인정보", "보안"], systemImage: "hand.raised.fill", imageName: nil, tint: .green, resetGroup: nil)
+        case .quickTools:
+            return .init(sidebarGroup: .application, titleKey: "settings.tools.title", fallbackTitle: "Quick Tools", subtitleKey: "settings.tools.subtitle", fallbackSubtitle: "Local notes, stopwatch, Keep Awake and color picker.", searchKeywords: ["notes", "stopwatch", "awake", "color", "메모", "스톱워치", "색상"], systemImage: "square.grid.2x2.fill", imageName: nil, tint: .mint, resetGroup: nil)
         case .general:
             return .init(
                 sidebarGroup: .application,
@@ -559,9 +565,9 @@ private enum SettingsSectionCatalog {
             return .init(
                 sidebarGroup: .system,
                 titleKey: "settings.section.faceID.title",
-                fallbackTitle: "Face ID",
+                fallbackTitle: "Lock & Authentication",
                 subtitleKey: "settings.section.faceID.subtitle",
-                fallbackSubtitle: "Facial recognition unlocking and face profile security.",
+                fallbackSubtitle: "Manage face unlock and privacy for your apps.",
                 searchKeywords: [
                     "face",
                     "faceid",

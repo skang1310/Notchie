@@ -2,12 +2,22 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDisplayName</key>
+	<string>Notchie</string>
+	<key>CFBundleName</key>
+	<string>Notchie</string>
+	<key>DynamicNotchTestHost</key>
+	<string>$(DYNAMICNOTCH_TEST_HOST)</string>
+	<key>DynamicNotchLocalRevision</key>
+	<string>Notchie-20261028-v3</string>
+	<key>DynamicNotchLocalBuild</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>DynamicNotch needs access to your camera to display a camera preview in the notch.</string>
+	<string>Notchie needs access to your camera to display a camera preview in the notch.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>DynamicNotch needs access to your calendar to display upcoming events in the notch.</string>
+	<string>Notchie needs access to your calendar to display upcoming events in the notch.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>DynamicNotch needs access to your calendar to display upcoming events in the notch.</string>
+	<string>Notchie needs access to your calendar to display upcoming events in the notch.</string>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/jackson-storm/DynamicNotch/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>

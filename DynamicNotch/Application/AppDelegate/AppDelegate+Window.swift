@@ -124,6 +124,12 @@ extension AppDelegate {
     private func updatePrimaryWindowPresentation(on screen: NSScreen) {
         guard let window, !isPrimaryWindowSuspendedForLock else { return }
 
+        if AppPresentationPolicy.hides(bundleID: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+                                       rules: ProductivityStorage.shared.document.hiddenBundleIDs) {
+            clearNowPlayingPrimaryWindowPresentationState()
+            window.orderOut(nil)
+            return
+        }
         let isFullscreen = SkyLightOperator.shared.isFullscreenSpaceActive(on: screen)
         let shouldHideActivities = settingsViewModel.application.isNotchHiddenInFullscreenEnabled && isFullscreen
         let shouldHideNotchlessIsland = screen.isNotchless && settingsViewModel.application.isDynamicIslandHiddenInFullscreenEnabled && isFullscreen

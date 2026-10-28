@@ -478,6 +478,7 @@ private final class YouTubeMusicRemoteClient {
     }
 
     private func authenticate() async throws -> String {
+        guard PrivacyPolicy.allows(PrivacyPolicy.localMusicRemoteKey) else { throw YouTubeMusicRemoteError.authenticationRequired }
         if let accessToken {
             return accessToken
         }
@@ -516,6 +517,7 @@ private final class YouTubeMusicRemoteClient {
         method: String = "POST",
         body: [String: Any]? = nil
     ) async throws -> Data {
+        guard PrivacyPolicy.allows(PrivacyPolicy.localMusicRemoteKey) else { throw YouTubeMusicRemoteError.authenticationRequired }
         let token = try await authenticate()
         let url = baseURL
             .appendingPathComponent("api")

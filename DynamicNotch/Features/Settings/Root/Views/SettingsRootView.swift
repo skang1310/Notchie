@@ -2,8 +2,8 @@ import SwiftUI
 internal import AppKit
 
 enum SettingsWindowLayout {
-    static let width: CGFloat = 760
-    static let height: CGFloat = 590
+    static let width: CGFloat = 860
+    static let height: CGFloat = 660
 }
 
 struct SettingsRootView: View {
@@ -36,14 +36,12 @@ struct SettingsRootView: View {
     private var nsBackgroundColor: NSColor {
         if isBlueNightMode && colorScheme == .dark {
             return NSColor(red: 0.07, green: 0.11, blue: 0.17, alpha: 1.0)
-        } else if colorScheme == .dark {
-            return NSColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.0)
         } else {
-            return NSColor(red: 0.94, green: 0.94, blue: 0.95, alpha: 1.0)
+            return .windowBackgroundColor
         }
     }
     
-    @StateObject private var permissionController = SettingsPermissionController()
+    @ObservedObject private var permissionController = SettingsPermissionController.shared
     @State private var searchText = ""
     @State private var selectedSection: SettingsRootViewModel.Section
     @State private var selectionHistory: SettingsRootViewModel.SelectionHistory
@@ -51,7 +49,6 @@ struct SettingsRootView: View {
     @State private var pendingResetSubPage: SettingsSubPage?
     @State private var navigationPath: [SettingsSubPage] = []
     @State private var availableDisplays = NSScreen.availableNotchDisplays()
-    @ObservedObject private var updater = SparkleUpdater.shared
 
     init(container: AppContainer) {
         self.init(
@@ -130,7 +127,7 @@ struct SettingsRootView: View {
                                         tint: section.tint,
                                         iconColor: section.iconColor,
                                         stroke: section.stroke,
-                                        showBadge: section == .general && updater.isUpdateAvailable
+                                        showBadge: false
                                     )
                                 } else {
                                     SettingsSidebarRow(
@@ -139,7 +136,7 @@ struct SettingsRootView: View {
                                         tint: section.tint,
                                         iconColor: section.iconColor,
                                         stroke: section.stroke,
-                                        showBadge: section == .general && updater.isUpdateAvailable
+                                        showBadge: false
                                     )
                                 }
                             }
@@ -147,81 +144,37 @@ struct SettingsRootView: View {
                     }
                 }
             }
-            .scrollContentBackground(colorScheme == .dark ? .hidden : .visible)
-            .background {
-                if colorScheme == .dark {
-                    if isBlueNightMode {
-                        Color(red: 0.090, green: 0.129, blue: 0.169)
-                    } else {
-                        Color(red: 0.14, green: 0.14, blue: 0.15)
-                    }
-                }
-            }
+            .listStyle(.sidebar)
             .searchable(
                 text: $searchText,
                 placement: .sidebar,
                 prompt: localized("settings.search.prompt")
             )
-            .background {
-                if colorScheme == .dark {
-                    if isBlueNightMode {
-                        Color(red: 0.090, green: 0.129, blue: 0.169).ignoresSafeArea()
-                    } else {
-                        Color(red: 0.14, green: 0.14, blue: 0.15).ignoresSafeArea()
-                    }
-                }
-            }
-            .navigationSplitViewColumnWidth(min: 170, ideal: 200, max: 200)
+            .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 260)
 
         } detail: {
             NavigationStack(path: $navigationPath) {
-                ZStack(alignment: .top) {
-                    Group {
-                        if filteredSections.isEmpty {
-                            SettingsSearchEmptyState(query: searchText)
-                        } else {
-                            detailView(for: resolvedSelection)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        }
+                Group {
+                    if filteredSections.isEmpty {
+                        SettingsSearchEmptyState(query: searchText)
+                    } else {
+                        detailView(for: resolvedSelection)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
-                    
-                    Color.clear
-                        .frame(height: 52)
-                        .background {
-                            Color(nsColor: nsBackgroundColor)
-                        }
-                        .overlay(alignment: .bottom) {
-                            Divider()
-                                .opacity(0.6)
-                        }
-                        .ignoresSafeArea(.container, edges: .top)
                 }
                 .scrollContentBackground(.hidden)
-                .background {
-                    Color(nsColor: nsBackgroundColor)
-                }
+                .background(Color(nsColor: nsBackgroundColor))
                 .navigationDestination(for: SettingsSubPage.self) { subPage in
-                    ZStack(alignment: .top) {
-                        subPageView(for: subPage)
-                        
-                        Color.clear
-                            .frame(height: 52)
-                            .background {
-                                Color(nsColor: nsBackgroundColor)
-                            }
-                            .overlay(alignment: .bottom) {
-                                Divider()
-                                    .opacity(0.6)
-                            }
-                            .ignoresSafeArea(.container, edges: .top)
-                    }
-                    .navigationBarBackButtonHidden(true)
-                    .toolbar { toolbarContent(for: resolvedSelection) }
+                    subPageView(for: subPage)
+                        .background(Color(nsColor: nsBackgroundColor))
+                        .navigationBarBackButtonHidden(true)
+                        .toolbar { toolbarContent(for: resolvedSelection) }
                 }
             }
         }
         .navigationTitle(currentTitle)
         .navigationSubtitle(currentSubtitle)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .onChange(of: searchText) { _, newValue in
             syncSelectionWithSearch(query: newValue)
         }
@@ -256,9 +209,6 @@ struct SettingsRootView: View {
         .accessibilityIdentifier("settings.root")
         .environment(\.locale, settingsViewModel.application.appLanguage.locale)
         .preferredColorScheme(settingsViewModel.application.appearanceMode.preferredColorScheme)
-        .background {
-            Color(nsColor: nsBackgroundColor)
-        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SelectSettingsSection"))) { notification in
             if let section = notification.object as? SettingsRootViewModel.Section {
                 applySelection(section, origin: .sidebar)
@@ -286,10 +236,10 @@ struct SettingsRootView: View {
             window.appearance = NSAppearance(named: .darkAqua)
         }
         
-        window.backgroundColor = nsBackgroundColor
+        window.backgroundColor = .windowBackgroundColor
         window.isOpaque = true
         
-        window.titlebarAppearsTransparent = true
+        window.titlebarAppearsTransparent = false
         window.titleVisibility = .visible
     }
 
@@ -425,6 +375,10 @@ struct SettingsRootView: View {
     @ViewBuilder
     private func detailView(for section: SettingsRootViewModel.Section) -> some View {
         switch section {
+        case .privacy:
+            detailContainer(for: section) { PrivacySettingsView() }
+        case .quickTools:
+            detailContainer(for: section) { QuickToolsView(store: QuickToolsStore.shared) }
         case .general:
             detailContainer(for: section) {
                 GeneralSettingsView(
@@ -623,14 +577,6 @@ struct SettingsRootView: View {
             SystemSettingsView(applicationSettings: settingsViewModel.application)
         case .permissions:
             PermissionsSettingsView(permissionController: permissionController, applicationSettings: settingsViewModel.application)
-        case .softwareUpdate:
-            SoftwareUpdateSettingsView()
-        case .support:
-            SupportSettingsView(
-                onRequestInternetAccess: {
-                    notchEventCoordinator.requestInternetAccess()
-                }
-            )
         case .about:
             AboutAppSettingsView(
                 applicationSettings: settingsViewModel.application,

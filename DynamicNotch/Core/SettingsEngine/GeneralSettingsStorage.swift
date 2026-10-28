@@ -4,6 +4,9 @@ enum GeneralSettingsStorage {
         static let dockIcon = "isDockIconVisible"
         static let isBlueNightMode = "settings.general.isBlueNightMode"
         static let appearanceMode = "settings.general.appearance.mode"
+        static let customAccentColorHex = "settings.appearance.customAccentColorHex"
+        static let idleNotchHoverMenuEnabled = "settings.notch.gestures.idleHoverMenu"
+        static let startupPermissionCheckEnabled = "settings.permissions.startupCheckEnabled"
 
         static let notchBackgroundStyle = "settings.notch.backgroundStyle"
         static let notchWidth = "notchWidth"
@@ -25,6 +28,7 @@ enum GeneralSettingsStorage {
         static let notchTapToExpandEnabled = "settings.notch.gestures.tapToExpand"
         static let notchExpandInteraction = "settings.notch.gestures.expandInteraction"
         static let notchCollapseInteraction = "settings.notch.gestures.collapseInteraction"
+        static let notchHoverExpandDelay = "settings.notch.gestures.hoverExpandDelay"
         static let notchPressHoldDuration = "settings.notch.gestures.pressHoldDuration"
         static let notchMouseDragGesturesEnabled = "settings.notch.gestures.mouseDrag"
         static let notchTrackpadSwipeGesturesEnabled = "settings.notch.gestures.trackpadSwipe"
@@ -61,6 +65,7 @@ enum GeneralSettingsStorage {
         static let nowPlayingPauseHideTimerEnabled = "settings.nowPlaying.pauseHideTimerEnabled"
         static let nowPlayingPauseHideDelay = "settings.nowPlaying.pauseHideDelay"
         static let nowPlayingSourceFilter = "settings.nowPlaying.sourceFilter"
+        static let browserDownloadMetadataEnabled = "settings.downloads.browserMetadata.enabled"
         static let downloadsLiveActivityEnabled = "settings.live.downloads"
         static let downloadsProgressIndicatorStyle = "settings.live.downloads.progressIndicatorStyle"
         static let dragAndDropLiveActivityEnabled = "settings.live.dragAndDrop"
@@ -131,10 +136,13 @@ enum GeneralSettingsStorage {
     }
 
     static let defaultValues: [String: Any] = [
-        Keys.launchAtLogin: true,
+        Keys.launchAtLogin: false,
         Keys.dockIcon: false,
         Keys.isBlueNightMode: false,
         Keys.appearanceMode: SettingsAppearanceMode.system.rawValue,
+        Keys.customAccentColorHex: "#34C759",
+        Keys.idleNotchHoverMenuEnabled: true,
+        Keys.startupPermissionCheckEnabled: true,
 
         Keys.notchBackgroundStyle: NotchBackgroundStyle.black.rawValue,
         Keys.notchWidth: 0,
@@ -157,6 +165,7 @@ enum GeneralSettingsStorage {
         Keys.notchExpandInteraction: NotchExpandInteraction.pressAndHold.rawValue,
         Keys.notchCollapseInteraction: NotchCollapseInteraction.click.rawValue,
         Keys.notchPressHoldDuration: 0.25,
+        Keys.notchHoverExpandDelay: 0.25,
         Keys.notchMouseDragGesturesEnabled: true,
         Keys.notchTrackpadSwipeGesturesEnabled: true,
         Keys.notchSwipeDismissEnabled: true,
@@ -192,7 +201,8 @@ enum GeneralSettingsStorage {
         Keys.nowPlayingPauseHideTimerEnabled: true,
         Keys.nowPlayingPauseHideDelay: 5,
         Keys.nowPlayingSourceFilter: NowPlayingSourceFilter.any.rawValue,
-        Keys.downloadsLiveActivityEnabled: true,
+        Keys.downloadsLiveActivityEnabled: false,
+        Keys.browserDownloadMetadataEnabled: false,
         Keys.downloadsProgressIndicatorStyle: DownloadProgressIndicatorStyle.percent.rawValue,
         Keys.dragAndDropLiveActivityEnabled: true,
         Keys.airDropLiveActivityEnabled: true,

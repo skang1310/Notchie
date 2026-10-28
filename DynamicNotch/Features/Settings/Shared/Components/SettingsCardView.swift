@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+internal import AppKit
 
 struct SettingsCard<Content: View>: View {
     let title: LocalizedStringKey?
@@ -53,7 +54,8 @@ struct SettingsCard<Content: View>: View {
             if let titleText {
                 VStack(alignment: .leading) {
                     titleText
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.bottom, 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,14 +73,14 @@ private struct SettingsCardGroupBoxStyle: GroupBoxStyle {
     @AppStorage("settings.general.isBlueNightMode") private var isBlueNightMode = false
 
     func makeBody(configuration: Configuration) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             configuration.label
                 .padding(.leading, 15)
             configuration.content
                 .padding(padding)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(cardFillStyle)
                 )
         }
@@ -89,7 +91,7 @@ private struct SettingsCardGroupBoxStyle: GroupBoxStyle {
         if isBlueNightMode && colorScheme == .dark {
             return AnyShapeStyle(Color(red: 0.094, green: 0.145, blue: 0.200))
         } else {
-            return AnyShapeStyle(colorScheme == .dark ? Color.gray.opacity(0.08) : .white)
+            return AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
         }
     }
 }

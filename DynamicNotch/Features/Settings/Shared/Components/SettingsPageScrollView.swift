@@ -16,22 +16,26 @@ struct SettingsPageScrollView<Content: View>: View {
     
     var body: some View {
         if #available(macOS 26.0, *) {
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     content
                 }
-                .padding(.vertical, 15)
-                .padding(.horizontal, 5)
+                .frame(maxWidth: 780, alignment: .leading)
+                .padding(.vertical, 24)
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
             .scrollEdgeEffectStyle(.soft, for: .top)
             
         } else {
-            ScrollView(showsIndicators: false) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     content
                 }
-                .padding(.vertical, 15)
-                .padding(.horizontal, 5)
+                .frame(maxWidth: 780, alignment: .leading)
+                .padding(.vertical, 24)
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
         }
     }

@@ -11,9 +11,77 @@ struct AppearanceSettingsView: View {
     @ObservedObject var applicationSettings: ApplicationSettingsStore
     @Environment(\.colorScheme) private var colorScheme
     
+    private let accentPresets: [(name: String, hex: String)] = [
+        ("Green", "#34C759"),
+        ("Mint", "#00C7BE"),
+        ("Blue", "#007AFF"),
+        ("Indigo", "#5856D6"),
+        ("Purple", "#AF52DE"),
+        ("Pink", "#FF2D55"),
+        ("Orange", "#FF9500"),
+        ("Gold", "#FFCC00")
+    ]
+    
+    private func text(_ en: String, _ ko: String) -> String {
+        privacyText(en, ko)
+    }
+    
     var body: some View {
         SettingsPageScrollView {
             themeCard
+            accentColorCard
+        }
+    }
+    
+    private var accentColorCard: some View {
+        SettingsCard(verbatimTitle: text("Accent Color & Notch Tint", "강조 색상 (Accent Color) 및 노치 틴트"), spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(text("Custom Accent Color", "맞춤 강조 색상"))
+                        .font(.system(size: 13.5, weight: .semibold))
+                    Text(text("Applied to the Notch Hover Hub tabs, Face Unlock scan animation, and active indicators.", "노치 호버 메뉴 탭, 얼굴 잠금 해제 스캔 애니메이션 및 활성 배지에 적용됩니다."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(applicationSettings.customAccentColorHex)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                ColorPicker(
+                    text("Custom Color", "직접 선택"),
+                    selection: Binding(
+                        get: { applicationSettings.customAccentColor },
+                        set: { applicationSettings.customAccentColor = $0 }
+                    ),
+                    supportsOpacity: false
+                )
+                .labelsHidden()
+                .accessibilityIdentifier("settings.appearance.customAccentPicker")
+            }
+            
+            Divider().opacity(0.6)
+            
+            HStack(spacing: 10) {
+                ForEach(accentPresets, id: \.hex) { preset in
+                    let isSelected = applicationSettings.customAccentColorHex.caseInsensitiveCompare(preset.hex) == .orderedSame
+                    let color = ApplicationSettingsStore.color(fromHex: preset.hex) ?? .green
+                    Button {
+                        applicationSettings.customAccentColorHex = preset.hex
+                    } label: {
+                        Circle()
+                            .fill(color)
+                            .frame(width: 24, height: 24)
+                            .overlay {
+                                Circle()
+                                    .strokeBorder(Color.white.opacity(isSelected ? 0.95 : 0.2), lineWidth: isSelected ? 2.5 : 1)
+                            }
+                            .shadow(color: color.opacity(isSelected ? 0.55 : 0.0), radius: 4)
+                    }
+                    .buttonStyle(.plain)
+                    .help(preset.name)
+                }
+                Spacer()
+            }
         }
     }
     

@@ -1,17 +1,50 @@
 {
   "images" : [
     {
-      "filename" : "simplifiedLogo96.png",
+      "filename" : "Notchie-Light_128.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "simplifiedLogo96 1.png",
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "Notchie-Dark_128.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "Notchie-Light_128@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "simplifiedLogo96 2.png",
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "Notchie-Dark_128@2x.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "Notchie-Light_128@3x.png",
+      "idiom" : "universal",
+      "scale" : "3x"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "Notchie-Dark_128@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

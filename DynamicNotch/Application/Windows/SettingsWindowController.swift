@@ -9,7 +9,7 @@ class SettingsWindowController: NSWindowController {
     private init() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: SettingsWindowLayout.width, height: SettingsWindowLayout.height),
-            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -32,7 +32,7 @@ class SettingsWindowController: NSWindowController {
         guard let window = window else { return }
         
         window.title = NSLocalizedString("settings.title", comment: "")
-        window.titlebarAppearsTransparent = true
+        window.titlebarAppearsTransparent = false
         window.titleVisibility = .visible
         window.toolbarStyle = .unified
         window.level = .normal
@@ -43,7 +43,7 @@ class SettingsWindowController: NSWindowController {
         window.isRestorable = true
         window.identifier = NSUserInterfaceItemIdentifier("DynamicNotchSettingsWindow")
         
-        window.standardWindowButton(.zoomButton)?.isEnabled = false
+        window.contentMinSize = NSSize(width: 740, height: 560)
         
         window.delegate = self
     }
@@ -52,7 +52,7 @@ class SettingsWindowController: NSWindowController {
         guard let window = window, let appDelegate = appDelegate else { return }
         
         let settingsView = SettingsRootView(container: appDelegate.container)
-            .frame(width: SettingsWindowLayout.width, height: SettingsWindowLayout.height)
+            .frame(minWidth: 740, minHeight: 560)
         
         let hostingView = NSHostingView(rootView: settingsView)
         window.contentView = hostingView
@@ -63,7 +63,7 @@ class SettingsWindowController: NSWindowController {
 
         window?.level = .normal
         window?.collectionBehavior = [.managed, .participatesInCycle, .fullScreenNone]
-        window?.standardWindowButton(.zoomButton)?.isEnabled = false
+        window?.standardWindowButton(.zoomButton)?.isEnabled = true
         
         if window?.isVisible == true {
             NSApp.activate(ignoringOtherApps: true)

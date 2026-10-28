@@ -13,6 +13,11 @@ extension Bool: StoredSettingValue {
     func write(to defaults: UserDefaults, key: String) { defaults.set(self, forKey: key) }
 }
 
+extension Data: StoredSettingValue {
+    static func read(from defaults: UserDefaults, key: String, defaultValue: Data) -> Data { defaults.data(forKey: key) ?? defaultValue }
+    func write(to defaults: UserDefaults, key: String) { defaults.set(self, forKey: key) }
+}
+
 extension Int: StoredSettingValue {
     static func read(from defaults: UserDefaults, key: String, defaultValue: Int) -> Int {
         defaults.object(forKey: key) as? Int ?? defaultValue

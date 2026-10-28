@@ -71,6 +71,8 @@ struct PermissionItem: Identifiable {
 
 @MainActor
 final class SettingsPermissionController: NSObject, ObservableObject, CBCentralManagerDelegate {
+    static let shared = SettingsPermissionController()
+
     @Published private(set) var isAccessibilityTrusted: Bool
     @Published private(set) var bluetoothAuthorization: CBManagerAuthorization
     @Published private(set) var canPostMediaKeyEvents: Bool
@@ -252,6 +254,113 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
                 accessibilityIdentifier: "settings.permissions.automation"
             )
         ]
+    }
+
+    var missingPermissionItems: [PermissionItem] {
+        permissionItems.filter { !$0.isGranted }
+    }
+
+    var allPermissionsGranted: Bool {
+        missingPermissionItems.isEmpty
+    }
+
+    var missingPermissionSummary: String {
+        let locale = DynamicNotchLanguage.resolved(
+            UserDefaults.standard.string(forKey: GeneralSettingsStorage.Keys.appLanguage)
+        ).locale
+        return missingPermissionItems
+            .map { locale.dn($0.titleKey, fallback: $0.fallbackTitle) }
+            .joined(separator: ", ")
+    }
+
+    func requestUndeterminedPermissions() {
+        guard !AppEnvironment.isRunningTests else { return }
+        refresh()
+
+        if !isAccessibilityTrusted {
+            requestAccessibilityAccess()
+        }
+        if !canPostMediaKeyEvents {
+            requestPostEventAccess()
+        }
+        if bluetoothAuthorization == .notDetermined {
+            requestBluetoothAccess()
+        }
+        if cameraAuthorization == .notDetermined {
+            requestCameraAccess()
+        }
+        if calendarAuthorization == .notDetermined {
+            requestCalendarAccess()
+        }
+        if !isAutomationAccessGranted {
+            requestAutomationAccess()
+        }
+        refresh()
+    }
+
+    func evaluateStartupPermissions(
+        applicationSettings: ApplicationSettingsStore,
+        notchViewModel: NotchViewModel?,
+        forceAlert: Bool = false
+    ) {
+        guard !AppEnvironment.isRunningTests else { return }
+        guard forceAlert || applicationSettings.isStartupPermissionCheckEnabled else { return }
+
+        requestUndeterminedPermissions()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
+            guard let self else { return }
+            self.refresh()
+            let missing = self.missingPermissionItems
+            guard !missing.isEmpty else { return }
+
+            NSSound.beep()
+            if let notchViewModel {
+                let alertContent = MissingPermissionsNotchContent(missingCount: missing.count)
+                notchViewModel.send(.showTemporaryNotification(alertContent, duration: 5.0))
+            }
+            self.presentMissingPermissionsAlert(missingItems: missing)
+        }
+    }
+
+    func presentMissingPermissionsAlert(missingItems: [PermissionItem]? = nil) {
+        guard !AppEnvironment.isRunningTests else { return }
+        refresh()
+        let items = missingItems ?? missingPermissionItems
+        guard !items.isEmpty else { return }
+
+        let locale = DynamicNotchLanguage.resolved(
+            UserDefaults.standard.string(forKey: GeneralSettingsStorage.Keys.appLanguage)
+        ).locale
+        let bulletList = items.map { item in
+            let title = locale.dn(item.titleKey, fallback: item.fallbackTitle)
+            let desc = locale.dn(item.descriptionKey, fallback: item.fallbackDescription)
+            return "• \(title): \(desc)"
+        }.joined(separator: "\n")
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.icon = NSImage(named: "logo") ?? NSApp.applicationIconImage
+        alert.messageText = privacyText(
+            "Permissions Required for Notchie (\(items.count) missing)",
+            "Notchie 권한 설정 필요 (\(items.count)개 미설정)"
+        )
+        alert.informativeText = privacyText(
+            "Some system permissions are not yet granted. Please configure the following permissions so all notch features (HUD, Media, Camera Face Unlock, Calendar, Bluetooth) work properly:\n\n\(bulletList)",
+            "일부 필수 권한이 아직 허용되지 않았습니다. 노치의 모든 기능(볼륨·밝기 HUD, 미디어 제어, 카메라 얼굴 잠금 해제, 캘린더, 블루투스 등)이 정상 작동하도록 아래 권한을 설정해 주세요:\n\n\(bulletList)"
+        )
+        alert.addButton(withTitle: privacyText("Open Permissions Settings", "권한 설정 페이지 열기"))
+        alert.addButton(withTitle: privacyText("Request All Again", "권한 다시 요청하기"))
+        alert.addButton(withTitle: privacyText("Remind Me Later", "나중에"))
+
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            SettingsWindowController.shared.showWindow(selecting: .permissions)
+        } else if response == .alertSecondButtonReturn {
+            requestUndeterminedPermissions()
+            SettingsWindowController.shared.showWindow(selecting: .permissions)
+        }
     }
 
     func performAction(for kind: Kind) {
@@ -547,5 +656,61 @@ final class SettingsPermissionController: NSObject, ObservableObject, CBCentralM
 
     private static func currentBluetoothAuthorizationStatus() -> CBManagerAuthorization {
         CBManager.authorization
+    }
+}
+
+struct MissingPermissionsNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
+    let id = "settings.permissions.missingAlert"
+    let missingCount: Int
+
+    var priority: Int { 92 }
+
+    var strokeColor: Color { .orange.opacity(0.6) }
+
+    func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
+        .init(width: baseWidth + 160, height: baseHeight)
+    }
+
+    func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
+        .init(width: baseWidth + 140, height: baseHeight)
+    }
+
+    var windowLink: (@MainActor () -> Void)? {
+        return {
+            SettingsWindowController.shared.showWindow(selecting: .permissions)
+        }
+    }
+
+    @MainActor
+    func compactView() -> AnyView {
+        AnyView(MissingPermissionsNotchView(missingCount: missingCount))
+    }
+}
+
+struct MissingPermissionsNotchView: View {
+    @Environment(\.isNotchlessScreen) private var isNotchlessScreen
+    @Environment(\.notchScale) private var scale
+    let missingCount: Int
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.shield.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.orange)
+
+            Spacer()
+
+            Text(
+                privacyText(
+                    "Permissions needed (\(missingCount))",
+                    "권한 설정 필요 (\(missingCount))"
+                )
+            )
+            .font(.system(size: isNotchlessScreen ? 12 : 13, weight: .semibold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+        }
+        .padding(.leading, isNotchlessScreen ? 8.scaled(by: scale) : 14.scaled(by: scale))
+        .padding(.trailing, isNotchlessScreen ? 8.scaled(by: scale) : 14.scaled(by: scale))
     }
 }

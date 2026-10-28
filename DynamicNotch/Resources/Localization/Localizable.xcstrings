@@ -1,6 +1,1162 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "settings.security.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy & Security"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인정보 및 보안"
+          }
+        }
+      }
+    },
+    "settings.security.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissions and optional network access."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한과 선택적 네트워크 접근을 관리합니다."
+          }
+        }
+      }
+    },
+    "settings.security.local.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local by default"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본은 로컬 실행"
+          }
+        }
+      }
+    },
+    "settings.security.local.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No analytics or background password collection"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "분석 추적 및 백그라운드 암호 수집 없음"
+          }
+        }
+      }
+    },
+    "settings.security.local.permissions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download folders are selected explicitly. Clipboard capture and camera access are not enabled by Quick Tools."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드 폴더는 직접 선택합니다. 빠른 도구는 클립보드를 감시하거나 카메라를 자동으로 켜지 않습니다."
+          }
+        }
+      }
+    },
+    "settings.security.network.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional connections · off by default"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택적 연결 · 기본값 꺼짐"
+          }
+        }
+      }
+    },
+    "settings.security.lyrics.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Online lyrics"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "온라인 가사"
+          }
+        }
+      }
+    },
+    "settings.security.lyrics.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sends song title and artist to LRCLIB or lyrics.ovh to find lyrics."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가사를 찾기 위해 곡명과 가수를 LRCLIB 또는 lyrics.ovh에 전송합니다."
+          }
+        }
+      }
+    },
+    "settings.security.ip.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN country lookup"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN 국가 조회"
+          }
+        }
+      }
+    },
+    "settings.security.ip.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contacts country.is, ipapi.co or ipwho.is. Those services receive your public IP."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "country.is, ipapi.co 또는 ipwho.is에 접속합니다. 해당 서비스에 공인 IP가 전달됩니다."
+          }
+        }
+      }
+    },
+    "settings.security.remote.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local YouTube Music control"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 YouTube Music 제어"
+          }
+        }
+      }
+    },
+    "settings.security.remote.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connects only to localhost:26538 when the supported desktop music app is used."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지원하는 음악 데스크톱 앱 사용 시 localhost:26538에만 연결합니다."
+          }
+        }
+      }
+    },
+    "settings.security.unlock.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS login protection"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 로그인 보호"
+          }
+        }
+      }
+    },
+    "settings.security.unlock.removed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password-based unlock removed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "암호 기반 잠금 해제 기능 제거됨"
+          }
+        }
+      }
+    },
+    "settings.security.unlock.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional camera face unlock encrypts and types a login password only after you configure it. App privacy lock can use system Touch ID or Mac password without storing a password."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "얼굴 잠금 해제를 직접 설정하면 로그인 암호를 암호화해 저장하고 입력합니다. 앱 프라이버시 잠금은 암호 저장 없이 시스템 Touch ID 또는 Mac 암호로 인증할 수 있습니다."
+          }
+        }
+      }
+    },
+    "settings.security.unlock.keychain": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Existing Keychain entries are not read or deleted automatically."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기존 키체인 항목을 자동으로 읽거나 삭제하지 않습니다."
+          }
+        }
+      }
+    },
+    "settings.tools.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick Tools"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빠른 도구"
+          }
+        }
+      }
+    },
+    "settings.tools.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local notes, stopwatch, Keep Awake and color picker."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 메모, 스톱워치, 잠자기 방지, 색상 추출"
+          }
+        }
+      }
+    },
+    "settings.tools.notes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모"
+          }
+        }
+      }
+    },
+    "settings.tools.stopwatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopwatch"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스톱워치"
+          }
+        }
+      }
+    },
+    "settings.tools.awake": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Awake"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠자기 방지"
+          }
+        }
+      }
+    },
+    "settings.tools.color": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상"
+          }
+        }
+      }
+    },
+    "settings.tools.color.pick": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick a color…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상 추출…"
+          }
+        }
+      }
+    },
+    "settings.tools.color.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy HEX"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEX 복사"
+          }
+        }
+      }
+    },
+    "settings.tools.color.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses the system color sampler. Copies only when you choose Copy."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시스템 색상 추출기를 사용하며 복사 버튼을 눌렀을 때만 클립보드에 씁니다."
+          }
+        }
+      }
+    },
+    "settings.tools.openNotch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open tools in the notch"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치에서 도구 열기"
+          }
+        }
+      }
+    },
+    "settings.tools.pause": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시정지"
+          }
+        }
+      }
+    },
+    "settings.tools.start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작"
+          }
+        }
+      }
+    },
+    "settings.tools.stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중지"
+          }
+        }
+      }
+    },
+    "settings.tools.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "초기화"
+          }
+        }
+      }
+    },
+    "settings.tools.stopwatch.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monotonic clock. Continues while hidden; resets when the app quits."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단조 시계 사용. 도구를 닫아도 계속되며 앱 종료 시 초기화됩니다."
+          }
+        }
+      }
+    },
+    "settings.tools.awake.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prevents idle display sleep for the selected duration. Manual sleep and closing the lid are still respected. Released when the app quits."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 시간 동안 화면의 자동 잠자기를 막습니다. 수동 잠자기와 덮개 닫기는 그대로 작동하며 앱 종료 시 해제됩니다."
+          }
+        }
+      }
+    },
+    "settings.tools.notes.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 메모"
+          }
+        }
+      }
+    },
+    "settings.tools.notes.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장"
+          }
+        }
+      }
+    },
+    "settings.tools.notes.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장됨"
+          }
+        }
+      }
+    },
+    "settings.tools.notes.search": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search notes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모 검색"
+          }
+        }
+      }
+    },
+    "settings.tools.notes.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No notes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모 없음"
+          }
+        }
+      }
+    },
+    "settings.tools.notes.text": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note text"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모 내용"
+          }
+        }
+      }
+    },
+    "settings.tools.notes.local": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored on this Mac. Save before switching notes."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에 저장합니다. 다른 메모를 열기 전에 저장하세요."
+          }
+        }
+      }
+    },
+    "settings.tools.notes.discardTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard unsaved changes?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장하지 않은 변경 사항을 버릴까요?"
+          }
+        }
+      }
+    },
+    "settings.tools.notes.discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 사항 버리기"
+          }
+        }
+      }
+    },
+    "settings.local.downloads.folder.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download folder access"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드 폴더 접근"
+          }
+        }
+      }
+    },
+    "settings.local.downloads.folder.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only the folder you choose is monitored. Documents and Desktop are never scanned automatically."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "직접 선택한 폴더만 감시합니다. 문서와 데스크탑은 자동으로 읽지 않습니다."
+          }
+        }
+      }
+    },
+    "settings.local.downloads.folder.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No folder selected. Monitoring is off."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 폴더가 없어 감시가 꺼져 있습니다."
+          }
+        }
+      }
+    },
+    "settings.local.downloads.folder.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose download folder…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드 폴더 선택…"
+          }
+        }
+      }
+    },
+    "settings.local.downloads.folder.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop monitoring this folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 폴더 감시 해제"
+          }
+        }
+      }
+    },
+    "settings.local.downloads.browser.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read browser download metadata"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브라우저 다운로드 정보 읽기"
+          }
+        }
+      }
+    },
+    "settings.local.downloads.browser.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional. Accesses browser profile data for exact progress and may prompt for other-app data access. Off by default."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 사항입니다. 정확한 진행률을 위해 브라우저 프로필에 접근하며 별도 허용 팝업이 표시될 수 있습니다. 기본값은 꺼짐입니다."
+          }
+        }
+      }
+    },
+    "settings.local.quick.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick controls"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빠른 설정"
+          }
+        }
+      }
+    },
+    "settings.local.quick.idleHoverMenu.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Notch Menu on Hover (NotchNook style)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "유휴 상태에서 노치 호버 시 메뉴 열기 (NotchNook 스타일)"
+          }
+        }
+      }
+    },
+    "settings.local.quick.idleHoverMenu.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hovering over the idle notch opens the multi-tab shelf (Notes, Clipboard, Timer, Tools)."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "진행 중인 라이브 활동이 없을 때도 노치에 마우스를 올리면 멀티탭 메뉴(메모, 클립보드, 타이머 등)를 펼칩니다."
+          }
+        }
+      }
+    },
+    "settings.local.quick.hover.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand on hover"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마우스를 올리면 펼치기"
+          }
+        }
+      }
+    },
+    "settings.local.quick.hover.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch between hover and click to open an available activity."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "표시 중인 활동을 호버 또는 클릭으로 여는 방식을 선택합니다."
+          }
+        }
+      }
+    },
+    "settings.local.quick.hideSource.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide while the media app is active"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미디어 앱 사용 중 숨기기"
+          }
+        }
+      }
+    },
+    "settings.local.quick.hideSource.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide the media activity while its source app is in front."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 중인 앱이 맨 앞에 있으면 미디어 활동을 숨깁니다."
+          }
+        }
+      }
+    },
+    "settings.local.gestures.input.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input and hover timing"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력 및 호버 시간"
+          }
+        }
+      }
+    },
+    "settings.local.gestures.hoverDelay.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hover delay"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "호버 대기 시간"
+          }
+        }
+      }
+    },
+    "settings.local.gestures.hoverDelay.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wait before opening; independent of press-and-hold timing."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길게 누르기 시간과 별개로, 펼치기 전 대기 시간을 설정합니다."
+          }
+        }
+      }
+    },
+    "settings.local.gestures.mouse.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mouse drag gestures"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마우스 드래그 제스처"
+          }
+        }
+      }
+    },
+    "settings.local.gestures.mouse.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow mouse dragging to dismiss or restore activities."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마우스로 드래그해 활동을 숨기거나 복원합니다."
+          }
+        }
+      }
+    },
+    "settings.local.gestures.trackpad.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trackpad swipe gestures"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트랙패드 스와이프 제스처"
+          }
+        }
+      }
+    },
+    "settings.local.gestures.trackpad.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow trackpad swipes to dismiss or restore activities."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트랙패드를 스와이프해 활동을 숨기거나 복원합니다."
+          }
+        }
+      }
+    },
+    "settings.local.gestures.dismiss.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe to dismiss"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스와이프로 숨기기"
+          }
+        }
+      }
+    },
+    "settings.local.gestures.dismiss.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control dismissal independently from restoration."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 동작과 별개로 활동 숨기기를 설정합니다."
+          }
+        }
+      }
+    },
+    "settings.local.gestures.restore.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe to restore"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스와이프로 복원하기"
+          }
+        }
+      }
+    },
+    "settings.local.gestures.restore.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control restoration independently from dismissal."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "숨기기 동작과 별개로 활동 복원을 설정합니다."
+          }
+        }
+      }
+    },
+    "settings.local.update.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local custom build"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 사용자 빌드"
+          }
+        }
+      }
+    },
+    "settings.local.update.desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic updates are disabled to preserve your custom settings additions. Update from this source checkout."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가한 기능을 보존하도록 자동 업데이트를 비활성화했습니다. 이 소스에서 새 버전을 빌드해 업데이트하세요."
+          }
+        }
+      }
+    },
     "": {
       "localizations": {
         "ar": {
@@ -8846,235 +10002,235 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "ca": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "fil": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "ms": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "sr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch"
+            "value": "Notchie"
           }
         }
       }
@@ -34657,7 +35813,7 @@
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch je open-source aplikace pro macOS, která promění výřez vašeho MacBooku v dynamický a interaktivní prostor."
+            "value": "Notchie je open-source aplikace pro macOS, která promění výřez vašeho MacBooku v dynamický a interaktivní prostor."
           }
         },
         "da": {
@@ -34669,7 +35825,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch ist eine Open-Source-macOS-App, die dynamische Insel-Funktionalität und interaktive Aktivitäten auf deinen Mac bringt."
+            "value": "Notchie ist eine Open-Source-macOS-App, die dynamische Insel-Funktionalität und interaktive Aktivitäten auf deinen Mac bringt."
           }
         },
         "el": {
@@ -34711,7 +35867,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch est une application macOS open-source qui transforme l'encoche de votre MacBook en une surface dynamique et interactive."
+            "value": "Notchie est une application macOS open-source qui transforme l'encoche de votre MacBook en une surface dynamique et interactive."
           }
         },
         "he": {
@@ -34741,19 +35897,19 @@
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch adalah aplikasi macOS sumber terbuka yang mengubah notch MacBook Anda menjadi permukaan yang dinamis dan interaktif."
+            "value": "Notchie adalah aplikasi macOS sumber terbuka yang mengubah notch MacBook Anda menjadi permukaan yang dinamis dan interaktif."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch è un'app macOS open-source che trasforma il notch del tuo MacBook in una superficie dinamica e interattiva."
+            "value": "Notchie è un'app macOS open-source che trasforma il notch del tuo MacBook in una superficie dinamica e interattiva."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotchはMacBookのノッチをダイナミックでインタラクティブなスペースに変えるオープンソースのmacOSアプリです。"
+            "value": "NotchieはMacBookのノッチをダイナミックでインタラクティブなスペースに変えるオープンソースのmacOSアプリです。"
           }
         },
         "kk": {
@@ -34765,7 +35921,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch는 MacBook의 노치를 역동적이고 대화형 공간으로 바꿔주는 오픈 소스 macOS 앱입니다."
+            "value": "Notchie는 MacBook의 노치를 역동적이고 대화형 공간으로 바꿔주는 오픈 소스 macOS 앱입니다."
           }
         },
         "ms": {
@@ -34783,19 +35939,19 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch is een opensource macOS-app die de notch van je MacBook transformeert in een dynamisch, interactief oppervlak."
+            "value": "Notchie is een opensource macOS-app die de notch van je MacBook transformeert in een dynamisch, interactief oppervlak."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch to otwartoźródłowa aplikacja dla macOS, która przekształca notch MacBooka w dynamiczną i interaktywną przestrzeń."
+            "value": "Notchie to otwartoźródłowa aplikacja dla macOS, która przekształca notch MacBooka w dynamiczną i interaktywną przestrzeń."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "O DynamicNotch é uma aplicação macOS de código aberto que transforma o notch do seu MacBook numa superfície dinâmica e interativa."
+            "value": "O Notchie é uma aplicação macOS de código aberto que transforma o notch do seu MacBook numa superfície dinâmica e interativa."
           }
         },
         "ro": {
@@ -34825,7 +35981,7 @@
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch är en macOS-app med öppen källkod som förvandlar din MacBooks flärp till en dynamisk och interaktiv yta."
+            "value": "Notchie är en macOS-app med öppen källkod som förvandlar din MacBooks flärp till en dynamisk och interaktiv yta."
           }
         },
         "th": {
@@ -34843,13 +35999,13 @@
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch — це програма з відкритим кодом для macOS, яка перетворює notch вашого MacBook на динамічний інтерактивний простір."
+            "value": "Notchie — це програма з відкритим кодом для macOS, яка перетворює notch вашого MacBook на динамічний інтерактивний простір."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch là một ứng dụng macOS mã nguồn mở giúp biến notch trên MacBook của bạn thành một không gian động và tương tác."
+            "value": "Notchie là một ứng dụng macOS mã nguồn mở giúp biến notch trên MacBook của bạn thành một không gian động và tương tác."
           }
         },
         "zh-Hans": {
@@ -34861,7 +36017,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch 是一款開源 macOS 應用程式，將 MacBook 的「瀏海」轉變為動態且互動的介面。"
+            "value": "Notchie 是一款開源 macOS 應用程式，將 MacBook 的「瀏海」轉變為動態且互動的介面。"
           }
         }
       }
@@ -36784,235 +37940,235 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "فتح موقع DynamicNotch"
+            "value": "فتح موقع Notchie"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Отворете уебсайта на DynamicNotch"
+            "value": "Отворете уебсайта на Notchie"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch ওয়েবসাইট খুলুন"
+            "value": "Notchie ওয়েবসাইট খুলুন"
           }
         },
         "ca": {
           "stringUnit": {
             "state": "translated",
-            "value": "Obre el lloc web de DynamicNotch"
+            "value": "Obre el lloc web de Notchie"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otevřít oficiální web DynamicNotch"
+            "value": "Otevřít oficiální web Notchie"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Åbn DynamicNotch-webstedet"
+            "value": "Åbn Notchie-webstedet"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Website von DynamicNotch öffnen"
+            "value": "Die Website von Notchie öffnen"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Άνοιγμα ιστότοπου DynamicNotch"
+            "value": "Άνοιγμα ιστότοπου Notchie"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open the DynamicNotch website"
+            "value": "Open the Notchie website"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir el sitio web de DynamicNotch"
+            "value": "Abrir el sitio web de Notchie"
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "باز کردن وب‌سایت DynamicNotch"
+            "value": "باز کردن وب‌سایت Notchie"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avaa DynamicNotch-verkkosivusto"
+            "value": "Avaa Notchie-verkkosivusto"
           }
         },
         "fil": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buksan ang website ng DynamicNotch"
+            "value": "Buksan ang website ng Notchie"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir le site web de DynamicNotch"
+            "value": "Ouvrir le site web de Notchie"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "פתח את אתר DynamicNotch"
+            "value": "פתח את אתר Notchie"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch वेबसाइट खोलें"
+            "value": "Notchie वेबसाइट खोलें"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otvorite web-stranicu DynamicNotch"
+            "value": "Otvorite web-stranicu Notchie"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "A DynamicNotch weboldalának megnyitása"
+            "value": "A Notchie weboldalának megnyitása"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buka situs web DynamicNotch"
+            "value": "Buka situs web Notchie"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apri il sito web di DynamicNotch"
+            "value": "Apri il sito web di Notchie"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotchのウェブサイトを開く"
+            "value": "Notchieのウェブサイトを開く"
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch веб-сайтын ашу"
+            "value": "Notchie веб-сайтын ашу"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch 공식 웹사이트 열기"
+            "value": "Notchie 공식 웹사이트 열기"
           }
         },
         "ms": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buka laman web DynamicNotch"
+            "value": "Buka laman web Notchie"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Åpne DynamicNotch-nettstedet"
+            "value": "Åpne Notchie-nettstedet"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open de officiële website van DynamicNotch"
+            "value": "Open de officiële website van Notchie"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otwórz witrynę DynamicNotch"
+            "value": "Otwórz witrynę Notchie"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir o site oficial do DynamicNotch"
+            "value": "Abrir o site oficial do Notchie"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "Deschide site-ul DynamicNotch"
+            "value": "Deschide site-ul Notchie"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Открыть сайт DynamicNotch"
+            "value": "Открыть сайт Notchie"
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otvoriť webovú stránku DynamicNotch"
+            "value": "Otvoriť webovú stránku Notchie"
           }
         },
         "sr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Отворите веб-сајт DynamicNotch"
+            "value": "Отворите веб-сајт Notchie"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Öppna den officiella webbplatsen för DynamicNotch"
+            "value": "Öppna den officiella webbplatsen för Notchie"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "เปิดเว็บไซต์ DynamicNotch"
+            "value": "เปิดเว็บไซต์ Notchie"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch web sitesini açın"
+            "value": "Notchie web sitesini açın"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Відкрити офіційний сайт DynamicNotch"
+            "value": "Відкрити офіційний сайт Notchie"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mở trang web DynamicNotch"
+            "value": "Mở trang web Notchie"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开 DynamicNotch 网站"
+            "value": "打开 Notchie 网站"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "開啟 DynamicNotch 官方網站"
+            "value": "開啟 Notchie 官方網站"
           }
         }
       }
@@ -58103,7 +59259,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Show a live activity while files are being downloaded to monitored folders like Downloads, Desktop, and Documents."
+            "value": "Show transfers only in the folder you explicitly select. Monitoring requires a selected folder."
           }
         },
         "es": {
@@ -58187,7 +59343,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다운로드, 데스크탑, 문서 등 감시 폴더로 파일이 다운로드되는 동안 실시간 활동을 표시합니다."
+            "value": "직접 선택한 폴더의 전송만 표시합니다. 폴더를 선택해야 감시할 수 있습니다."
           }
         },
         "ms": {
@@ -164446,7 +165602,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Über DynamicNotch"
+            "value": "Über Notchie"
           }
         },
         "el": {
@@ -167565,7 +168721,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Facial recognition unlocking and face profile security."
+            "value": "Manage face unlock and privacy for your apps."
           }
         },
         "es": {
@@ -167649,7 +168805,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "얼굴 인식 잠금 해제 및 얼굴 프로필 보안."
+            "value": "얼굴 잠금 해제와 앱 프라이버시를 관리합니다."
           }
         },
         "ms": {
@@ -167804,7 +168960,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Face ID"
+            "value": "Lock & Authentication"
           }
         },
         "es": {
@@ -167888,7 +169044,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Face ID"
+            "value": "잠금 및 인증"
           }
         },
         "ms": {
@@ -177316,235 +178472,235 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch هو مشروع مجاني ومفتوح المصدر. إذا أعجبك التطبيق، ادعم تطويره! التبرعات تساعد في تغطية التطوير والصيانة."
+            "value": "Notchie هو مشروع مجاني ومفتوح المصدر. إذا أعجبك التطبيق، ادعم تطويره! التبرعات تساعد في تغطية التطوير والصيانة."
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch е безплатен проект с отворен код. Ако ви харесва, подкрепете разработката му!"
+            "value": "Notchie е безплатен проект с отворен код. Ако ви харесва, подкрепете разработката му!"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch একটি বিনামূল্যের ওপেন সোর্স প্রকল্প। আপনি যদি অ্যাপটি পছন্দ করেন তবে এর বিকাশকে সমর্থন করুন!"
+            "value": "Notchie একটি বিনামূল্যের ওপেন সোর্স প্রকল্প। আপনি যদি অ্যাপটি পছন্দ করেন তবে এর বিকাশকে সমর্থন করুন!"
           }
         },
         "ca": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch és un projecte gratuït de codi obert. Si t'agrada l'aplicació, dona suport al seu desenvolupament!"
+            "value": "Notchie és un projecte gratuït de codi obert. Si t'agrada l'aplicació, dona suport al seu desenvolupament!"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch je bezplatný open-source projekt. Pokud se vám aplikace líbí, podpořte její vývoj! Vaše dary motivují k vytváření nových funkcí."
+            "value": "Notchie je bezplatný open-source projekt. Pokud se vám aplikace líbí, podpořte její vývoj! Vaše dary motivují k vytváření nových funkcí."
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch er et gratis open source-projekt. Hvis du kan lide appen, så støt dens udvikling!"
+            "value": "Notchie er et gratis open source-projekt. Hvis du kan lide appen, så støt dens udvikling!"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch ist ein kostenloses Open-Source-Projekt. Wenn dir die App gefällt, unterstütze die Weiterentwicklung! Spenden motivieren, das Projekt weiter auszubauen."
+            "value": "Notchie ist ein kostenloses Open-Source-Projekt. Wenn dir die App gefällt, unterstütze die Weiterentwicklung! Spenden motivieren, das Projekt weiter auszubauen."
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Το DynamicNotch είναι ένα δωρεάν έργο ανοιχτού κώδικα. Εάν σας αρέσει η εφαρμογή, υποστηρίξτε την ανάπτυξή της!"
+            "value": "Το Notchie είναι ένα δωρεάν έργο ανοιχτού κώδικα. Εάν σας αρέσει η εφαρμογή, υποστηρίξτε την ανάπτυξή της!"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch is a free, open-source project. If you like the app, support its development! Donations motivate to develop the project further."
+            "value": "Notchie is a free, open-source project. If you like the app, support its development! Donations motivate to develop the project further."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch es un proyecto gratuito y de código abierto. Si te gusta la aplicación, ¡apoya su desarrollo! Las donaciones motivan a seguir desarrollando el proyecto."
+            "value": "Notchie es un proyecto gratuito y de código abierto. Si te gusta la aplicación, ¡apoya su desarrollo! Las donaciones motivan a seguir desarrollando el proyecto."
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch یک پروژه رایگان و متن‌باز است. اگر از برنامه لذت می‌برید، از توسعه آن حمایت کنید!"
+            "value": "Notchie یک پروژه رایگان و متن‌باز است. اگر از برنامه لذت می‌برید، از توسعه آن حمایت کنید!"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch on ilmainen, avoimen lähdekoodin projekti. Jos pidät sovelluksesta, tue sen kehitystä!"
+            "value": "Notchie on ilmainen, avoimen lähdekoodin projekti. Jos pidät sovelluksesta, tue sen kehitystä!"
           }
         },
         "fil": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ang DynamicNotch ay isang libreng open-source na proyekto. Kung nagustuhan mo ang app, suportahan ang pagbuo nito!"
+            "value": "Ang Notchie ay isang libreng open-source na proyekto. Kung nagustuhan mo ang app, suportahan ang pagbuo nito!"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch est un projet gratuit et open-source. Si vous appréciez l'application, soutenez son développement ! Vos dons motivent la création de nouvelles fonctionnalités."
+            "value": "Notchie est un projet gratuit et open-source. Si vous appréciez l'application, soutenez son développement ! Vos dons motivent la création de nouvelles fonctionnalités."
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch הוא פרויקט קוד פתוח בחינם. אם אתה נהנה מהאפליקציה, תמוך בפיתוח שלה!"
+            "value": "Notchie הוא פרויקט קוד פתוח בחינם. אם אתה נהנה מהאפליקציה, תמוך בפיתוח שלה!"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch एक मुफ्त, ओपन-सोर्स प्रोजेक्ट है। यदि आप ऐप पसंद करते हैं, तो इसके विकास का समर्थन करें!"
+            "value": "Notchie एक मुफ्त, ओपन-सोर्स प्रोजेक्ट है। यदि आप ऐप पसंद करते हैं, तो इसके विकास का समर्थन करें!"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch je besplatan projekt otvorenog koda. Ako vam se sviđa aplikacija, podržite njezin razvoj!"
+            "value": "Notchie je besplatan projekt otvorenog koda. Ako vam se sviđa aplikacija, podržite njezin razvoj!"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "A DynamicNotch egy ingyenes, nyílt forráskódú projekt. Ha tetszik az alkalmazás, támogassa a fejlesztését!"
+            "value": "A Notchie egy ingyenes, nyílt forráskódú projekt. Ha tetszik az alkalmazás, támogassa a fejlesztését!"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch adalah proyek gratis dan sumber terbuka. Jika Anda menyukai aplikasi ini, dukung pengembangannya! Donasi Anda memotivasi pembuatan fitur-fitur baru."
+            "value": "Notchie adalah proyek gratis dan sumber terbuka. Jika Anda menyukai aplikasi ini, dukung pengembangannya! Donasi Anda memotivasi pembuatan fitur-fitur baru."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch è un progetto gratuito e open-source. Se ti piace l'app, sostieni il suo sviluppo! Le tue donazioni motivano la creazione di nuove funzionalità."
+            "value": "Notchie è un progetto gratuito e open-source. Se ti piace l'app, sostieni il suo sviluppo! Le tue donazioni motivano la creazione di nuove funzionalità."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotchは無料のオープンソースプロジェクトです。アプリを気に入っていただけましたら、ぜひ開発のサポートをご検討ください！皆様のご支援が新機能開発の原動力となります。"
+            "value": "Notchieは無料のオープンソースプロジェクトです。アプリを気に入っていただけましたら、ぜひ開発のサポートをご検討ください！皆様のご支援が新機能開発の原動力となります。"
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch — тегін ашық бастапқы кодты жоба. Егер қолданба ұнаса, оның дамуын қолдаңыз!"
+            "value": "Notchie — тегін ашық бастапқы кодты жоба. Егер қолданба ұнаса, оның дамуын қолдаңыз!"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch는 무료 오픈 소스 프로젝트입니다. 앱이 마음에 드신다면 개발을 후원해 주세요! 여러분의 기부는 새로운 기능 개발에 큰 힘이 됩니다."
+            "value": "Notchie는 무료 오픈 소스 프로젝트입니다. 앱이 마음에 드신다면 개발을 후원해 주세요! 여러분의 기부는 새로운 기능 개발에 큰 힘이 됩니다."
           }
         },
         "ms": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch ialah projek sumber terbuka percuma. Jika anda suka aplikasi ini, sokong pembangunannya!"
+            "value": "Notchie ialah projek sumber terbuka percuma. Jika anda suka aplikasi ini, sokong pembangunannya!"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch er et gratis åpen kildekode-prosjekt. Hvis du liker appen, støtt utviklingen dens!"
+            "value": "Notchie er et gratis åpen kildekode-prosjekt. Hvis du liker appen, støtt utviklingen dens!"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch is een gratis en opensource project. Als je de app leuk vindt, steun dan de ontwikkeling! Jouw donaties motiveren het maken van nieuwe functies."
+            "value": "Notchie is een gratis en opensource project. Als je de app leuk vindt, steun dan de ontwikkeling! Jouw donaties motiveren het maken van nieuwe functies."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch to darmowy projekt open-source. Jeśli podoba Ci się aplikacja, wesprzyj jej rozwój! Twoje darowizny motywują do tworzenia nowych funkcji."
+            "value": "Notchie to darmowy projekt open-source. Jeśli podoba Ci się aplikacja, wesprzyj jej rozwój! Twoje darowizny motywują do tworzenia nowych funkcji."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "O DynamicNotch é um projeto gratuito e de código aberto. Se aprecia a aplicação, considere apoiar o seu desenvolvimento! Os seus donativos motivam a criação de novas funcionalidades."
+            "value": "O Notchie é um projeto gratuito e de código aberto. Se aprecia a aplicação, considere apoiar o seu desenvolvimento! Os seus donativos motivam a criação de novas funcionalidades."
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch este un proiect gratuit, cu sursă deschisă. Dacă vă place aplicația, susțineți dezvoltarea ei!"
+            "value": "Notchie este un proiect gratuit, cu sursă deschisă. Dacă vă place aplicația, susțineți dezvoltarea ei!"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch — бесплатный проект с открытым исходным кодом. Если вам нравится приложение, поддержите его разработку! Донаты мотивируют развивать проект дальше."
+            "value": "Notchie — бесплатный проект с открытым исходным кодом. Если вам нравится приложение, поддержите его разработку! Донаты мотивируют развивать проект дальше."
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch je bezplatný open-source projekt. Ak sa vám aplikácia páči, podporte jej vývoj!"
+            "value": "Notchie je bezplatný open-source projekt. Ak sa vám aplikácia páči, podporte jej vývoj!"
           }
         },
         "sr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch је бесплатан пројекат отвореног кода. Ако вам се свиђа апликација, подржите њен развој!"
+            "value": "Notchie је бесплатан пројекат отвореног кода. Ако вам се свиђа апликација, подржите њен развој!"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch är ett gratis projekt med öppen källkod. Om du gillar appen, stöd dess utveckling! Dina donationer motiverar skapandet av nya funktioner."
+            "value": "Notchie är ett gratis projekt med öppen källkod. Om du gillar appen, stöd dess utveckling! Dina donationer motiverar skapandet av nya funktioner."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch เป็นโครงการฟรีและโอเพ่นซอร์ส หากคุณชอบแอปนี้ โปรดสนับสนุนการพัฒนา!"
+            "value": "Notchie เป็นโครงการฟรีและโอเพ่นซอร์ส หากคุณชอบแอปนี้ โปรดสนับสนุนการพัฒนา!"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch ücretsiz ve açık kaynaklı bir projedir. Uygulamayı beğendiyseniz geliştirilmesine destek olun! Bağışlar projeyi daha da ileri taşımak için motivasyon sağlar."
+            "value": "Notchie ücretsiz ve açık kaynaklı bir projedir. Uygulamayı beğendiyseniz geliştirilmesine destek olun! Bağışlar projeyi daha da ileri taşımak için motivasyon sağlar."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch — це безкоштовний проєкт з відкритим кодом. Якщо вам подобається програма, підтримайте її розробку! Ваші донати мотивують створювати нові функції."
+            "value": "Notchie — це безкоштовний проєкт з відкритим кодом. Якщо вам подобається програма, підтримайте її розробку! Ваші донати мотивують створювати нові функції."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch là một dự án nguồn mở miễn phí. Nếu bạn thích ứng dụng, hãy ủng hộ sự phát triển của nó! Đóng góp của bạn thúc đẩy việc tạo ra các tính năng mới."
+            "value": "Notchie là một dự án nguồn mở miễn phí. Nếu bạn thích ứng dụng, hãy ủng hộ sự phát triển của nó! Đóng góp của bạn thúc đẩy việc tạo ra các tính năng mới."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch 是一个免费且开源的项目。如果你喜欢这个应用，请支持它的开发！您的捐赠是继续开发该项目的动力。"
+            "value": "Notchie 是一个免费且开源的项目。如果你喜欢这个应用，请支持它的开发！您的捐赠是继续开发该项目的动力。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch 是一個免費且開源的專案。如果您喜歡這款應用程式，請支持它的開發！您的贊助能激勵開發更多新功能。"
+            "value": "Notchie 是一個免費且開源的專案。如果您喜歡這款應用程式，請支持它的開發！您的贊助能激勵開發更多新功能。"
           }
         }
       }
@@ -178033,235 +179189,235 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ادعم DynamicNotch"
+            "value": "ادعم Notchie"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Подкрепете DynamicNotch"
+            "value": "Подкрепете Notchie"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch সমর্থন করুন"
+            "value": "Notchie সমর্থন করুন"
           }
         },
         "ca": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dona suport a DynamicNotch"
+            "value": "Dona suport a Notchie"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Podpořit DynamicNotch"
+            "value": "Podpořit Notchie"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Støt DynamicNotch"
+            "value": "Støt Notchie"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch unterstützen"
+            "value": "Notchie unterstützen"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "Υποστηρίξτε το DynamicNotch"
+            "value": "Υποστηρίξτε το Notchie"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Support DynamicNotch"
+            "value": "Support Notchie"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apoyar DynamicNotch"
+            "value": "Apoyar Notchie"
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "حمایت از DynamicNotch"
+            "value": "حمایت از Notchie"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tue DynamicNotchia"
+            "value": "Tue Notchieia"
           }
         },
         "fil": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suportahan ang DynamicNotch"
+            "value": "Suportahan ang Notchie"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Soutenir DynamicNotch"
+            "value": "Soutenir Notchie"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "תמוך ב-DynamicNotch"
+            "value": "תמוך ב-Notchie"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch का समर्थन करें"
+            "value": "Notchie का समर्थन करें"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Podržite DynamicNotch"
+            "value": "Podržite Notchie"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "A DynamicNotch támogatása"
+            "value": "A Notchie támogatása"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dukung DynamicNotch"
+            "value": "Dukung Notchie"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sostieni DynamicNotch"
+            "value": "Sostieni Notchie"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotchを支援"
+            "value": "Notchieを支援"
           }
         },
         "kk": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch-ты қолдау"
+            "value": "Notchie-ты қолдау"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch 후원"
+            "value": "Notchie 후원"
           }
         },
         "ms": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sokong DynamicNotch"
+            "value": "Sokong Notchie"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Støtt DynamicNotch"
+            "value": "Støtt Notchie"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch ondersteunen"
+            "value": "Notchie ondersteunen"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wesprzyj DynamicNotch"
+            "value": "Wesprzyj Notchie"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apoiar o DynamicNotch"
+            "value": "Apoiar o Notchie"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "Susține DynamicNotch"
+            "value": "Susține Notchie"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Поддержка DynamicNotch"
+            "value": "Поддержка Notchie"
           }
         },
         "sk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Podporte DynamicNotch"
+            "value": "Podporte Notchie"
           }
         },
         "sr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Подржите DynamicNotch"
+            "value": "Подржите Notchie"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stöd DynamicNotch"
+            "value": "Stöd Notchie"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "สนับสนุน DynamicNotch"
+            "value": "สนับสนุน Notchie"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "DynamicNotch'a Destek Ol"
+            "value": "Notchie'a Destek Ol"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Підтримати DynamicNotch"
+            "value": "Підтримати Notchie"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hỗ trợ DynamicNotch"
+            "value": "Hỗ trợ Notchie"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "支持 DynamicNotch"
+            "value": "支持 Notchie"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "贊助 DynamicNotch"
+            "value": "贊助 Notchie"
           }
         }
       }
@@ -216501,6 +217657,2472 @@
           "stringUnit": {
             "state": "translated",
             "value": "Құлыпта ықшам"
+          }
+        }
+      }
+    },
+    "productivity.returnAutomatic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Return to automatic activities"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 활동으로 돌아가기"
+          }
+        }
+      }
+    },
+    "productivity.palette": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick Launch"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빠른 실행"
+          }
+        }
+      }
+    },
+    "productivity.palette.search": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search tools or saved notes…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도구 또는 저장된 메모 검색…"
+          }
+        }
+      }
+    },
+    "productivity.launchApp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open an application…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 선택하여 열기…"
+          }
+        }
+      }
+    },
+    "productivity.tool.notes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모"
+          }
+        }
+      }
+    },
+    "productivity.tool.stopwatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopwatch"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스톱워치"
+          }
+        }
+      }
+    },
+    "productivity.tool.awake": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Awake"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠자기 방지"
+          }
+        }
+      }
+    },
+    "productivity.tool.color": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color Picker"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상 추출"
+          }
+        }
+      }
+    },
+    "productivity.tool.focus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus Session"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "집중 세션"
+          }
+        }
+      }
+    },
+    "productivity.tool.tasks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today’s Top Three"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 할 일 3개"
+          }
+        }
+      }
+    },
+    "productivity.tool.snippets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved Clipboard"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "직접 저장한 클립보드"
+          }
+        }
+      }
+    },
+    "productivity.tool.rules": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Display Rules"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱별 표시 규칙"
+          }
+        }
+      }
+    },
+    "productivity.tool.jobs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Task Results"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 실행·결과"
+          }
+        }
+      }
+    },
+    "productivity.tool.status": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissions & Resources"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한·리소스 상태"
+          }
+        }
+      }
+    },
+    "productivity.focus.awake": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep display awake during focus"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "집중 중 화면 잠자기 방지"
+          }
+        }
+      }
+    },
+    "productivity.focus.start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start focus"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "집중 시작"
+          }
+        }
+      }
+    },
+    "productivity.focus.finished": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus completed. Ready for a break."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "집중 완료. 잠시 쉬어도 좋습니다."
+          }
+        }
+      }
+    },
+    "productivity.focus.break": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start 5-minute break"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5분 휴식 시작"
+          }
+        }
+      }
+    },
+    "productivity.focus.stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End session"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세션 종료"
+          }
+        }
+      }
+    },
+    "productivity.focus.working": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "집중 중"
+          }
+        }
+      }
+    },
+    "productivity.focus.resting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Break"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "휴식 중"
+          }
+        }
+      }
+    },
+    "productivity.focus.completedToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completed focus sessions today · saved on this Mac"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 완료한 집중 세션 · 이 Mac에 저장"
+          }
+        }
+      }
+    },
+    "productivity.resume": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재개"
+          }
+        }
+      }
+    },
+    "productivity.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제거"
+          }
+        }
+      }
+    },
+    "productivity.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가"
+          }
+        }
+      }
+    },
+    "productivity.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사"
+          }
+        }
+      }
+    },
+    "productivity.tasks.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose up to three priorities for today. Stored locally; each day has its own list."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 우선할 일을 최대 3개 선택하세요. 날짜별로 이 Mac에 저장합니다."
+          }
+        }
+      }
+    },
+    "productivity.tasks.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add today’s priority"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 우선할 일 입력"
+          }
+        }
+      }
+    },
+    "productivity.snippets.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reads plain text only when Capture is pressed. No background clipboard monitoring. Saved text is not encrypted. Up to 100 items / 100 KB each."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 버튼을 누를 때만 텍스트를 읽습니다. 백그라운드 감시 없음. 저장된 내용은 암호화되지 않습니다. 최대 100개·각 100KB."
+          }
+        }
+      }
+    },
+    "productivity.snippets.capture": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture clipboard text"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 클립보드 텍스트 저장"
+          }
+        }
+      }
+    },
+    "productivity.snippets.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No eligible plain text, or storage limit reached. Concealed password-manager items are excluded."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 가능한 텍스트가 없거나 저장 한도에 도달했습니다. 암호 관리자가 숨긴 항목은 제외합니다."
+          }
+        }
+      }
+    },
+    "productivity.rules.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide the notch while a selected app is frontmost. Rules are local; remove an app to restore automatic display."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 앱이 맨 앞에 있으면 노치를 숨깁니다. 규칙은 로컬에 저장하며 제거하면 자동 표시로 복구됩니다."
+          }
+        }
+      }
+    },
+    "productivity.rules.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose app to hide in…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치를 숨길 앱 선택…"
+          }
+        }
+      }
+    },
+    "productivity.image.png": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export PNG copy…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG 사본으로 저장…"
+          }
+        }
+      }
+    },
+    "productivity.image.jpeg": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export JPEG copy · up to 1600 px…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG 사본으로 저장 · 최대 1600px…"
+          }
+        }
+      }
+    },
+    "productivity.jobs.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs only after your click. Xcode builds execute the selected project’s build scripts. Originals are preserved; code signing is disabled for these builds. Output stays local (last 64 KB)."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버튼을 눌렀을 때만 실행합니다. Xcode 빌드는 선택한 프로젝트의 빌드 스크립트를 실행합니다. 원본을 유지하며 이 빌드의 코드 서명은 끕니다. 출력은 로컬에 최근 64KB만 표시합니다."
+          }
+        }
+      }
+    },
+    "productivity.jobs.project": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Xcode project…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode 프로젝트 선택…"
+          }
+        }
+      }
+    },
+    "productivity.jobs.scheme": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exact shared scheme name"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공유 Scheme 이름 입력"
+          }
+        }
+      }
+    },
+    "productivity.jobs.build": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run build"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빌드 실행"
+          }
+        }
+      }
+    },
+    "productivity.jobs.hash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compute file SHA-256…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 SHA-256 계산…"
+          }
+        }
+      }
+    },
+    "productivity.jobs.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request cancellation"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중단 요청"
+          }
+        }
+      }
+    },
+    "productivity.jobs.ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기 중"
+          }
+        }
+      }
+    },
+    "productivity.jobs.running": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중…"
+          }
+        }
+      }
+    },
+    "productivity.jobs.success": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Succeeded"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "성공"
+          }
+        }
+      }
+    },
+    "productivity.jobs.failure": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실패"
+          }
+        }
+      }
+    },
+    "productivity.jobs.cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelled"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소됨"
+          }
+        }
+      }
+    },
+    "productivity.status.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read-only permission checks; no access prompts. Permission granted does not mean the camera or calendar is currently in use."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한 상태만 조회하며 허용 팝업을 띄우지 않습니다. 허용됨은 카메라·달력을 현재 사용 중이라는 뜻이 아닙니다."
+          }
+        }
+      }
+    },
+    "productivity.status.camera": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera permission"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카메라 권한"
+          }
+        }
+      }
+    },
+    "productivity.status.calendar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar permission"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "달력 권한"
+          }
+        }
+      }
+    },
+    "productivity.status.accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility permission"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "손쉬운 사용 권한"
+          }
+        }
+      }
+    },
+    "productivity.allowed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용됨"
+          }
+        }
+      }
+    },
+    "productivity.notAllowed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not granted / limited"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용되지 않음·제한됨"
+          }
+        }
+      }
+    },
+    "productivity.status.connections": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enabled optional connections"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "켜진 선택적 연결"
+          }
+        }
+      }
+    },
+    "productivity.status.noFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No monitored folder selected"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 감시 폴더 없음"
+          }
+        }
+      }
+    },
+    "productivity.active": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동작 중"
+          }
+        }
+      }
+    },
+    "productivity.inactive": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactive"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "꺼짐"
+          }
+        }
+      }
+    },
+    "productivity.status.stopAwake": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release Keep Awake assertions"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠자기 방지 해제"
+          }
+        }
+      }
+    },
+    "productivity.status.stopConnections": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disable optional connections"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택적 연결 끄기"
+          }
+        }
+      }
+    },
+    "productivity.status.stopMonitors": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop media/download/recording/timer monitoring"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미디어·다운로드·녹화·타이머 감시 중지"
+          }
+        }
+      }
+    },
+    "productivity.status.refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh status"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상태 새로고침"
+          }
+        }
+      }
+    },
+    "productivity.status.inFlight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disabling connections blocks new requests; a request already sent may finish. Stopping monitors is saved in Settings."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결을 끄면 새 요청을 차단합니다. 이미 전송된 요청은 완료될 수 있습니다. 감시 중지는 설정에 저장됩니다."
+          }
+        }
+      }
+    },
+    "productivity.screenshot.disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic screenshot interception is disabled in this local build. macOS screenshot save locations and floating-thumbnail preferences are not changed. Screen recording activity detection is separate."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 로컬 빌드에서는 자동 스크린샷 가로채기를 끕니다. macOS 캡처 저장 위치와 미리보기 설정을 변경하지 않습니다. 화면 녹화 활동 감지는 별도 기능입니다."
+          }
+        }
+      }
+    },
+    "support.board.evidence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스크린샷"
+          }
+        }
+      }
+    },
+    "support.board.mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 공간"
+          }
+        }
+      }
+    },
+    "support.board.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open support board"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지원 보드 열기"
+          }
+        }
+      }
+    },
+    "support.board.report": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report comparison"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리포트 비교"
+          }
+        }
+      }
+    },
+    "support.board.text": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text tools"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 도구"
+          }
+        }
+      }
+    },
+    "support.board.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Support case board"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기술 지원 케이스 보드"
+          }
+        }
+      }
+    },
+    "support.build.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local build"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 빌드"
+          }
+        }
+      }
+    },
+    "support.calc.convert": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convert"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변환"
+          }
+        }
+      }
+    },
+    "support.calc.evaluate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculate"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계산"
+          }
+        }
+      }
+    },
+    "support.calc.expression": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expression or value"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계산식 또는 값"
+          }
+        }
+      }
+    },
+    "support.calc.from": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원본 단위"
+          }
+        }
+      }
+    },
+    "support.calc.to": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변환 단위"
+          }
+        }
+      }
+    },
+    "support.calc.local": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculated on this Mac. Percent means divide by 100."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에서 계산합니다. %는 100으로 나눕니다."
+          }
+        }
+      }
+    },
+    "support.case.actual": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual result"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실제 결과"
+          }
+        }
+      }
+    },
+    "support.case.app": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App / platform / SDK"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 / 플랫폼 / SDK"
+          }
+        }
+      }
+    },
+    "support.case.caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidence caption"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "증거 설명"
+          }
+        }
+      }
+    },
+    "support.case.contextHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record date range, timezone, cohort, currency, filters and data freshness for both reports. Review redactions before sharing."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 리포트의 날짜 범위·시간대·코호트·통화·필터·갱신 시각을 기록하세요. 공유 전 가림 처리를 확인하세요."
+          }
+        }
+      }
+    },
+    "support.case.expected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expected result"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예상 결과"
+          }
+        }
+      }
+    },
+    "support.case.export": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export evidence"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "증거 내보내기"
+          }
+        }
+      }
+    },
+    "support.case.import": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import images"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지 가져오기"
+          }
+        }
+      }
+    },
+    "support.case.imported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images imported"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지를 가져왔습니다"
+          }
+        }
+      }
+    },
+    "support.case.local": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only selected images are copied locally. No automatic upload."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 이미지만 로컬에 복사합니다. 자동 업로드하지 않습니다."
+          }
+        }
+      }
+    },
+    "support.case.mask": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag to redact"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "드래그하여 가리기"
+          }
+        }
+      }
+    },
+    "support.case.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New case"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 케이스"
+          }
+        }
+      }
+    },
+    "support.case.noImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No image on clipboard"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클립보드에 이미지가 없습니다"
+          }
+        }
+      }
+    },
+    "support.case.notes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Investigation notes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "분석 메모"
+          }
+        }
+      }
+    },
+    "support.case.ocr": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extract text locally"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 텍스트 추출"
+          }
+        }
+      }
+    },
+    "support.case.paste": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste image"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지 붙여넣기"
+          }
+        }
+      }
+    },
+    "support.case.reportA": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report A context"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리포트 A 비교 조건"
+          }
+        }
+      }
+    },
+    "support.case.reportB": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report B context"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리포트 B 비교 조건"
+          }
+        }
+      }
+    },
+    "support.case.start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a case to collect evidence"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "케이스를 만들어 증거를 모으세요"
+          }
+        }
+      }
+    },
+    "support.case.stopWatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop folder watch"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 감시 중지"
+          }
+        }
+      }
+    },
+    "support.case.ticket": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ticket / case ID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "티켓 / 케이스 ID"
+          }
+        }
+      }
+    },
+    "support.case.timezone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report timezone"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리포트 시간대"
+          }
+        }
+      }
+    },
+    "support.case.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Case title"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "케이스 제목"
+          }
+        }
+      }
+    },
+    "support.case.undoMask": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo last redaction"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마지막 가림 취소"
+          }
+        }
+      }
+    },
+    "support.case.untitled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untitled case"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제목 없는 케이스"
+          }
+        }
+      }
+    },
+    "support.case.watch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Watch selected folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 폴더 감시"
+          }
+        }
+      }
+    },
+    "support.report.attach": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attach result to case"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "케이스에 결과 첨부"
+          }
+        }
+      }
+    },
+    "support.report.compare": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare CSV reports"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 리포트 비교"
+          }
+        }
+      }
+    },
+    "support.report.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste A and B CSVs. Match exact key and metric headers. Duplicate keys are summed; missing rows stay missing. No timezone or currency conversion."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A·B CSV를 붙여넣고 키·지표 열 이름을 정확히 입력하세요. 중복 키는 합산하고 누락 행은 그대로 표시합니다. 시간대·통화를 자동 변환하지 않습니다."
+          }
+        }
+      }
+    },
+    "support.report.keys": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key columns, comma separated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키 열 이름, 쉼표로 구분"
+          }
+        }
+      }
+    },
+    "support.report.metric": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metric column"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지표 열 이름"
+          }
+        }
+      }
+    },
+    "support.report.reference": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Singular discrepancy guide"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Singular 데이터 차이 분석 가이드"
+          }
+        }
+      }
+    },
+    "support.shortcuts.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단축어"
+          }
+        }
+      }
+    },
+    "support.shortcuts.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load your Apple Shortcuts, then explicitly run one. A shortcut can perform actions and request permissions."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 단축어 목록을 불러온 뒤 선택하여 실행합니다. 단축어는 작업을 수행하거나 권한을 요청할 수 있습니다."
+          }
+        }
+      }
+    },
+    "support.shortcuts.list": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load shortcuts"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단축어 불러오기"
+          }
+        }
+      }
+    },
+    "support.shortcuts.run": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run selected shortcut"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 단축어 실행"
+          }
+        }
+      }
+    },
+    "support.text.compare": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparison input"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비교할 텍스트"
+          }
+        }
+      }
+    },
+    "support.text.input": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input text"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력 텍스트"
+          }
+        }
+      }
+    },
+    "support.text.local": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local processing only. Review automatic masking before sharing."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬에서만 처리합니다. 공유 전 자동 가림 결과를 검토하세요."
+          }
+        }
+      }
+    },
+    "support.text.operation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operation"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업"
+          }
+        }
+      }
+    },
+    "support.text.reference": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Singular EVENT reference"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Singular EVENT 문서"
+          }
+        }
+      }
+    },
+    "support.text.run": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Process"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행"
+          }
+        }
+      }
+    },
+    "support.text.json": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format JSON"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON 정렬"
+          }
+        }
+      }
+    },
+    "support.text.minify": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minify JSON"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON 압축"
+          }
+        }
+      }
+    },
+    "support.text.diff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare JSON"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON 비교"
+          }
+        }
+      }
+    },
+    "support.text.url": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decode URL query"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL 쿼리 해석"
+          }
+        }
+      }
+    },
+    "support.text.redact": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mask secret candidates"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "민감 정보 후보 가리기"
+          }
+        }
+      }
+    },
+    "support.text.singular": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inspect Singular payload structure"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Singular 페이로드 구조 확인"
+          }
+        }
+      }
+    },
+    "support.tool.calculator": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculator & units"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계산기·단위 변환"
+          }
+        }
+      }
+    },
+    "support.tool.cases": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Support case board"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기술 지원 케이스 보드"
+          }
+        }
+      }
+    },
+    "support.tool.developer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developer text tools"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개발자 텍스트 도구"
+          }
+        }
+      }
+    },
+    "support.tool.reports": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report A/B comparison"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리포트 A/B 비교"
+          }
+        }
+      }
+    },
+    "support.tool.shortcuts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Shortcuts"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 단축어"
+          }
+        }
+      }
+    },
+    "support.tool.zip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZIP tools"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZIP 도구"
+          }
+        }
+      }
+    },
+    "support.zip.create": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create ZIP"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZIP 만들기"
+          }
+        }
+      }
+    },
+    "support.zip.extract": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extract ZIP"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZIP 풀기"
+          }
+        }
+      }
+    },
+    "support.zip.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create an archive from selected files, or inspect a standard ZIP before extracting into a new folder. Originals are preserved."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 파일을 압축하거나 일반 ZIP을 검사한 뒤 새 폴더에 풉니다. 원본은 보존합니다."
+          }
+        }
+      }
+    },
+    "Notchie": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "ca": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "fil": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "kk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "ms": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "sr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchie"
           }
         }
       }

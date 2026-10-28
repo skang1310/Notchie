@@ -13,6 +13,7 @@ internal import AppKit
 final class SparkleUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
     static let shared = SparkleUpdater()
     
+    let isLocalBuild = Bundle.main.object(forInfoDictionaryKey: "DynamicNotchLocalBuild") as? Bool ?? false
     private var updaterController: SPUStandardUpdaterController!
     
     @Published var canCheckForUpdates = false
@@ -25,6 +26,7 @@ final class SparkleUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
     
     private override init() {
         super.init()
+        guard !isLocalBuild else { return }
         
         self.updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
         
@@ -105,6 +107,7 @@ final class SparkleUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
     
     func checkForUpdates() {
+        guard !isLocalBuild else { return }
         NSApp.activate(ignoringOtherApps: true)
         updaterController.checkForUpdates(nil)
     }

@@ -56,7 +56,11 @@ enum L10n {
             comment: ""
         )
 
-        return value == key ? (fallback ?? key) : value
+        guard value == key else { return value }
+        if let englishPath = Bundle.main.path(forResource: "en", ofType: "lproj"), let english = Bundle(path: englishPath) {
+            return NSLocalizedString(key, tableName: nil, bundle: english, value: fallback ?? key, comment: "")
+        }
+        return fallback ?? key
     }
 }
 

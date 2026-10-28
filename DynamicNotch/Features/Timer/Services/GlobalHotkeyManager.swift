@@ -14,11 +14,14 @@ final class GlobalHotkeyManager {
     private var eventHandlerRef: EventHandlerRef?
     private var action: (() -> Void)?
 
-    private init() {
+    private let identifier: UInt32
+    init(identifier: UInt32 = 1) {
+        self.identifier = identifier
         installCarbonEventHandler()
     }
 
-    func register(keyCode: UInt32, modifiers: NSEvent.ModifierFlags, action: @escaping () -> Void) {
+    @discardableResult
+    func register(keyCode: UInt32, modifiers: NSEvent.ModifierFlags, action: @escaping () -> Void) -> Bool {
         unregister()
         self.action = action
 
@@ -28,8 +31,8 @@ final class GlobalHotkeyManager {
         if modifiers.contains(.control) { carbonModifiers |= UInt32(controlKey) }
         if modifiers.contains(.shift) { carbonModifiers |= UInt32(shiftKey) }
 
-        let hotKeyID = EventHotKeyID(signature: OSType(0x444E544D), id: 1) // "DNTM"
-        RegisterEventHotKey(
+        let hotKeyID = EventHotKeyID(signature: OSType(0x444E544D), id: identifier) // "DNTM"
+        let status = RegisterEventHotKey(
             keyCode,
             carbonModifiers,
             hotKeyID,
@@ -37,6 +40,7 @@ final class GlobalHotkeyManager {
             0,
             &hotKeyRef
         )
+        return status == noErr
     }
 
     func unregister() {
@@ -50,9 +54,13 @@ final class GlobalHotkeyManager {
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(
             GetEventDispatcherTarget(),
-            { (_, _, userData) -> OSStatus in
+            { (_, event, userData) -> OSStatus in
                 guard let userData else { return noErr }
                 let manager = Unmanaged<GlobalHotkeyManager>.fromOpaque(userData).takeUnretainedValue()
+                var eventID = EventHotKeyID()
+                guard let event,
+                      GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &eventID) == noErr,
+                      eventID.signature == OSType(0x444E544D), eventID.id == manager.identifier else { return OSStatus(eventNotHandledErr) }
                 DispatchQueue.main.async {
                     manager.action?()
                 }

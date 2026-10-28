@@ -18,14 +18,18 @@ struct SoftwareUpdateSettingsView: View {
     var body: some View {
         SettingsPageScrollView {
             versionCard
-            optionsCard
+            if updater.isLocalBuild {
+                SettingsCard(title: "settings.local.update.title") {
+                    Text("settings.local.update.desc").foregroundStyle(.secondary)
+                }
+            } else { optionsCard }
         }
     }
     
     private var versionCard: some View {
         SettingsCard {
             SettingsButtonRow(
-                title: "DynamicNotch",
+                title: "Notchie",
                 description: "Version \(currentVersion)",
                 imageName: "simplifiedLogo",
                 iconSize: 30,

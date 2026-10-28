@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- MANDATORY: Declare support for both light and dark themes -->
+  <meta name="color-scheme" content="light dark">
+  <title>Notchie — Custom macOS Notch Workspace</title>
+  <meta name="description" content="Notchie is a customized open-source macOS Dynamic Notch workspace featuring an idle Hover Shelf, Clipboard History Search, Camera Face Unlock with Original & Minimal notch previews, Custom Accent Colors, and a Startup Permission Guard.">
+  <link rel="icon" type="image/png" href="assets/notchie-icon-dark.png">
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --accent-light: #15803d;
+      --accent-dark: #34c759;
+      --accent: light-dark(var(--accent-light), var(--accent-dark));
+
+      --surface-bg: light-dark(#f6f7fb, #090b10);
+      --surface-card: light-dark(#ffffff, #121621);
+      --surface-elevated: light-dark(#eef1f8, #191f2e);
+      --text-primary: light-dark(#0f172a, #f8fafc);
+      --text-secondary: light-dark(#475569, #94a3b8);
+      --border-subtle: light-dark(#cbd5e1, #262f45);
+      --badge-bg: color-mix(in oklab, var(--accent) 16%, transparent);
+
+      accent-color: var(--accent);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Pretendard", system-ui, sans-serif;
+      line-height: 1.6;
+    }
+
+    @media (forced-colors: active) {
+      :root {
+        --surface-bg: Canvas;
+        --surface-card: Canvas;
+        --text-primary: CanvasText;
+        --text-secondary: GrayText;
+        --border-subtle: CanvasText;
+        --accent: Highlight;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--surface-bg);
+      color: var(--text-primary);
+      padding-bottom: 5rem;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Top Nav */
+    header.site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(16px);
+      background-color: color-mix(in oklab, var(--surface-bg) 82%, transparent);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 4rem;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--text-primary);
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      background-color: var(--badge-bg);
+      color: var(--accent);
+      border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 4.5rem 0 3.5rem;
+      text-align: center;
+    }
+
+    .hero-icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 22px;
+      background-color: var(--surface-card);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .hero-icons img {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+    }
+
+    .hero p.lead {
+      max-width: 760px;
+      margin: 0 auto 2rem;
+      font-size: 1.12rem;
+      color: var(--text-secondary);
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.85rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.35rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--surface-card);
+      color: var(--text-primary);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      text-decoration: none;
+      border-color: var(--accent);
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    /* Interactive Notch Mockup */
+    .notch-demo-shell {
+      max-width: 680px;
+      margin: 2.75rem auto 0;
+      padding: 1.25rem;
+      border-radius: 20px;
+      background-color: #07090e;
+      color: #f8fafc;
+      border: 1px solid color-mix(in oklab, var(--accent) 45%, #1e293b);
+      text-align: left;
+    }
+
+    .notch-pill-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .notch-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background-color: rgba(255, 255, 255, 0.07);
+      color: #cbd5e1;
+      border: 1px solid transparent;
+    }
+
+    .notch-tab.active {
+      background-color: rgba(52, 199, 89, 0.22);
+      color: #4ade80;
+      border-color: rgba(52, 199, 89, 0.7);
+    }
+
+    /* Section Headings */
+    section {
+      padding-top: 4rem;
+    }
+
+    .section-title {
+      font-size: 1.85rem;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
+
+    /* Feature Grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .feature-card {
+      background-color: var(--surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1.12rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .feature-card p {
+      font-size: 0.93rem;
+      color: var(--text-secondary);
+    }
+
+    /* Screenshots Gallery */
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 560px) {
+      .screenshot-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    figure.shot-card {
+      background-color: var(--surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    figure.shot-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-bottom: 1px solid var(--border-subtle);
+      background-color: var(--surface-elevated);
+    }
+
+    figure.shot-card figcaption {
+      padding: 1rem 1.25rem;
+    }
+
+    figure.shot-card figcaption strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 0.2rem;
+    }
+
+    figure.shot-card figcaption span {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+
+    /* Code / Install Block */
+    pre.code-block {
+      background-color: var(--surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1.15rem 1.25rem;
+      overflow-x: auto;
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+
+    footer {
+      margin-top: 5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-bar">
+      <div class="brand">
+        <img src="assets/notchie-icon-dark.png" alt="Notchie app icon">
+        <span>Notchie</span>
+        <span class="badge">Custom Edition</span>
+      </div>
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <a href="#features">주요 기능 (Features)</a>
+        <a href="#screenshots">스크린샷 (Screenshots)</a>
+        <a href="#install">빌드 및 설치 (Build)</a>
+        <a href="#license">오픈소스 (License)</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-icons" aria-label="Notchie Light and Dark macOS Icons">
+        <img src="assets/notchie-icon-light.png" alt="Notchie Light Icon">
+        <img src="assets/notchie-icon-dark.png" alt="Notchie Dark Icon">
+      </div>
+      <h1>Notchie — 나만의 맞춤형 macOS 노치 워크스페이스</h1>
+      <p class="lead">
+        유휴 노치에 마우스를 올리면 열리는 <strong>NotchNook 스타일 호버 메뉴</strong>, 실시간 <strong>클립보드 히스토리 검색 및 원클릭 재복사</strong>, <strong>카메라 얼굴 잠금 해제 (오리지널 풀 배지 스캔 &amp; 미니멀 프리뷰)</strong>, <strong>맞춤 강조 색상 피커</strong>, 그리고 <strong>앱 시작 시 필수 권한 자동 점검 및 알림</strong>을 하나로 결합한 오픈소스 커스텀 앱입니다.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/skang1310/Notchie">GitHub 저장소 보기</a>
+        <a class="btn" href="#screenshots">실행 화면 둘러보기</a>
+        <a class="btn" href="#install">로컬 빌드 가이드</a>
+      </div>
+
+      <div class="notch-demo-shell" aria-label="Notchie Hover Shelf Preview">
+        <div class="notch-pill-bar">
+          <span class="notch-tab active">📋 클립보드 (Clipboard)</span>
+          <span class="notch-tab">📝 빠른 메모 (Notes)</span>
+          <span class="notch-tab">⏱️ 집중 세션 (Focus)</span>
+          <span class="notch-tab">☑️ 오늘 할 일 (Tasks)</span>
+          <span class="notch-tab">☕ 화면 유지 (Keep Awake)</span>
+          <span class="notch-tab">🎨 색상 추출 (Color)</span>
+          <span class="notch-tab">📌 고정 (Pin)</span>
+        </div>
+        <div style="font-size: 0.88rem; color: #94a3b8;">
+          🔍 <strong>클립보드 내역 실시간 검색</strong> — 복사한 모든 스니펫을 즉시 필터링하고 클릭 한 번으로 다시 복사합니다.
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2 class="section-title">주요 커스텀 기능 (Key Features)</h2>
+      <p class="section-subtitle">오픈소스 기반 위에 일상 생산성과 개인화 경험을 극대화하도록 설계된 핵심 기능들입니다.</p>
+
+      <div class="feature-grid">
+        <article class="feature-card">
+          <h3><span>🧲</span> 노치 호버 메뉴 &amp; 맞춤 탭 (Hover Shelf)</h3>
+          <p>
+            라이브 액티비티가 없을 때도 상단 노치에 마우스를 올리면(Hover) 즉시 허브 메뉴가 펼쳐집니다.
+            원하는 도구 탭만 골라 켜고 끌 수 있으며, 고정(Pin) 버튼으로 작업 중 노치 창을 유지할 수 있습니다.
+          </p>
+        </article>
+
+        <article class="feature-card">
+          <h3><span>📋</span> 클립보드 히스토리 검색 &amp; 원클릭 복사</h3>
+          <p>
+            복사한 텍스트 내역을 검색창에서 실시간으로 필터링하고, 항목이나 복사 버튼을 클릭해 원클릭으로 재복사(`Copied!` 피드백)합니다.
+            비밀번호 등 민감 타입을 제외한 선택적 자동 기록(Auto-capture) 옵션을 지원합니다.
+          </p>
+        </article>
+
+        <article class="feature-card">
+          <h3><span>🪪</span> 얼굴 잠금 해제: 오리지널 배지 vs 미니멀 미리보기</h3>
+          <p>
+            HeyMac 엔진을 통합하여 카메라 기반 얼굴 잠금 해제와 앱 프라이버시 가림막을 제공합니다.
+            <strong>오리지널 (풀 배지 스캔 애니메이션)</strong>과 <strong>미니멀 (자물쇠 + 스캔 바)</strong> 스타일을 나란히 비교하고 실제 노치에서 즉시 미리볼 수 있습니다.
+          </p>
+        </article>
+
+        <article class="feature-card">
+          <h3><span>🎨</span> 커스텀 강조 색상 (Accent Color) &amp; 테마</h3>
+          <p>
+            8종의 프리셋 컬러칩과 macOS 기본 <code>ColorPicker</code>로 나만의 강조 색상(HEX)을 지정할 수 있습니다.
+            선택한 색상은 노치 호버 탭, 얼굴 스캔 애니메이션, 상태 배지에 실시간 반영됩니다.
+          </p>
+        </article>
+
+        <article class="feature-card">
+          <h3><span>🛡️</span> 시작 시 권한 자동 확인 및 미설정 알람</h3>
+          <p>
+            앱 시작 시 손쉬운 사용(Accessibility), 카메라, 캘린더, 블루투스, 미디어 제어 등 필수 권한을 확인·요청합니다.
+            설정되지 않은 권한이 있으면 노치 배너 및 경고 알람을 띄워 권한 설정 페이지로 바로 안내합니다.
+          </p>
+        </article>
+
+        <article class="feature-card">
+          <h3><span>✨</span> Notchie 전용 Light/Dark 아이콘 &amp; 클린 UI</h3>
+          <p>
+            macOS Light 및 Dark 테마에 맞춘 전용 Notchie 아이콘 세트를 전면 적용하고,
+            불필요한 후원 및 외부 자동 업데이트 페이지를 제거하여 깔끔한 독립형 워크스페이스로 다듬었습니다.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="screenshots">
+      <h2 class="section-title">앱 스크린샷 (Screenshots)</h2>
+      <p class="section-subtitle">macOS에서 실제로 빌드·실행된 Notchie의 설정 및 프리뷰 화면입니다.</p>
+
+      <div class="screenshot-grid">
+        <figure class="shot-card">
+          <img src="screenshots/about-settings.png" alt="Notchie General About Settings Page" loading="lazy">
+          <figcaption>
+            <strong>일반 → 정보 (About Notchie Custom Edition)</strong>
+            <span>Notchie 전용 아이콘, 커스텀 기능 요약, 빌드 리비전 및 GPL-3.0 / MIT 오픈소스 라이선스 고지</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot-card">
+          <img src="screenshots/face-unlock-preview.png" alt="Notchie Face Unlock Original vs Minimal Preview" loading="lazy">
+          <figcaption>
+            <strong>얼굴 잠금 해제 — 오리지널 배지 vs 미니멀 스타일 미리보기</strong>
+            <span>Original(풀 배지 스캔)과 Minimal(자물쇠 바) 실시간 인라인 비교 및 '노치에서 미리보기' 지원</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot-card">
+          <img src="screenshots/appearance-accent.png" alt="Notchie Appearance and Custom Accent Color Settings" loading="lazy">
+          <figcaption>
+            <strong>화면 테마 &amp; 맞춤 강조 색상 (Custom Accent Color)</strong>
+            <span>라이트/다크/시스템 테마 선택 및 컬러 피커·프리셋을 통한 노치 틴트 커스터마이징</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot-card">
+          <img src="screenshots/quick-tools-clipboard.png" alt="Notchie Hover Shelf and Clipboard History Search" loading="lazy">
+          <figcaption>
+            <strong>노치 호버 메뉴 탭 커스터마이저 &amp; 클립보드 히스토리 검색</strong>
+            <span>표시할 탭 토글, 클립보드 내역 실시간 검색, 원클릭 재복사 및 자동 캡처 스위치</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot-card">
+          <img src="screenshots/permissions-guard.png" alt="Notchie Startup Permission Check and Alert Settings" loading="lazy">
+          <figcaption>
+            <strong>권한 관리 &amp; 앱 시작 시 필수 권한 확인/알림</strong>
+            <span>미설정 권한 요약, 원클릭 일괄 권한 요청, 시작 시 권한 점검 및 알람 토글</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2 class="section-title">빌드 및 로컬 설치 (Build &amp; Install)</h2>
+      <p class="section-subtitle">Xcode 커맨드라인 도구로 테스트, 릴리즈 빌드 및 <code>/Applications</code> 설치를 진행할 수 있습니다.</p>
+
+      <pre class="code-block"><code># 1. 단위 테스트 실행 (서명 불필요)
+xcodebuild -project DynamicNotch.xcodeproj \
+  -scheme DynamicNotch \
+  -destination 'platform=macOS' \
+  -derivedDataPath build/DerivedData \
+  CODE_SIGNING_ALLOWED=NO test
+
+# 2. Release 빌드 및 /Applications 설치
+xcodebuild -project DynamicNotch.xcodeproj \
+  -scheme DynamicNotch \
+  -configuration Release \
+  -derivedDataPath build/DerivedData \
+  CODE_SIGNING_ALLOWED=NO build
+
+./scripts/install-local.sh</code></pre>
+    </section>
+
+    <section id="license">
+      <h2 class="section-title">오픈소스 라이선스 및 크레딧 (Open Source &amp; Credits)</h2>
+      <p class="section-subtitle">
+        Notchie는 오픈소스 생태계의 훌륭한 기반 프로젝트들 위에 다양한 맞춤 기능을 직접 설계·확장하여 제작한 오픈소스 프로젝트이며 <strong>GPL-3.0</strong> 라이선스로 배포됩니다.
+      </p>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <h3><span>📦</span> DynamicNotch (GPL-3.0)</h3>
+          <p>Upstream macOS Dynamic Notch engine and system HUD foundations by Евгений Петрукович (<a href="https://github.com/jackson-storm/DynamicNotch">jackson-storm/DynamicNotch</a>).</p>
+        </article>
+        <article class="feature-card">
+          <h3><span>🔐</span> HeyMac (MIT License)</h3>
+          <p>Camera face unlock and per-app privacy engine by Harshit Maurya (<a href="https://github.com/iharshitmaurya/HeyMac">iharshitmaurya/HeyMac</a>).</p>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <span><strong>Notchie Custom Edition</strong> — Built with Swift, SwiftUI &amp; AppKit for macOS.</span>
+      <span>Distributed under the GNU General Public License v3.0 (GPL-3.0).</span>
+    </footer>
+  </main>
+</body>
+</html>

@@ -42,6 +42,7 @@ protocol NotchContentProtocol: DynamicIslandCustomizable {
 
     /// Indicates whether this activity supports an expanded presentation mode (Apple Dynamic Island: `.expanded`).
     var isExpandable: Bool { get }
+    var pinsExpandedInteraction: Bool { get }
 
     /// Indicates whether a user tap should transition the activity from compact to expanded presentation mode.
     var expandsOnTap: Bool { get }
@@ -98,6 +99,7 @@ extension NotchContentProtocol {
     var priority: Int { NotchContentPriority.default }
     var strokeColor: Color { .white.opacity(0.2) }
     var isExpandable: Bool { false }
+    var pinsExpandedInteraction: Bool { false }
     var expandsOnTap: Bool { isExpandable }
     var isRestorable: Bool { true }
     var usesContentResizeEffect: Bool { true }

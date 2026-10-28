@@ -38,8 +38,14 @@ final class MediaAndFilesSettingsStore: SettingsStoreBase {
     @StoredDefault(key: GeneralSettingsStorage.Keys.nowPlayingSourceFilter, defaultValue: .any)
     var nowPlayingSourceFilter: NowPlayingSourceFilter
 
-    @StoredDefault(key: GeneralSettingsStorage.Keys.downloadsLiveActivityEnabled, defaultValue: true)
+    @StoredDefault(key: GeneralSettingsStorage.Keys.downloadsLiveActivityEnabled, defaultValue: false)
     var isDownloadsLiveActivityEnabled: Bool
+
+    @StoredDefault(key: DownloadFolderAuthorization.bookmarkKey, defaultValue: Data())
+    var downloadFolderBookmark: Data
+
+    @StoredDefault(key: GeneralSettingsStorage.Keys.browserDownloadMetadataEnabled, defaultValue: false)
+    var isBrowserDownloadMetadataEnabled: Bool
 
     @StoredDefault(key: GeneralSettingsStorage.Keys.downloadsProgressIndicatorStyle, defaultValue: .percent)
     var downloadsProgressIndicatorStyle: DownloadProgressIndicatorStyle
@@ -109,6 +115,7 @@ final class MediaAndFilesSettingsStore: SettingsStoreBase {
     }
 
     func resetDownloads() {
+        isBrowserDownloadMetadataEnabled = false
         isDownloadsLiveActivityEnabled = defaultBool(for: GeneralSettingsStorage.Keys.downloadsLiveActivityEnabled)
         downloadsProgressIndicatorStyle = .percent
     }

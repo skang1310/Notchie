@@ -30,15 +30,16 @@ extension AppDelegate {
         }
         .store(in: &cancellables)
 
-        settingsViewModel.mediaAndFiles.$isDownloadsLiveActivityEnabled
-            .removeDuplicates()
-            .sink { [weak self] isDownloadsLiveActivityEnabled in
+        Publishers.CombineLatest(
+            settingsViewModel.mediaAndFiles.$isDownloadsLiveActivityEnabled.removeDuplicates(),
+            settingsViewModel.mediaAndFiles.$downloadFolderBookmark.removeDuplicates()
+        )
+            .sink { [weak self] isDownloadsLiveActivityEnabled, bookmark in
                 guard let self else { return }
 
-                if isDownloadsLiveActivityEnabled {
+                downloadViewModel.stopMonitoring()
+                if isDownloadsLiveActivityEnabled && !bookmark.isEmpty {
                     downloadViewModel.startMonitoring()
-                } else {
-                    downloadViewModel.stopMonitoring()
                 }
             }
             .store(in: &cancellables)

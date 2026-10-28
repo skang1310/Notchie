@@ -8,6 +8,7 @@ protocol NotchSettingsProviding: AnyObject {
     var isNotchTapToExpandEnabled: Bool { get }
     var notchExpandInteraction: NotchExpandInteraction { get }
     var notchCollapseInteraction: NotchCollapseInteraction { get }
+    var notchHoverExpandDelay: TimeInterval { get }
     var notchPressHoldDuration: TimeInterval { get }
     var isNotchMouseDragGesturesEnabled: Bool { get }
     var isNotchTrackpadSwipeGesturesEnabled: Bool { get }
@@ -15,4 +16,11 @@ protocol NotchSettingsProviding: AnyObject {
     var isNotchSwipeRestoreEnabled: Bool { get }
     var isNotchHoverHapticEnabled: Bool { get }
     var isCloseAtFocusLiveActivityEnabled: Bool { get }
+    var isIdleNotchHoverMenuEnabled: Bool { get }
+}
+
+// Existing providers retain their previous timing until they opt into a separate delay.
+extension NotchSettingsProviding {
+    var notchHoverExpandDelay: TimeInterval { notchPressHoldDuration }
+    var isIdleNotchHoverMenuEnabled: Bool { false }
 }

@@ -6,11 +6,15 @@ final class FolderFileDownloadMonitorIntegrationTests: XCTestCase {
         let tempDirectory = makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let monitor = FolderFileDownloadMonitor(monitoredDirectories: [tempDirectory])
+        let monitor = FolderFileDownloadMonitor(
+            monitoredDirectories: [tempDirectory],
+            chromiumReader: ChromiumDownloadMetadataReader(explicitDatabaseURLs: [])
+        )
         let expectation = expectation(description: "publishes safari download package")
 
+        let gate = DownloadExpectationGate()
         monitor.onSnapshotChange = { transfers in
-            guard let transfer = transfers.first else { return }
+            guard let transfer = transfers.first, transfer.byteCount > 0, gate.claim() else { return }
             XCTAssertEqual(transfer.displayName, "archive.zip")
             XCTAssertEqual(transfer.directoryName, tempDirectory.lastPathComponent)
             XCTAssertTrue(transfer.isTemporaryFile)
@@ -36,11 +40,15 @@ final class FolderFileDownloadMonitorIntegrationTests: XCTestCase {
         let tempDirectory = makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let monitor = FolderFileDownloadMonitor(monitoredDirectories: [tempDirectory])
+        let monitor = FolderFileDownloadMonitor(
+            monitoredDirectories: [tempDirectory],
+            chromiumReader: ChromiumDownloadMetadataReader(explicitDatabaseURLs: [])
+        )
         let expectation = expectation(description: "publishes chrome download package")
 
+        let gate = DownloadExpectationGate()
         monitor.onSnapshotChange = { transfers in
-            guard let transfer = transfers.first else { return }
+            guard let transfer = transfers.first, transfer.byteCount > 0, gate.claim() else { return }
             XCTAssertEqual(transfer.displayName, "video.mp4")
             XCTAssertTrue(transfer.isTemporaryFile)
             expectation.fulfill()
@@ -65,5 +73,16 @@ private extension FolderFileDownloadMonitorIntegrationTests {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+}
+
+private final class DownloadExpectationGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fulfilled = false
+    func claim() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard !fulfilled else { return false }
+        fulfilled = true
+        return true
     }
 }
