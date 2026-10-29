@@ -81,4 +81,25 @@ final class ClipboardExperienceTests: XCTestCase {
         store.selectedTool = "notes"
         XCTAssertEqual(content.expandedSize(baseWidth: 190, baseHeight: 38), normal)
     }
+
+    func testClipboardRecentTenItemsLimitAndSettingsFullHistory() throws {
+        try withStorage { store, _ in
+            let items = (1...20).map { i in
+                SavedSnippet(text: "Item \(i)", date: Date(timeIntervalSince1970: TimeInterval(i)))
+            }
+            XCTAssertTrue(store.update { $0.snippets = items })
+            XCTAssertEqual(store.document.snippets.count, 20)
+
+            let filtered = store.filteredSnippets(query: "")
+            XCTAssertEqual(filtered.count, 20)
+
+            // Notch mode: maxItems = 10
+            let notchItems = Array(filtered.prefix(10))
+            XCTAssertEqual(notchItems.count, 10)
+            XCTAssertEqual(notchItems.first?.text, "Item 20")
+
+            // Settings mode: full history
+            XCTAssertEqual(filtered.count, 20)
+        }
+    }
 }

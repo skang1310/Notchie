@@ -246,7 +246,7 @@ struct QuickToolsView: View {
 
     private var trayClipboardSettingsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ClipboardSnippetsView(onOpenNotes: { localTraySection = .tray })
+            ClipboardSnippetsView(onOpenNotes: { localTraySection = .tray }, maxItems: nil)
         }
         .padding(10)
         .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
@@ -902,7 +902,13 @@ struct NotchiePanoramicHubView: View {
                                 )
                         )
                 case .clips:
-                    ClipboardSnippetsView(onOpenNotes: { store.hubMode = .tray })
+                    ClipboardSnippetsView(
+                        onOpenNotes: { store.hubMode = .tray },
+                        maxItems: 10,
+                        onOpenSettings: {
+                            SettingsWindowController.shared.showWindow()
+                        }
+                    )
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -971,7 +977,13 @@ struct NotchiePanoramicHubView: View {
 
             Group {
                 if store.hubMode == .clips {
-                    ClipboardSnippetsView(onOpenNotes: { store.selectedTool = "notes"; store.hubMode = .tools })
+                    ClipboardSnippetsView(
+                        onOpenNotes: { store.selectedTool = "notes"; store.hubMode = .tools },
+                        maxItems: 10,
+                        onOpenSettings: {
+                            SettingsWindowController.shared.showWindow()
+                        }
+                    )
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)

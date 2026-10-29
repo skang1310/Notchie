@@ -3,6 +3,8 @@ internal import AppKit
 
 struct ClipboardSnippetsView: View {
     var onOpenNotes: () -> Void = {}
+    var maxItems: Int? = nil
+    var onOpenSettings: (() -> Void)? = nil
     @ObservedObject private var storage = ProductivityStorage.shared
     @AppStorage("DynamicNotch.Clipboard.kind.v1") private var kindRaw = "all"
     @AppStorage("DynamicNotch.Clipboard.favoritesOnly.v1") private var favoritesOnly = false
@@ -16,6 +18,12 @@ struct ClipboardSnippetsView: View {
     private var kind: ClipboardKind { ClipboardKind(rawValue: kindRaw) ?? .all }
     private var filteredItems: [SavedSnippet] {
         storage.filteredSnippets(query: searchQuery, kind: kind, favoritesOnly: favoritesOnly, oldestFirst: oldestFirst)
+    }
+    private var displayedItems: [SavedSnippet] {
+        if let maxItems {
+            return Array(filteredItems.prefix(maxItems))
+        }
+        return filteredItems
     }
     private var removableCount: Int { storage.document.snippets.filter { $0.isFavorite != true }.count }
 
@@ -33,12 +41,53 @@ struct ClipboardSnippetsView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(filteredItems) { snippet in
+                        ForEach(displayedItems) { snippet in
                             ClipboardHistoryRow(snippet: snippet, copied: copiedSnippetID == snippet.id,
                                 onCopy: { copy(snippet) },
                                 onStar: { storage.toggleSnippetFavorite(snippet.id) },
                                 onPreview: { preview = snippet },
                                 onRemove: { storage.update { $0.snippets.removeAll { $0.id == snippet.id } } })
+                        }
+
+                        if let maxItems, filteredItems.count > maxItems {
+                            let remaining = filteredItems.count - maxItems
+                            Button {
+                                if let onOpenSettings {
+                                    onOpenSettings()
+                                } else {
+                                    SettingsWindowController.shared.showWindow()
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "ellipsis.circle.fill")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(Color.mint)
+
+                                    Text(privacyText("+\(remaining) more in App Settings…", "외 \(remaining)개 항목은 앱 설정에서 보기…"))
+                                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(.white.opacity(0.92))
+
+                                    Spacer()
+
+                                    Image(systemName: "arrow.up.forward.app")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(.white.opacity(0.6))
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.white.opacity(0.06))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 6)
+                            .padding(.top, 4)
+                            .padding(.bottom, 6)
                         }
                     }
                 }
@@ -48,7 +97,11 @@ struct ClipboardSnippetsView: View {
             HStack(spacing: 6) {
                 Circle().fill(storage.isAutoCaptureClipboardEnabled ? Color.green : Color.secondary).frame(width: 4, height: 4)
                 Text(storage.isAutoCaptureClipboardEnabled ? privacyText("Auto-save on", "자동 저장 중") : privacyText("Manual capture", "직접 저장"))
-                Text("· \(filteredItems.count) / \(storage.document.snippets.count)")
+                if let maxItems, filteredItems.count > maxItems {
+                    Text("· \(privacyText("Recent \(maxItems) of", "최근 \(maxItems)건 / 전체")) \(filteredItems.count)")
+                } else {
+                    Text("· \(filteredItems.count) / \(storage.document.snippets.count)")
+                }
                 Spacer()
                 Text(message.isEmpty ? privacyText("Return to copy · Right-click for more", "Enter로 복사 · 우클릭으로 더 보기") : message).lineLimit(1)
             }.font(.system(size: 9)).foregroundStyle(.secondary)

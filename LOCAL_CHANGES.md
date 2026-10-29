@@ -1,6 +1,17 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **Weather & Golden Hour removal and Notch Hover Menu tab reordering (2026-10-29 v27)**:
+1. **Notch Clipboard 10-Item Limit & Full Settings History (2026-10-29 v30)**:
+   - Limited clipboard snippet display inside the Notch (`trayAndShotsUnifiedContainer` and `studioUnifiedContainer`) to the most recent 10 items (`maxItems: 10`).
+   - Added an interactive overflow affordance at the bottom of the list when additional items exist (`"외 N개 항목은 앱 설정에서 보기…"` / `"+N more in App Settings…"`) with `arrow.up.forward.app` icon, opening `SettingsWindowController.shared.showWindow()` on click.
+   - Preserved unlimited full clipboard history (`maxItems: nil`) in App Settings (`Tray Settings` -> `Clipboard` tab / `trayClipboardSettingsCard`), supporting search, type filtering, preview, favorites, and clearing.
+   - Added regression coverage in `ClipboardExperienceTests.swift` (`testClipboardRecentTenItemsLimitAndSettingsFullHistory`).
+2. **Notch Tray Auto-Dismiss & Outside-Click Collapse (2026-10-29 v29)**:
+   - Fixed "Open Tray in Notch" persistent open issue by passing `openedFromIdleHover: true`, allowing outside-click and hover-leaves auto-dismissal.
+   - Added 6-second inactivity auto-dismiss timer when opened from Settings and an explicit `✕` close button in the Notch header bar.
+3. **Tray & Tools Unification into 4-Segment Tray Hub (2026-10-29 v28)**:
+   - Eliminated redundant "Tools" tab; merged File Transform and Clipboard History into Tray with 4 submodes: Files, Captures, Transform, Clipboard.
+   - Renamed "Quick Tools Settings" to "Tray Settings" with dedicated settings tabs and direct notch tray launcher.
+4. **Weather & Golden Hour removal and Notch Hover Menu tab reordering (2026-10-29 v27)**:
    - Completely removed legacy weather and golden hour code: deleted `NotchieWeather.swift`, removed `.weather` widget from `ShelfPreferences.swift`, and cleaned up test fixtures.
    - Added user-customizable tab ordering and positioning in the Notch Hover Menu: `QuickToolsStore.enabledTabIDs` now preserves user sequence order; `QuickToolsStore.moveTab(_:by:)` and `moveTab(fromOffsets:toOffset:)` enable shifting tab positions left/right.
    - Redesigned `customizableTabsCard` and `QuickToolTabCustomizerPopover` in `QuickToolsView.swift` with interactive ◀ / ▶ movement buttons and dynamic tab addition/hiding.
