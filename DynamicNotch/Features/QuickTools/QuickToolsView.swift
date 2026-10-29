@@ -327,8 +327,10 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: Tools Tab + Unified Glass Utility Rail
-            HStack(spacing: 8) {
+            // Right Wing: Tools Tab Attached Directly Next to App Icon Utility Rail
+            HStack(spacing: 5) {
+                Spacer(minLength: 0)
+
                 primaryWingTabButton(
                     title: text("Tools", "도구"),
                     systemImage: "wrench.and.screwdriver.fill",
@@ -338,8 +340,6 @@ struct NotchiePanoramicHubView: View {
                 ) {
                     store.hubMode = .tools
                 }
-
-                Spacer(minLength: 6)
 
                 // Unified Apple Glass Utility Pill (Icon Theme · Pin · Settings)
                 HStack(spacing: 2) {
