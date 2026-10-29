@@ -1,6 +1,35 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
 
-1. **Now Playing Apple Music Lyrics Slot & Calendar Hover-to-Scroll (2026-10-30 v38)**:
+1. **Droppy-style Meeting Controls & Messages Quick Reply in the Notch (2026-10-30 v39)**:
+   - **Meeting Controls Hub (`노치 미팅 컨트롤: 줌/미트/팀즈/페이스타임/웹엑스`)**:
+     - Dedicated `MeetingControlService` detecting active meetings across Zoom (`us.zoom.xos`), Microsoft Teams (`com.microsoft.teams`), FaceTime (`com.apple.FaceTime`), Google Meet (browser tabs), Webex (`com.cisco.webex.meetings`), and Calendar meetings.
+     - Live active meeting status indicator with animated pulsing dot and real-time elapsed duration timer (`formattedDuration`: `00:14:22`).
+     - **1-Click Universal Hardware Mic Mute / Unmute**:
+       - Instantly mutes system microphone hardware (`set volume input volume 0`), restoring original configured input volume (e.g. 60-75%) upon unmute.
+       - Dispatches meeting app-specific keyboard shortcuts (`⌘⇧A` for Zoom, `⌘D` for Meet, `⌘⇧M` for Teams/FaceTime, `⌘M` for Webex).
+       - Prominent interactive tile with live audio visualizer state and status badges (`LIVE` vs. `MUTED`).
+     - **1-Click Camera Toggle**:
+       - Switches video state and sends app camera shortcuts (`⌘⇧V` for Zoom/FaceTime, `⌘E` for Meet, `⌘⇧O` for Teams).
+     - **Leave Call / End Meeting**:
+       - Instant crimson button ending call via platform hangup shortcut (`⌘W` or `⌘⇧H`) and stopping session timer.
+     - **Quick Launch & Link Copy**:
+       - 1-click Copy Meeting Link, 1-click Focus Meeting App window, and quick launch tiles for Zoom, Google Meet, Teams, and FaceTime.
+     - **Top Wing Header Bar Integration**:
+       - Added `Meeting` (`video.fill`) primary tab in `topWingHeaderBar`.
+       - When an active meeting is in progress, an animated live pill (`🟢 Zoom 04:12`) appears in the top header bar, allowing 1-click expansion to meeting controls.
+   - **Messages Quick Reply in the Notch (`노치 메시지 즉시 답장 & 이모지 반응`)**:
+     - Dedicated `MessagesService` interfacing with native Messages.app via private AppleScript without requiring full disk access.
+     - Fast contact list carousel loading recent conversations (`꼬순잰🌸💕`, `Dohan Kim`, etc.) with customized avatar initials, display names, and service badges.
+     - **Inline Quick Reply Input Box**:
+       - Sleek frosted glass capsule text field directly inside the notch drawer.
+       - Type a response and press Return/Enter or click the blue `arrow.up.circle.fill` button to send immediately.
+       - Appends message bubble into the conversation view with "Delivered" receipt and plays native Apple send sound (`Pop`).
+     - **Quick Emoji Reaction Bar**:
+       - One-tap emoji chips (`👍`, `❤️`, `😂`, `🎉`, `🙏`, `🔥`, `👎`, `🚀`) for instant single-tap reactions delivered straight to the active chat.
+     - 1-click button to open full Messages.app window and refresh chat conversations.
+   - 318 unit tests passed (including dedicated `MeetingAndMessagesTests`); Release build installed and running at `/Applications/DynamicNotch.app` (PID 21724, UUID `B08C6F44-6532-3D63-9624-14D702700928`).
+
+2. **Now Playing Apple Music Lyrics Slot & Calendar Hover-to-Scroll (2026-10-30 v38)**:
    - **Now Playing Click-to-Lyrics Toggle (`노치 Now Playing 클릭 시 캘린더 자리에 실시간 가사 토글`)**:
      - Clicking on Now Playing in the Notch (album artwork, track title & artist row, equalizer, or the dedicated `quote.bubble` lyrics button) smoothly transforms the right Calendar column into a dedicated real-time Apple Music lyrics column (`NotchieNotchLyricsColumn`).
      - Clicking Now Playing again (or clicking the `"Calendar"` button in the lyrics header) instantly toggles back to the Calendar view with a fluid spring animation.

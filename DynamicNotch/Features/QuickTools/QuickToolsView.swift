@@ -461,6 +461,8 @@ struct QuickToolDetailSwitcherView: View {
     var body: some View {
         Group {
             switch store.selectedTool {
+            case "meeting": MeetingNotchView(service: MeetingControlService.shared)
+            case "messages": MessagesNotchView(service: MessagesService.shared)
             case "ai": AIUsageNotchView()
             case "transform": ShelfTransformView()
             case "teleprompter": TeleprompterView(controller: store.teleprompter)
@@ -653,6 +655,10 @@ struct NotchiePanoramicHubView: View {
                     nookThreeColumnDashboard
                 case .ai:
                     aiIndependentNotchContainer
+                case .meeting:
+                    MeetingNotchView(service: MeetingControlService.shared, accentColor: accentColor)
+                case .messages:
+                    MessagesNotchView(service: MessagesService.shared, accentColor: accentColor)
                 case .tray, .shots, .transform, .clips:
                     trayAndShotsUnifiedContainer
                 case .notes:
@@ -678,8 +684,8 @@ struct NotchiePanoramicHubView: View {
 
     private var topWingHeaderBar: some View {
         HStack(spacing: 0) {
-            // Left Wing: 2 Iconic Primary Tabs (Nook | Tray)
-            HStack(spacing: 6) {
+            // Left Wing: Primary Tabs (Nook | Tray | AI Usage | Meeting | Messages)
+            HStack(spacing: 5) {
                 primaryWingTabButton(
                     title: "Nook",
                     systemImage: "sparkles",
@@ -704,13 +710,33 @@ struct NotchiePanoramicHubView: View {
                 }
 
                 primaryWingTabButton(
-                    title: text("AI Usage", "AI 사용량"),
+                    title: text("AI", "AI"),
                     systemImage: "brain.head.profile",
                     isSelected: store.hubMode == .ai,
                     badgeCount: 0,
                     badgeIsAlert: false
                 ) {
                     store.hubMode = .ai
+                }
+
+                primaryWingTabButton(
+                    title: text("Meeting", "미팅"),
+                    systemImage: "video.fill",
+                    isSelected: store.hubMode == .meeting,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    store.hubMode = .meeting
+                }
+
+                primaryWingTabButton(
+                    title: text("Messages", "메시지"),
+                    systemImage: "bubble.left.and.bubble.right.fill",
+                    isSelected: store.hubMode == .messages,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    store.hubMode = .messages
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -719,9 +745,41 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: Mini Now Playing Pill (if in other tabs) + Close Notch & Apple Glass Settings Buttons
+            // Right Wing: Mini Now Playing Pill (if in other tabs) + Active Meeting Pill + Close Notch & Settings Buttons
             HStack(spacing: 5) {
                 Spacer(minLength: 0)
+
+                if MeetingControlService.shared.session.isActive, store.hubMode != .meeting {
+                    Button {
+                        store.hubMode = .meeting
+                    } label: {
+                        HStack(spacing: 4.5) {
+                            Circle()
+                                .fill(MeetingControlService.shared.session.isMuted ? Color.red : Color.green)
+                                .frame(width: 6, height: 6)
+
+                            Image(systemName: MeetingControlService.shared.session.platform.iconName)
+                                .font(.system(size: 9))
+                                .foregroundStyle(MeetingControlService.shared.session.platform.accentColor)
+
+                            Text(MeetingControlService.shared.session.formattedDuration)
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.white)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(MeetingControlService.shared.session.isMuted ? Color.red.opacity(0.2) : Color.green.opacity(0.18))
+                                .overlay(
+                                    Capsule().strokeBorder((MeetingControlService.shared.session.isMuted ? Color.red : Color.green).opacity(0.4), lineWidth: 0.8)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(text("Active Meeting Control", "진행 중인 미팅 제어"))
+                    .transition(.opacity)
+                }
 
                 if let vm = resolvedNowPlayingViewModel, vm.hasActiveSession, store.hubMode != .nook {
                     NotchieMiniNowPlayingHeaderPill(

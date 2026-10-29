@@ -220246,6 +220246,40 @@
         }
       }
     },
+    "shelf.tool.meeting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meeting"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미팅"
+          }
+        }
+      }
+    },
+    "shelf.tool.messages": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메시지"
+          }
+        }
+      }
+    },
     "shelf.tool.ai": {
       "extractionState": "manual",
       "localizations": {

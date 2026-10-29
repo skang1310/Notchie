@@ -13,6 +13,8 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
     case widgets
     case transform
     case ai
+    case meeting
+    case messages
 
     var id: String { rawValue }
 
@@ -27,6 +29,8 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         case .tools: return "square.grid.2x2.fill"
         case .transform: return "wand.and.stars"
         case .ai: return "sparkles"
+        case .meeting: return "video.fill"
+        case .messages: return "bubble.left.and.bubble.right.fill"
         }
     }
 
@@ -34,7 +38,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         switch self {
         case .nook, .tray, .widgets:
             return false
-        case .shots, .clips, .notes, .tools, .transform, .ai:
+        case .shots, .clips, .notes, .tools, .transform, .ai, .meeting, .messages:
             return true
         }
     }
@@ -46,6 +50,8 @@ struct QuickToolTab: Identifiable, Equatable {
     let systemImage: String
 
     static let allTabs: [QuickToolTab] = [
+        QuickToolTab(id: "meeting", titleKey: "shelf.tool.meeting", systemImage: "video.fill"),
+        QuickToolTab(id: "messages", titleKey: "shelf.tool.messages", systemImage: "bubble.left.and.bubble.right.fill"),
         QuickToolTab(id: "ai", titleKey: "shelf.tool.ai", systemImage: "sparkles"),
         QuickToolTab(id: "transform", titleKey: "shelf.tool.transform", systemImage: "wand.and.stars"),
         QuickToolTab(id: "teleprompter", titleKey: "shelf.tool.teleprompter", systemImage: "text.alignleft"),
@@ -70,7 +76,7 @@ struct QuickToolTab: Identifiable, Equatable {
     ]
 
     static let defaultEnabledIDs: [String] = [
-        "ai", "notes", "snippets", "tasks", "focus", "stopwatch", "awake", "color", "calculator"
+        "meeting", "messages", "ai", "notes", "snippets", "tasks", "focus", "stopwatch", "awake", "color", "calculator"
     ]
 }
 
@@ -213,6 +219,8 @@ final class QuickToolsStore: ObservableObject {
 
     func shelfExtraHeight(isIsland: Bool) -> CGFloat {
         if hubMode == .clips || (hubMode == .tools && selectedTool == "snippets") { return isIsland ? 384 : 394 }
+        if hubMode == .messages || (hubMode == .tools && selectedTool == "messages") { return isIsland ? 280 : 290 }
+        if hubMode == .meeting || (hubMode == .tools && selectedTool == "meeting") { return isIsland ? 220 : 230 }
         if hubMode == .ai || (hubMode == .tools && selectedTool == "ai") { return isIsland ? 240 : 250 }
         if hubMode == .transform || (hubMode == .tools && selectedTool == "transform") { return isIsland ? 220 : 230 }
         return hubMode.requiresExtendedHeight ? (isIsland ? 200 : 210) : (isIsland ? 164 : 172)
