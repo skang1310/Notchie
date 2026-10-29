@@ -128,5 +128,9 @@ final class AppContainer {
         )
         self.externalDrivesMonitor = ExternalDrivesMonitor()
         QuickToolsStore.shared.bind(container: self)
+        if !isRunningTests {
+            _ = MeetingControlService.shared
+            _ = MessagesService.shared
+        }
     }
 }

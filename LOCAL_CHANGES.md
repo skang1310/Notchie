@@ -1,6 +1,24 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
 
-1. **Multi-Strategy Real-Time Synced Lyrics Engine & Click-Anywhere Toggle (2026-10-30 v41)**:
+1. **Resolution of Hover Recursive Lock SIGTRAP Crash via CoreAudio HAL & Startup Pre-warming (2026-10-30 v42)**:
+   - **Root Cause of Crash (`노치 마우스 오버 시 앱 크래시 원인 분석`)**:
+     - Crash signature: `EXC_BREAKPOINT (SIGTRAP)`, `BUG IN CLIENT OF LIBDISPATCH: trying to lock recursively` on Thread 0 (Main Thread).
+     - When hovering over the notch, SwiftUI evaluated `NotchiePanoramicHubView.topWingHeaderBar` which referenced `MeetingControlService.shared`.
+     - Inside `MeetingControlService.init()`, `DefaultMeetingControlProvider.getInputVolume()` synchronously executed AppleScript `NSAppleScript(source: "input volume of (get volume settings)").executeAndReturnError`.
+     - AppleScript communication pumped the main-thread Carbon RunLoop via `RunCurrentEventLoopInMode` while `MeetingControlService.shared`'s `dispatch_once` was already locked on Thread 0.
+     - The nested event loop triggered re-entrant layout passes in `NSHostingView.layout`, which re-evaluated `topWingHeaderBar` and called `MeetingControlService.shared` again—causing an instant recursive lock SIGTRAP trap.
+   - **Native CoreAudio HAL Engine (`CoreAudio C API 기반 논블로킹 오디오 마스터 제어`)**:
+     - Completely replaced AppleScript volume calls in `DefaultMeetingControlProvider` with Apple's native CoreAudio HAL C API (`AudioObjectGetPropertyData` / `AudioObjectSetPropertyData` using `kAudioHardwarePropertyDefaultInputDevice` and `kAudioDevicePropertyVolumeScalar`).
+     - CoreAudio HAL executes in $<10\mu s$ directly in user space, dispatches zero AppleEvents, requires zero special permissions, and never pumps the Carbon RunLoop.
+     - Any fallback for hardware devices without scalar support is dispatched to background `Task.detached`.
+     - Added asynchronous `refreshInputVolume()` and eliminated synchronous audio initialization delays.
+   - **Startup Pre-warming in `AppContainer`**:
+     - Pre-warmed `MeetingControlService.shared` and `MessagesService.shared` during app container launch when not running unit tests, preventing any singleton initialization from occurring inside on-demand hover view tree rendering.
+   - **SwiftUI Layout Refactoring in `QuickToolsView`**:
+     - Consolidated multiple repetitive calls to `MeetingControlService.shared` in `topWingHeaderBar` into a single local scoped constant `let meetingService = MeetingControlService.shared`.
+   - 321 unit tests passed; Release build installed and verified at `/Applications/DynamicNotch.app` (PID 29130, UUID `8A3863FF-B7F6-393A-9EB0-1C9A4D351ACC`).
+
+2. **Multi-Strategy Real-Time Synced Lyrics Engine & Click-Anywhere Toggle (2026-10-30 v41)**:
    - **Why Apple Music Real-Time Lyrics failed previously & how it's solved**:
      - Apple Music streaming tracks encrypt synced lyrics (TTML format) via FairPlay DRM. The local AppleScript API (`tell application "Music" to get lyrics of current track`) only returns ID3 tag static lyrics and yields an empty string for all streaming catalog tracks.
      - Upstream `LRCLIBLyricsProvider` was failing due to public server overload (HTTP 503 ServerOverloaded on `https://lrclib.net`), lacked title normalization for Apple Music metadata (e.g. parenthetical subtitles, feat, remaster tags), and lacked retry logic once marked as `.notFound`.

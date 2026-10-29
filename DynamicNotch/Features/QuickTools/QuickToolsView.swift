@@ -727,20 +727,22 @@ struct NotchiePanoramicHubView: View {
 
             // Right Wing: Communication, Live Controls & Settings (Meeting | Messages | Settings)
             HStack(spacing: 5) {
-                if MeetingControlService.shared.session.isActive, store.hubMode != .meeting {
+                let meetingService = MeetingControlService.shared
+                if meetingService.session.isActive, store.hubMode != .meeting {
+                    let session = meetingService.session
                     Button {
                         store.hubMode = .meeting
                     } label: {
                         HStack(spacing: 4.5) {
                             Circle()
-                                .fill(MeetingControlService.shared.session.isMuted ? Color.red : Color.green)
+                                .fill(session.isMuted ? Color.red : Color.green)
                                 .frame(width: 6, height: 6)
 
-                            Image(systemName: MeetingControlService.shared.session.platform.iconName)
+                            Image(systemName: session.platform.iconName)
                                 .font(.system(size: 9))
-                                .foregroundStyle(MeetingControlService.shared.session.platform.accentColor)
+                                .foregroundStyle(session.platform.accentColor)
 
-                            Text(MeetingControlService.shared.session.formattedDuration)
+                            Text(session.formattedDuration)
                                 .font(.system(size: 9, weight: .bold, design: .monospaced))
                                 .foregroundStyle(.white)
                         }
@@ -748,9 +750,9 @@ struct NotchiePanoramicHubView: View {
                         .padding(.vertical, 3.5)
                         .background(
                             Capsule()
-                                .fill(MeetingControlService.shared.session.isMuted ? Color.red.opacity(0.2) : Color.green.opacity(0.18))
+                                .fill(session.isMuted ? Color.red.opacity(0.2) : Color.green.opacity(0.18))
                                 .overlay(
-                                    Capsule().strokeBorder((MeetingControlService.shared.session.isMuted ? Color.red : Color.green).opacity(0.4), lineWidth: 0.8)
+                                    Capsule().strokeBorder((session.isMuted ? Color.red : Color.green).opacity(0.4), lineWidth: 0.8)
                                 )
                         )
                     }

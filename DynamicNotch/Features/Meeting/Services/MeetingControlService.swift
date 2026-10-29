@@ -2,6 +2,8 @@ import Foundation
 internal import AppKit
 import SwiftUI
 import Combine
+import CoreAudio
+import AudioToolbox
 
 public enum MeetingShortcutAction: Sendable {
     case toggleMute
@@ -20,12 +22,42 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
     public init() {}
 
     public func getInputVolume() -> Int {
-        var error: NSDictionary?
-        let script = "input volume of (get volume settings)"
-        if let appleScript = NSAppleScript(source: script) {
-            let result = appleScript.executeAndReturnError(&error)
-            if let vol = result.int32Value as Int32? {
-                return Int(vol)
+        var defaultInputDeviceID = AudioDeviceID(0)
+        var propertySize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &propertySize,
+            &defaultInputDeviceID
+        )
+
+        if status == noErr && defaultInputDeviceID != 0 {
+            var volume: Float32 = 0
+            var volSize = UInt32(MemoryLayout<Float32>.size)
+            var volAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyVolumeScalar,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: kAudioObjectPropertyElementMain
+            )
+
+            let volStatus = AudioObjectGetPropertyData(
+                defaultInputDeviceID,
+                &volAddress,
+                0,
+                nil,
+                &volSize,
+                &volume
+            )
+            if volStatus == noErr {
+                return Int(round(volume * 100))
             }
         }
         return 60
@@ -33,10 +65,54 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
 
     public func setInputVolume(_ volume: Int) {
         let clamped = max(0, min(100, volume))
-        let script = "set volume input volume \(clamped)"
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
+        let scalar = Float32(clamped) / 100.0
+
+        var defaultInputDeviceID = AudioDeviceID(0)
+        var propertySize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &propertySize,
+            &defaultInputDeviceID
+        )
+
+        if status == noErr && defaultInputDeviceID != 0 {
+            var vol = scalar
+            let volSize = UInt32(MemoryLayout<Float32>.size)
+            var volAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyVolumeScalar,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: kAudioObjectPropertyElementMain
+            )
+
+            let setStatus = AudioObjectSetPropertyData(
+                defaultInputDeviceID,
+                &volAddress,
+                0,
+                nil,
+                volSize,
+                &vol
+            )
+            if setStatus == noErr {
+                return
+            }
+        }
+
+        // Detached background fallback if device scalar is unavailable
+        Task.detached {
+            let script = "set volume input volume \(clamped)"
+            if let appleScript = NSAppleScript(source: script) {
+                var error: NSDictionary?
+                appleScript.executeAndReturnError(&error)
+            }
         }
     }
 
@@ -149,13 +225,27 @@ public final class MeetingControlService: ObservableObject {
     public init(provider: MeetingControlProviderProtocol = DefaultMeetingControlProvider()) {
         self.provider = provider
         self.session = MeetingSessionState()
-        self.inputVolume = provider.getInputVolume()
-        if self.inputVolume > 0 {
-            self.lastSavedVolume = self.inputVolume
-        }
-        self.session.isMuted = (self.inputVolume == 0)
+        let vol = provider.getInputVolume()
+        self.inputVolume = vol
+        self.lastSavedVolume = vol > 0 ? vol : 60
+        self.session.isMuted = (vol == 0)
 
         startDetection()
+    }
+
+    public func refreshInputVolume() {
+        let prov = provider
+        Task.detached {
+            let vol = prov.getInputVolume()
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.inputVolume = vol
+                if vol > 0 {
+                    self.lastSavedVolume = vol
+                }
+                self.session.isMuted = (vol == 0)
+            }
+        }
     }
 
     public func startDetection() {
@@ -192,10 +282,7 @@ public final class MeetingControlService: ObservableObject {
         session.startTime = Date()
         session.elapsedSeconds = 0
 
-        // Refresh volume
-        let vol = provider.getInputVolume()
-        inputVolume = vol
-        session.isMuted = (vol == 0)
+        refreshInputVolume()
 
         timer?.cancel()
         timer = Timer.publish(every: 1.0, on: .main, in: .common)
@@ -225,7 +312,7 @@ public final class MeetingControlService: ObservableObject {
             session.isMuted = false
         } else {
             // Mute
-            let currentVol = provider.getInputVolume()
+            let currentVol = inputVolume
             if currentVol > 0 {
                 lastSavedVolume = currentVol
             }
