@@ -719,9 +719,20 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: Close Notch & Apple Glass Settings Buttons
+            // Right Wing: Mini Now Playing Pill (if in other tabs) + Close Notch & Apple Glass Settings Buttons
             HStack(spacing: 5) {
                 Spacer(minLength: 0)
+
+                if let vm = resolvedNowPlayingViewModel, vm.hasActiveSession, store.hubMode != .nook {
+                    NotchieMiniNowPlayingHeaderPill(
+                        nowPlayingViewModel: vm,
+                        accentColor: accentColor
+                    ) {
+                        store.hubMode = .nook
+                        store.isLyricsVisibleInCalendarSlot = true
+                    }
+                    .transition(.opacity)
+                }
 
                 // Close Notch Button
                 Button {
@@ -1102,21 +1113,49 @@ struct NotchiePanoramicHubView: View {
                 applicationSettings: resolvedApplicationSettings,
                 accentColor: accentColor,
                 onOpenPlaybackSource: { onOpenPlaybackSource() },
+                onToggleLyrics: {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                        store.toggleLyricsInCalendarSlot()
+                    }
+                },
+                isLyricsActive: store.isLyricsVisibleInCalendarSlot,
                 plainStyle: true
             )
             .frame(width: 230, height: 136)
             Rectangle().fill(.white.opacity(0.1)).frame(width: 1, height: 118)
-            NotchieCalendarScheduleColumn(
-                calendarViewModel: store.calendarViewModel,
-                selectedDayOffset: $selectedDayOffset,
-                accentColor: accentColor,
-                onSwitchToTools: {
-                    store.hubMode = .tray
-                },
-                onSwitchToTasks: {},
-                compactHome: true
-            )
-            .frame(maxWidth: .infinity).frame(height: 136)
+
+            if store.isLyricsVisibleInCalendarSlot {
+                NotchieNotchLyricsColumn(
+                    nowPlayingViewModel: resolvedNowPlayingViewModel,
+                    accentColor: accentColor,
+                    onDismiss: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            store.isLyricsVisibleInCalendarSlot = false
+                        }
+                    }
+                )
+                .frame(maxWidth: .infinity).frame(height: 136)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                    removal: .opacity.combined(with: .scale(scale: 0.96))
+                ))
+            } else {
+                NotchieCalendarScheduleColumn(
+                    calendarViewModel: store.calendarViewModel,
+                    selectedDayOffset: $selectedDayOffset,
+                    accentColor: accentColor,
+                    onSwitchToTools: {
+                        store.hubMode = .tray
+                    },
+                    onSwitchToTasks: {},
+                    compactHome: true
+                )
+                .frame(maxWidth: .infinity).frame(height: 136)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                    removal: .opacity.combined(with: .scale(scale: 0.96))
+                ))
+            }
         }
         .accessibilityIdentifier("nook.home.mediaCalendar")
     }
@@ -1317,6 +1356,8 @@ private struct NotchieNowPlayingStudioColumn: View {
     var applicationSettings: ApplicationSettingsStore?
     let accentColor: Color
     let onOpenPlaybackSource: @MainActor @Sendable () -> Void
+    var onToggleLyrics: (@MainActor @Sendable () -> Void)? = nil
+    var isLyricsActive: Bool = false
 
     var plainStyle = false
 
@@ -1372,6 +1413,8 @@ private struct NotchieNowPlayingStudioColumn: View {
                     applicationSettings: applicationSettings,
                     accentColor: accentColor,
                     onOpenPlaybackSource: { onOpenPlaybackSource() },
+                    onToggleLyrics: onToggleLyrics,
+                    isLyricsActive: isLyricsActive,
                     scrubProgress: $scrubProgress
                 )
                 .padding(.horizontal, 12)
@@ -1387,58 +1430,64 @@ private struct NotchieNowPlayingStudioColumn: View {
     private var placeholderStudioCard: some View {
         let snap = fallbackSnapshot
         return VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 10) {
-                ZStack(alignment: .bottomTrailing) {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.98, green: 0.24, blue: 0.38),
-                                    Color(red: 0.72, green: 0.12, blue: 0.28)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+            Button {
+                onToggleLyrics?()
+            } label: {
+                HStack(alignment: .center, spacing: 10) {
+                    ZStack(alignment: .bottomTrailing) {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.98, green: 0.24, blue: 0.38),
+                                        Color(red: 0.72, green: 0.12, blue: 0.28)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .frame(width: 48, height: 48)
-                        .overlay {
-                            Image(systemName: "music.note")
-                                .font(.system(size: 21, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.95))
+                            .frame(width: 48, height: 48)
+                            .overlay {
+                                Image(systemName: "music.note")
+                                    .font(.system(size: 21, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.95))
+                            }
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .strokeBorder(isLyricsActive ? accentColor : Color.white.opacity(0.22), lineWidth: isLyricsActive ? 1.5 : 0.8)
+                            )
+                            .shadow(color: .black.opacity(0.35), radius: 5, y: 2)
+
+                        ZStack {
+                            Circle()
+                                .fill(Color(red: 0.12, green: 0.14, blue: 0.18))
+                                .frame(width: 18, height: 18)
+                            Circle()
+                                .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.7)
+                                .frame(width: 18, height: 18)
+                            Image(systemName: "waveform")
+                                .font(.system(size: 8.5, weight: .bold))
+                                .foregroundStyle(accentColor)
                         }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                        )
-                        .shadow(color: .black.opacity(0.35), radius: 5, y: 2)
-
-                    ZStack {
-                        Circle()
-                            .fill(Color(red: 0.12, green: 0.14, blue: 0.18))
-                            .frame(width: 18, height: 18)
-                        Circle()
-                            .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.7)
-                            .frame(width: 18, height: 18)
-                        Image(systemName: "waveform")
-                            .font(.system(size: 8.5, weight: .bold))
-                            .foregroundStyle(accentColor)
+                        .offset(x: 3, y: 3)
                     }
-                    .offset(x: 3, y: 3)
-                }
 
-                VStack(alignment: .leading, spacing: 2.5) {
-                    Text(snap.title)
-                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 2.5) {
+                        Text(snap.title)
+                            .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(isLyricsActive ? accentColor : .white)
+                            .lineLimit(1)
 
-                    Text(snap.artist)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1)
+                        Text(snap.artist)
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .buttonStyle(.plain)
+            .help(privacyText("Click to view lyrics in calendar slot", "클릭하여 캘린더 자리에 가사 보기"))
 
             Spacer(minLength: 6)
 
@@ -1482,6 +1531,8 @@ private struct ObservedNowPlayingStudioBody: View {
     var applicationSettings: ApplicationSettingsStore?
     let accentColor: Color
     let onOpenPlaybackSource: @MainActor @Sendable () -> Void
+    var onToggleLyrics: (@MainActor @Sendable () -> Void)? = nil
+    var isLyricsActive: Bool = false
     @Binding var scrubProgress: CGFloat?
 
     private var resolvedSnapshot: NowPlayingSnapshot {
@@ -1519,7 +1570,11 @@ private struct ObservedNowPlayingStudioBody: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .center, spacing: 10) {
                         Button {
-                            openPlaybackSource()
+                            if let toggle = onToggleLyrics {
+                                toggle()
+                            } else {
+                                openPlaybackSource()
+                            }
                         } label: {
                             ZStack(alignment: .bottomTrailing) {
                                 ArtworkView(
@@ -1531,7 +1586,7 @@ private struct ObservedNowPlayingStudioBody: View {
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                                        .strokeBorder(isLyricsActive ? accentColor : Color.white.opacity(0.18), lineWidth: isLyricsActive ? 1.5 : 0.8)
                                 )
                                 .shadow(color: .black.opacity(0.4), radius: 5, y: 2)
 
@@ -1540,32 +1595,42 @@ private struct ObservedNowPlayingStudioBody: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .help(privacyText("Click: Toggle lyrics / Double-click: Open player", "클릭: 가사 전환 / 더블클릭: 재생 앱 열기"))
+                        .simultaneousGesture(TapGesture(count: 2).onEnded {
+                            openPlaybackSource()
+                        })
 
-                        VStack(alignment: .leading, spacing: 2.5) {
-                            HStack(alignment: .center, spacing: 5) {
-                                Text(displayTitle(for: snapshot))
-                                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
+                        Button {
+                            onToggleLyrics?()
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2.5) {
+                                HStack(alignment: .center, spacing: 5) {
+                                    Text(displayTitle(for: snapshot))
+                                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                                        .foregroundStyle(isLyricsActive ? accentColor : .white)
+                                        .lineLimit(1)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    LightweightNowPlayingEqualizerView(
+                                        isPlaying: snapshot.isPlaying,
+                                        colors: [
+                                            nowPlayingViewModel.artworkPalette.equalizerHighlightColor,
+                                            nowPlayingViewModel.artworkPalette.equalizerBaseColor
+                                        ],
+                                        barHeight: 14,
+                                        barWidth: 2.1
+                                    )
+                                    .frame(width: 16, height: 14)
+                                }
+
+                                Text(displayArtist(for: snapshot))
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.56))
                                     .lineLimit(1)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                LightweightNowPlayingEqualizerView(
-                                    isPlaying: snapshot.isPlaying,
-                                    colors: [
-                                        nowPlayingViewModel.artworkPalette.equalizerHighlightColor,
-                                        nowPlayingViewModel.artworkPalette.equalizerBaseColor
-                                    ],
-                                    barHeight: 14,
-                                    barWidth: 2.1
-                                )
-                                .frame(width: 16, height: 14)
                             }
-
-                            Text(displayArtist(for: snapshot))
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.56))
-                                .lineLimit(1)
                         }
+                        .buttonStyle(.plain)
+                        .help(privacyText("Toggle lyrics in calendar slot", "캘린더 자리에 가사 보기 / 캘린더 보기"))
                     }
 
                     Spacer(minLength: 6)
@@ -1583,6 +1648,21 @@ private struct ObservedNowPlayingStudioBody: View {
                                 fontSize: 11.5
                             )
                         }
+
+                        Button {
+                            onToggleLyrics?()
+                        } label: {
+                            Image(systemName: isLyricsActive ? "quote.bubble.fill" : "quote.bubble")
+                                .font(.system(size: 11.5, weight: .semibold))
+                                .foregroundStyle(isLyricsActive ? accentColor : Color.white.opacity(0.68))
+                                .frame(width: 22, height: 22)
+                                .background(
+                                    Circle()
+                                        .fill(isLyricsActive ? accentColor.opacity(0.22) : Color.white.opacity(0.06))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(privacyText("Toggle lyrics in calendar slot", "가사 보기 / 캘린더 전환"))
 
                         Spacer(minLength: 0)
 
@@ -1763,6 +1843,9 @@ private struct NotchieCalendarScheduleColumn: View {
     var compactHome = false
 
     @ObservedObject private var productivityStorage = ProductivityStorage.shared
+    @State private var isHoveringDates = false
+    @State private var scrollMonitor: Any?
+    @State private var accumulatedDelta: CGFloat = 0
 
     private func text(_ en: String, _ ko: String) -> String {
         privacyText(en, ko)
@@ -1785,12 +1868,39 @@ private struct NotchieCalendarScheduleColumn: View {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "EEE"
 
-        return (-2...4).compactMap { offset in
+        let center = selectedDayOffset
+        return (center - 3 ... center + 3).compactMap { offset in
             guard let date = cal.date(byAdding: .day, value: offset, to: today) else { return nil }
             let dayNum = String(cal.component(.day, from: date))
             let wk = formatter.string(from: date).uppercased()
             let hasEvents = events(on: date).isEmpty == false
             return (offset, date, wk, dayNum, hasEvents)
+        }
+    }
+
+    private func handleDateHover(_ hovering: Bool) {
+        isHoveringDates = hovering
+        if hovering {
+            accumulatedDelta = 0
+            if scrollMonitor == nil {
+                scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                    let delta = abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) ? event.scrollingDeltaX : event.scrollingDeltaY
+                    accumulatedDelta += delta
+                    if abs(accumulatedDelta) >= 4.5 {
+                        let step = accumulatedDelta < 0 ? 1 : -1
+                        withAnimation(.snappy(duration: 0.16)) {
+                            selectedDayOffset += step
+                        }
+                        accumulatedDelta = 0
+                    }
+                    return nil
+                }
+            }
+        } else {
+            if let monitor = scrollMonitor {
+                NSEvent.removeMonitor(monitor)
+                scrollMonitor = nil
+            }
         }
     }
 
@@ -1928,7 +2038,7 @@ private struct NotchieCalendarScheduleColumn: View {
                                     .foregroundStyle(
                                         isSelected
                                             ? .white
-                                            : .white.opacity(isToday ? 0.96 : 0.76)
+                                            : (isToday ? accentColor : .white.opacity(0.76))
                                     )
                                     .lineLimit(1)
                                     .fixedSize(horizontal: true, vertical: false)
@@ -1961,6 +2071,15 @@ private struct NotchieCalendarScheduleColumn: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(isHoveringDates ? Color.white.opacity(0.04) : Color.clear)
+                )
+                .onHover { hovering in
+                    handleDateHover(hovering)
                 }
 
                 Spacer(minLength: 0)
@@ -2006,6 +2125,7 @@ private struct NotchieCalendarScheduleColumn: View {
                 HStack(spacing: 3) {
                     ForEach(weekDays, id: \.offset) { day in
                         let selected = day.offset == selectedDayOffset
+                        let isToday = day.offset == 0
                         let weekend = Calendar.current.isDateInWeekend(day.date)
                         Button {
                             withAnimation(.easeInOut(duration: 0.18)) { selectedDayOffset = day.offset }
@@ -2013,12 +2133,12 @@ private struct NotchieCalendarScheduleColumn: View {
                             VStack(spacing: 3) {
                                 Text(day.weekdayShort)
                                     .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.white.opacity(selected ? 0.7 : 0.32))
+                                    .foregroundStyle(isToday ? accentColor : .white.opacity(selected ? 0.9 : 0.35))
                                 Text(day.dayNumber.count == 1 ? "0" + day.dayNumber : day.dayNumber)
                                     .font(.system(size: selected ? 23 : 18, weight: selected ? .bold : .semibold))
                                     .monospacedDigit()
-                                    .foregroundStyle(selected ? Color.blue : weekend ? Color.red.opacity(0.55) : Color.white.opacity(0.5))
-                                Circle().fill(day.hasEvents ? Color.blue : .clear)
+                                    .foregroundStyle(selected ? Color.blue : isToday ? accentColor : (weekend ? Color.red.opacity(0.55) : Color.white.opacity(0.5)))
+                                Circle().fill(day.hasEvents ? (selected ? Color.blue : (isToday ? accentColor : Color.blue.opacity(0.8))) : .clear)
                                     .frame(width: 3, height: 3)
                             }
                             .frame(maxWidth: .infinity, minHeight: 52)
@@ -2029,6 +2149,20 @@ private struct NotchieCalendarScheduleColumn: View {
                         .accessibilityAddTraits(selected ? .isSelected : [])
                     }
                 }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(isHoveringDates ? Color.white.opacity(0.045) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(isHoveringDates ? Color.white.opacity(0.09) : Color.clear, lineWidth: 0.7)
+                )
+                .onHover { hovering in
+                    handleDateHover(hovering)
+                }
+                .help(text("Hover and scroll to navigate dates", "날짜에 마우스를 올리고 스크롤하여 날짜 이동"))
             }
             Group {
                 if let event = events(on: selectedDate).first {
@@ -2163,6 +2297,265 @@ private struct NotchieCalendarScheduleColumn: View {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return "\(formatter.string(from: event.startDate)) – \(formatter.string(from: event.endDate))"
+    }
+}
+
+// MARK: - Column 2 Alt: Apple Music Lyrics Slot View (Toggled via Now Playing)
+
+private struct NotchieNotchLyricsColumn: View {
+    var nowPlayingViewModel: NowPlayingViewModel?
+    let accentColor: Color
+    let onDismiss: () -> Void
+
+    @State private var hoveredLineId: Int?
+
+    private func privacyText(_ en: String, _ ko: String) -> String {
+        Locale.preferredLanguages.first?.hasPrefix("ko") == true ? ko : en
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.075),
+                            Color.white.opacity(0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.20),
+                                    Color.white.opacity(0.06)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.85
+                        )
+                )
+
+            VStack(alignment: .leading, spacing: 6) {
+                // Header Row: Lyrics badge + Song Title + Return to Calendar Button
+                HStack(alignment: .center, spacing: 6) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "quote.bubble.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(accentColor)
+
+                        Text(privacyText("Lyrics", "실시간 가사"))
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+
+                        if let title = nowPlayingViewModel?.snapshot?.title, !title.isEmpty {
+                            Text("· \(title)")
+                                .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.55))
+                                .lineLimit(1)
+                        }
+                    }
+
+                    Spacer()
+
+                    Button {
+                        onDismiss()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(accentColor)
+                            Text(privacyText("Calendar", "캘린더"))
+                                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.08), in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.7)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(privacyText("Return to Calendar", "캘린더로 돌아가기"))
+                }
+
+                // Lyrics Content Body
+                if let vm = nowPlayingViewModel {
+                    TimelineView(.periodic(from: .now, by: 0.35)) { context in
+                        lyricsBody(viewModel: vm, at: context.date)
+                    }
+                } else {
+                    emptyLyricsPlaceholder(
+                        icon: "music.note",
+                        title: privacyText("Play music to view lyrics", "음악을 재생하면 가사가 표시됩니다")
+                    )
+                }
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private func lyricsBody(viewModel: NowPlayingViewModel, at date: Date) -> some View {
+        switch viewModel.lyricsState {
+        case .idle:
+            emptyLyricsPlaceholder(
+                icon: "music.note",
+                title: privacyText("Play music to view lyrics", "음악을 재생하면 가사가 표시됩니다")
+            )
+
+        case .loading:
+            VStack(spacing: 8) {
+                ProgressView()
+                    .scaleEffect(0.75)
+                Text(privacyText("Loading lyrics...", "가사 불러오는 중..."))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        case .loaded(let lyrics):
+            if lyrics.lines.isEmpty {
+                emptyLyricsPlaceholder(
+                    icon: "quote.bubble",
+                    title: privacyText("No lyrics available", "등록된 가사가 없습니다")
+                )
+            } else if lyrics.isSynced {
+                let elapsedTime = viewModel.elapsedTime(at: date)
+                let activeIndex = lyrics.activeLineIndex(at: elapsedTime) ?? 0
+
+                syncedLyricsView(viewModel: viewModel, lyrics: lyrics, activeIndex: activeIndex)
+            } else {
+                plainLyricsView(lyrics: lyrics)
+            }
+
+        case .notFound:
+            emptyLyricsPlaceholder(
+                icon: "quote.bubble",
+                title: privacyText("Lyrics not found", "가사를 찾을 수 없습니다")
+            )
+
+        case .failed:
+            emptyLyricsPlaceholder(
+                icon: "exclamationmark.triangle",
+                title: privacyText("Failed to load lyrics", "가사를 불러올 수 없습니다")
+            )
+        }
+    }
+
+    private func syncedLyricsView(viewModel: NowPlayingViewModel, lyrics: TrackLyrics, activeIndex: Int) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(lyrics.lines) { line in
+                        let isActive = line.id == activeIndex
+                        let isHovered = hoveredLineId == line.id
+
+                        Button {
+                            if let startTime = line.startTime {
+                                viewModel.seek(to: startTime)
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    proxy.scrollTo(line.id, anchor: .center)
+                                }
+                            }
+                        } label: {
+                            Text(line.text)
+                                .font(.system(size: isActive ? 13 : 11.5, weight: isActive ? .bold : .medium, design: .rounded))
+                                .foregroundStyle(
+                                    isActive
+                                        ? Color.white
+                                        : (isHovered ? Color.white.opacity(0.85) : Color.white.opacity(0.38))
+                                )
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(isActive ? accentColor.opacity(0.2) : (isHovered ? Color.white.opacity(0.06) : Color.clear))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .id(line.id)
+                        .onHover { hovering in
+                            if hovering { hoveredLineId = line.id }
+                            else if hoveredLineId == line.id { hoveredLineId = nil }
+                        }
+                    }
+                }
+                .padding(.vertical, 28)
+            }
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.15),
+                        .init(color: .black, location: 0.85),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .onChange(of: activeIndex) { _, newIndex in
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                    proxy.scrollTo(newIndex, anchor: .center)
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.async {
+                    proxy.scrollTo(activeIndex, anchor: .center)
+                }
+            }
+        }
+    }
+
+    private func plainLyricsView(lyrics: TrackLyrics) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(lyrics.lines) { line in
+                    Text(line.text)
+                        .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .mask {
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: .black, location: 0.1),
+                    .init(color: .black, location: 0.9),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+
+    private func emptyLyricsPlaceholder(icon: String, title: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(.white.opacity(0.35))
+            Text(title)
+                .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.48))
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

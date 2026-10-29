@@ -91,7 +91,10 @@ final class AppContainer {
                 SystemAudioOutputRoutingService(),
             lyricsProvider: isRunningTests ?
                 InactiveLyricsProvider() :
-                LRCLIBLyricsProvider(),
+                CompositeLyricsProvider(providers: [
+                    LRCLIBLyricsProvider(),
+                    AppleMusicLyricsProvider()
+                ]),
             sourceFilter: settingsViewModel.mediaAndFiles.nowPlayingSourceFilter
         )
         self.downloadViewModel = DownloadViewModel(

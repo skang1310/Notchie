@@ -100,8 +100,22 @@ final class QuickToolsStore: ObservableObject {
     }
     @Published var isNotchHubPinned = false
     @Published var isMirrorCameraActive = false
+    @Published var isLyricsVisibleInCalendarSlot = false {
+        didSet {
+            guard oldValue != isLyricsVisibleInCalendarSlot else { return }
+            if isLyricsVisibleInCalendarSlot {
+                nowPlayingViewModel?.setLyricsPresentationActive(true)
+            } else {
+                nowPlayingViewModel?.setLyricsPresentationActive(false)
+            }
+        }
+    }
     @Published private(set) var enabledTabIDs: [String]
     @Published private(set) var sampledColor: String?
+
+    func toggleLyricsInCalendarSlot() {
+        isLyricsVisibleInCalendarSlot.toggle()
+    }
 
     weak var nowPlayingViewModel: NowPlayingViewModel?
     weak var calendarViewModel: CalendarViewModel?

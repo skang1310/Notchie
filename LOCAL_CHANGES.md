@@ -1,6 +1,22 @@
-# Notchie custom edition features — 2026-10-28 / 2026-10-29
+# Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
 
-1. **Independent AI Usage Notch Tab, Official Product Logos & Precise Codex Rate-Limit Exhaustion Tracking (2026-10-29 v37)**:
+1. **Now Playing Apple Music Lyrics Slot & Calendar Hover-to-Scroll (2026-10-30 v38)**:
+   - **Now Playing Click-to-Lyrics Toggle (`노치 Now Playing 클릭 시 캘린더 자리에 실시간 가사 토글`)**:
+     - Clicking on Now Playing in the Notch (album artwork, track title & artist row, equalizer, or the dedicated `quote.bubble` lyrics button) smoothly transforms the right Calendar column into a dedicated real-time Apple Music lyrics column (`NotchieNotchLyricsColumn`).
+     - Clicking Now Playing again (or clicking the `"Calendar"` button in the lyrics header) instantly toggles back to the Calendar view with a fluid spring animation.
+     - Also wired into `NotchieMiniNowPlayingHeaderPill` in the top bar: clicking the pill while playing audio opens the Nook tab directly with the lyrics slot active.
+     - **Apple Music Local Lyrics Provider (`AppleMusicLyricsProvider`)**:
+       - Added `AppleMusicLyricsProvider` to `CompositeLyricsProvider` alongside `LRCLIBLyricsProvider`.
+       - Reads lyrics directly and privately from Music.app (`com.apple.Music`) via background AppleScript without any network latency or external tracking, parsing both LRC timestamped lyrics and plain lyrics.
+       - Provides real-time synced lyrics with bold glowing active line, tap-to-seek playback, smooth auto-scrolling to center, and subtle top/bottom gradient mask.
+   - **Calendar Hover-to-Scroll Date Navigation (`캘린더 날짜 hover 시 스크롤 탐색`)**:
+     - In `NotchieCalendarScheduleColumn` (both compact `nookCalendar` and standard middle row), hovering over the 7-day date strip captures trackpad two-finger swipes and mouse scroll wheels via `NSEvent.addLocalMonitorForEvents(matching: .scrollWheel)`.
+     - Dynamically centers the visible 7-day strip around `selectedDayOffset`, allowing smooth infinite date navigation across days, weeks, and months without bounds clipping.
+     - Today's date is permanently marked with an accent color badge, and clicking the prominent month header button instantly flies back to Today (`selectedDayOffset = 0`).
+     - Safe hover lifecycle automatically removes the local event monitor upon unhover or `.onDisappear` without blocking date clicks.
+   - 312 unit tests passed (including dedicated `NowPlayingLyricsTests`); Release build installed and running at `/Applications/DynamicNotch.app` (PID 19318, UUID `47ACF652-0813-3AA8-A241-0BC9FE11BB7E`).
+
+2. **Independent AI Usage Notch Tab, Official Product Logos & Precise Codex Rate-Limit Exhaustion Tracking (2026-10-29 v37)**:
    - **Independent Primary Notch Tab (`별도 독립 노치 탭 분리`)**:
      - Removed AI Usage from the Tray secondary sub-mode segmented bar (`trayAndShotsUnifiedContainer`).
      - Promoted AI Usage to an independent, top-level primary tab in the Notch Wing bar (`topWingHeaderBar`) with `brain.head.profile` icon and dedicated `aiIndependentNotchContainer` rendering full-width side-by-side cards.
