@@ -153,8 +153,7 @@ final class NotchViewModel: ObservableObject {
         if QuickToolsStore.shared.isNotchHubPinned {
             return false
         }
-        if let hub = displayedContent as? QuickToolsNotchContent,
-           hub.openedFromIdleHover {
+        if displayedContent is QuickToolsNotchContent {
             return true
         }
         if displayedContent?.id == NotchContentRegistry.Media.nowPlaying.id,

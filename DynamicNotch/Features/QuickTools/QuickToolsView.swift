@@ -66,10 +66,24 @@ struct QuickToolsView: View {
 
             HStack {
                 Button {
-                    store.hubMode = effectiveTraySection
-                    NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
+                    let isExpanded = store.notchViewModel?.isDisplayingExpandedLiveActivity == true
+                    let isQuickTools = store.notchViewModel?.displayedContent?.id == "local.quickTools"
+                    if isExpanded && isQuickTools {
+                        NotificationCenter.default.post(name: .closeQuickToolsInNotch, object: nil)
+                    } else {
+                        store.hubMode = effectiveTraySection
+                        NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
+                    }
                 } label: {
-                    Label(L10n.app("settings.tools.openNotch"), systemImage: "tray.full.fill")
+                    let isExpanded = store.notchViewModel?.isDisplayingExpandedLiveActivity == true
+                    let isQuickTools = store.notchViewModel?.displayedContent?.id == "local.quickTools"
+                    let isShowing = isExpanded && isQuickTools
+                    Label(
+                        isShowing
+                            ? text("Close Notch Tray", "노치 트레이 닫기")
+                            : L10n.app("settings.tools.openNotch"),
+                        systemImage: isShowing ? "xmark.circle.fill" : "tray.full.fill"
+                    )
                 }
                 .accessibilityIdentifier("settings.tools.openNotch")
 
@@ -674,9 +688,32 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: Apple Glass Settings Button
+            // Right Wing: Close Notch & Apple Glass Settings Buttons
             HStack(spacing: 5) {
                 Spacer(minLength: 0)
+
+                // Close Notch Button
+                Button {
+                    NotificationCenter.default.post(name: .closeQuickToolsInNotch, object: nil)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(text("Close Notch", "노치 닫기"))
+                .padding(.horizontal, 3)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(0.07))
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+                        )
+                )
 
                 // Apple Glass Settings Button
                 Button {

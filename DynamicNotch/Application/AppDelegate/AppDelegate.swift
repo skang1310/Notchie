@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var hideWindowWorkItem: DispatchWorkItem?
     var cancellables = Set<AnyCancellable>()
     private var quickToolsPresentation: AnyCancellable?
+    private var quickToolsAutoDismissTask: Task<Void, Never>?
     var isPrimaryWindowSuspendedForLock = false
     var expansionTime: Date = .distantPast
     
@@ -78,12 +79,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     .filter { $0.content?.id == "local.quickTools" }
                     .first()
                     .sink { [weak self] _ in self?.notchViewModel.expandActiveLiveActivity() }
-                self.notchViewModel.send(.showLiveActivity(QuickToolsNotchContent(store: QuickToolsStore.shared)))
+                self.notchViewModel.send(.showLiveActivity(QuickToolsNotchContent(store: QuickToolsStore.shared, openedFromIdleHover: true)))
+
+                self.quickToolsAutoDismissTask?.cancel()
+                self.quickToolsAutoDismissTask = Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    guard !Task.isCancelled, let self else { return }
+                    if let notchRect = self.activeNotchScreenRect, notchRect.contains(NSEvent.mouseLocation) {
+                        return
+                    }
+                    if QuickToolsStore.shared.isNotchHubPinned {
+                        return
+                    }
+                    self.notchViewModel.handleOutsideClick()
+                }
             }.store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: .closeQuickToolsInNotch)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
+                self?.quickToolsAutoDismissTask?.cancel()
                 self?.quickToolsPresentation?.cancel()
                 self?.notchViewModel.send(.hideLiveActivity(id: "local.quickTools"))
             }.store(in: &cancellables)
