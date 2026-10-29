@@ -30,9 +30,24 @@ struct AppearanceSettingsView: View {
 
     var body: some View {
         SettingsPageScrollView {
+            shelfFinishCard
             themeCard
             appIconStyleCard
             accentColorCard
+        }
+    }
+
+    private var shelfFinishCard: some View {
+        SettingsCard(verbatimTitle: text("Shelf finish", "선반 표면"), spacing: 12) {
+            Picker(text("Material", "재질"), selection: $applicationSettings.notchBackgroundStyle) {
+                ForEach(NotchBackgroundStyle.allCases, id: \.self) { style in
+                    Label(style.title, systemImage: style.symbolName).tag(style)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("shelf.finish")
+            Text(text("Dynamic Glass blends the black camera area into glass. Liquid Glass stays translucent. Reduce Transparency uses a solid surface.", "다이내믹 글래스는 검은 카메라 영역에서 유리로 이어집니다. 리퀴드 글래스는 반투명하게 표시되며, 투명도 줄이기를 켜면 불투명 표면을 사용합니다."))
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -106,13 +121,11 @@ struct AppearanceSettingsView: View {
                                 .interpolation(.high)
                                 .scaledToFit()
                                 .frame(width: 48, height: 48)
-                                .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
                             Image("NotchieIconDark")
                                 .resizable()
                                 .interpolation(.high)
                                 .scaledToFit()
                                 .frame(width: 48, height: 48)
-                                .shadow(color: .black.opacity(0.32), radius: 6, y: 2)
                         }
                         .frame(height: 54)
                     } else {
@@ -121,7 +134,6 @@ struct AppearanceSettingsView: View {
                             .interpolation(.high)
                             .scaledToFit()
                             .frame(width: 54, height: 54)
-                            .shadow(color: .black.opacity(0.28), radius: 6, y: 3)
                     }
                 }
                 .frame(maxWidth: .infinity)

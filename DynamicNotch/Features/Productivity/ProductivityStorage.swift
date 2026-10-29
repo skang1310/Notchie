@@ -8,7 +8,7 @@ struct DailyTask: Codable, Identifiable { var id = UUID(); var text: String; var
         self.id = id; self.day = day; self.text = text; self.done = done
     }
 }
-struct SavedSnippet: Codable, Identifiable { var id = UUID(); var text: String; var date = Date() }
+struct SavedSnippet: Codable, Identifiable { var id = UUID(); var text: String; var date = Date(); var isFavorite: Bool? = nil; var sourceAppName: String? = nil }
 struct ProductivityDocument: Codable {
     var version = 1
     var focusHistory: [FocusCompletion] = []
@@ -75,23 +75,45 @@ final class ProductivityStorage: ObservableObject {
     func toggleTask(_ id: UUID) { update { doc in if let i = doc.tasks.firstIndex(where: { $0.id == id }) { doc.tasks[i].done.toggle() } } }
     func removeTask(_ id: UUID) { update { $0.tasks.removeAll { $0.id == id } } }
 
-    @discardableResult func saveSnippet(_ text: String) -> Bool {
+    @discardableResult func saveSnippet(_ text: String, sourceAppName: String? = nil) -> Bool {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf8.count <= 100_000,
               document.snippets.count < 100 || document.snippets.contains(where: { $0.text == text }) else { return false }
         return update { doc in
-            doc.snippets.removeAll { $0.text == text }
-            doc.snippets.insert(SavedSnippet(text: text), at: 0)
+            if let index = doc.snippets.firstIndex(where: { $0.text == text }) {
+                var existing = doc.snippets.remove(at: index)
+                existing.date = .now
+                if let sourceAppName { existing.sourceAppName = String(sourceAppName.prefix(100)) }
+                doc.snippets.insert(existing, at: 0)
+            } else {
+                doc.snippets.insert(SavedSnippet(text: text, sourceAppName: sourceAppName.map { String($0.prefix(100)) }), at: 0)
+            }
             // Refuse automatic eviction of personal snippets; the user can remove them explicitly.
         }
     }
 
-    func filteredSnippets(query: String) -> [SavedSnippet] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return document.snippets }
-        return document.snippets.filter { $0.text.localizedCaseInsensitiveContains(trimmed) }
+    func toggleSnippetFavorite(_ id: UUID) {
+        update { doc in
+            if let index = doc.snippets.firstIndex(where: { $0.id == id }) {
+                doc.snippets[index].isFavorite = !(doc.snippets[index].isFavorite ?? false)
+            }
+        }
     }
 
-    @discardableResult func captureFromPasteboard(_ pasteboard: NSPasteboard = .general) -> Bool {
+    func filteredSnippets(query: String, kind: ClipboardKind = .all, favoritesOnly: Bool = false, oldestFirst: Bool = false) -> [SavedSnippet] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matches = document.snippets.filter { item in
+            (trimmed.isEmpty || item.text.localizedCaseInsensitiveContains(trimmed) || item.sourceAppName?.localizedCaseInsensitiveContains(trimmed) == true)
+                && (kind == .all || item.clipboardKind == kind)
+                && (!favoritesOnly || item.isFavorite == true)
+        }.sorted { oldestFirst ? $0.date < $1.date : $0.date > $1.date }
+        return matches.filter { $0.isFavorite == true } + matches.filter { $0.isFavorite != true }
+    }
+
+    @discardableResult func removeUnstarredSnippets() -> Bool {
+        update { $0.snippets.removeAll { $0.isFavorite != true } }
+    }
+
+    @discardableResult func captureFromPasteboard(_ pasteboard: NSPasteboard = .general, sourceAppName: String? = nil) -> Bool {
         let concealedTypes = [
             "org.nspasteboard.ConcealedType",
             "org.nspasteboard.TransientType",
@@ -99,6 +121,6 @@ final class ProductivityStorage: ObservableObject {
         ]
         let isConcealed = pasteboard.types?.contains { concealedTypes.contains($0.rawValue) } ?? false
         guard !isConcealed, let text = pasteboard.string(forType: .string) else { return false }
-        return saveSnippet(text)
+        return saveSnippet(text, sourceAppName: sourceAppName)
     }
 }

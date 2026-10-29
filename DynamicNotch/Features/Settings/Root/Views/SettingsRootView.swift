@@ -141,6 +141,11 @@ struct SettingsRootView: View {
                                 }
                             }
                         }
+                    } header: {
+                        if let key = group.group.titleKey {
+                            Text(localized(key, fallback: group.group.fallbackTitle))
+                                .font(.caption.weight(.semibold))
+                        }
                     }
                 }
             }
@@ -150,7 +155,7 @@ struct SettingsRootView: View {
                 placement: .sidebar,
                 prompt: localized("settings.search.prompt")
             )
-            .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 260)
+            .navigationSplitViewColumnWidth(min: 210, ideal: 230, max: 270)
 
         } detail: {
             NavigationStack(path: $navigationPath) {
@@ -285,6 +290,8 @@ struct SettingsRootView: View {
     }
 
     private var resolvedSelection: SettingsRootViewModel.Section {
+        // Preserve saved/deep-linked lock-screen routes after removing its duplicate sidebar row.
+        if selectedSection == .lockScreen && trimmedSearchText.isEmpty { return .lockScreen }
         if filteredSections.contains(selectedSection) {
             return selectedSection
         }
@@ -376,7 +383,7 @@ struct SettingsRootView: View {
     private func detailView(for section: SettingsRootViewModel.Section) -> some View {
         switch section {
         case .privacy:
-            detailContainer(for: section) { PrivacySettingsView() }
+            detailContainer(for: section) { PrivacySettingsView(permissionController: permissionController, applicationSettings: settingsViewModel.application) }
         case .quickTools:
             detailContainer(for: section) { QuickToolsView(store: QuickToolsStore.shared) }
         case .general:
@@ -491,7 +498,8 @@ struct SettingsRootView: View {
 
         case .lockScreen:
             detailContainer(for: section) {
-                LockScreenSettingsView(settings: settingsViewModel.lockScreen, applicationSettings: settingsViewModel.application)
+                FaceIDSettingsView(settings: settingsViewModel.faceID, applicationSettings: settingsViewModel.application,
+                                   notchViewModel: notchViewModel, lockScreenSettings: settingsViewModel.lockScreen, initialSection: "lock")
             }
 
         case .faceID:
@@ -499,7 +507,8 @@ struct SettingsRootView: View {
                 FaceIDSettingsView(
                     settings: settingsViewModel.faceID,
                     applicationSettings: settingsViewModel.application,
-                    notchViewModel: notchViewModel
+                    notchViewModel: notchViewModel,
+                    lockScreenSettings: settingsViewModel.lockScreen
                 )
             }
         }

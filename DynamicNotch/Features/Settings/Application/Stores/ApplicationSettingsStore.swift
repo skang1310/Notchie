@@ -573,7 +573,6 @@ final class AppIconController: ObservableObject {
 
     @Published private(set) var activeVariant: AppIconAppearanceStyle = .dark
     private var cancellables = Set<AnyCancellable>()
-    private var lastAppliedBundleVariant: AppIconAppearanceStyle?
 
     private init() {
         DistributedNotificationCenter.default()
@@ -659,13 +658,9 @@ final class AppIconController: ObservableObject {
         guard let icon = iconImage(for: resolved) else { return }
         NSApp?.applicationIconImage = icon
 
-        if lastAppliedBundleVariant != resolved,
-           Bundle.main.bundleURL.pathExtension == "app" {
-            lastAppliedBundleVariant = resolved
-            let bundlePath = Bundle.main.bundlePath
-            DispatchQueue.global(qos: .utility).async {
-                NSWorkspace.shared.setIcon(icon, forFile: bundlePath, options: [])
-            }
-        }
+        // Keep the signed bundle immutable. Finder's setIcon writes FinderInfo /
+        // resource forks into the .app and invalidates strict signature validation.
+        // Finder uses the bundled appearance variants; Dock uses applicationIconImage.
+
     }
 }

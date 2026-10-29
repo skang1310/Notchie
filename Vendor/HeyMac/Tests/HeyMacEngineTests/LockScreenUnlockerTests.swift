@@ -100,7 +100,7 @@ private func makeUnlocker(
     let settings = makeTestSettings { $0.lockScreenEnabled = true }
     let unlocker = makeUnlocker(system: system, matcher: matcher, typist: typist, settings: settings, recorder: EventRecorder())
 
-    #expect(unlocker.tick() == .notLocked)
+    #expect(unlocker.tick() == .blocked("lock state unknown"))
     #expect(typist.typed.isEmpty)
 }
 
@@ -210,4 +210,65 @@ private struct ThrowingTypist: PasswordTyping {
     matcher.onRun = { unlocker.stop() }
     #expect(unlocker.tick() == .blocked("stopped before typing"))
     #expect(typist.typed.isEmpty)
+}
+
+@Test func unknownStateDoesNotResetTheTypingBudget() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    matcher.outcome = matchedOutcome()
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let unlocker = makeUnlocker(system: system, matcher: matcher, typist: ThrowingTypist(), settings: settings, recorder: EventRecorder())
+    guard case .typingFailed = unlocker.tick() else { Issue.record("expected typing failure"); return }
+    system.locked = nil
+    #expect(unlocker.tick() == .blocked("lock state unknown"))
+    system.locked = true
+    #expect(unlocker.tick() == .alreadyAttempted)
+    #expect(matcher.callCount == 1)
+}
+
+@Test func cameraContentionDoesNotConsumeFaceRetries() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    matcher.outcome.failure = "camera busy with another verification"
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let typist = FakeTypist(system: system, unlocks: true)
+    let unlocker = makeUnlocker(system: system, matcher: matcher, typist: typist, settings: settings, recorder: EventRecorder())
+    for _ in 0..<3 {
+        #expect(unlocker.tick() == .blocked("camera busy with another verification"))
+    }
+    matcher.outcome = matchedOutcome()
+    #expect(unlocker.tick() == .unlocked)
+    #expect(typist.typed.count == 1)
+}
+
+@Test func unknownConfirmationDoesNotMislabelThePasswordAsRejected() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    matcher.outcome = matchedOutcome()
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let typist = FakeTypist(system: system, unlocks: false)
+    var environment = system.environment()
+    environment.sleep = { _ in system.locked = nil }
+    let unlocker = LockScreenUnlocker(matcher: matcher, typist: typist, settings: settings,
+                                     environment: environment, onEvent: { _ in })
+    #expect(unlocker.tick() == .unlockUnconfirmed)
+    #expect(settings.lockScreenNeedsPassword == false)
+    system.locked = true
+    #expect(unlocker.tick() == .alreadyAttempted)
+    #expect(typist.typed.count == 1)
+}
+
+@Test func explicitRetryRearmsFaceScanningButNeverPasswordTyping() {
+    let system = FakeSystem()
+    let matcher = FakeMatcher()
+    let settings = makeTestSettings { $0.lockScreenEnabled = true }
+    let unlocker = makeUnlocker(system: system, matcher: matcher, typist: ThrowingTypist(), settings: settings, recorder: EventRecorder())
+    #expect(unlocker.tick() == .noMatch)
+    #expect(unlocker.tick() == .noMatch)
+    #expect(unlocker.tick() == .retriesExhausted)
+    #expect(unlocker.requestScan())
+    matcher.outcome = matchedOutcome()
+    guard case .typingFailed = unlocker.tick() else { Issue.record("expected typing failure"); return }
+    #expect(!unlocker.requestScan())
+    #expect(unlocker.tick() == .alreadyAttempted)
 }

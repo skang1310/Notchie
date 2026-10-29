@@ -14,28 +14,33 @@ struct NotchView: View {
     @Environment(\.openWindow) private var openWindow
     
     var body: some View {
-        NotchInteractiveBodyView(
-            notchViewModel: notchViewModel,
-            settingsViewModel: settingsViewModel
-        )
-        .environment(\.notchScale, notchViewModel.notchModel.scale)
-        .environment(\.locale, settingsViewModel.application.notchLanguage.effectiveNotchLanguage.locale)
-        .overlay {
-            NotchDragAndDropDestinationOverlay(
-                airDropViewModel: airDropViewModel,
-                airDropController: airDropController,
+        GeometryReader { canvas in
+            NotchInteractiveBodyView(
+                notchViewModel: notchViewModel,
                 settingsViewModel: settingsViewModel
             )
+            .environment(\.notchScale, notchViewModel.notchModel.scale)
+            .environment(\.locale, settingsViewModel.application.notchLanguage.effectiveNotchLanguage.locale)
+            .overlay {
+                NotchDragAndDropDestinationOverlay(
+                    airDropViewModel: airDropViewModel,
+                    airDropController: airDropController,
+                    settingsViewModel: settingsViewModel
+                )
+            }
+            .onChange(of: notchViewModel.displayedContent?.id) {
+                notchViewModel.handleStrokeVisibility()
+            }
+            .onChange(of: settingsViewModel.application.notchWidth) { _, _ in
+                notchViewModel.updateDimensions()
+            }
+            .onChange(of: settingsViewModel.application.notchHeight) { _, _ in
+                notchViewModel.updateDimensions()
+            }
+            // Keep the center stationary while the child interpolates its width.
+            // Animating a leading origin and width separately produces lateral drift.
+            .position(x: canvas.size.width / 2,
+                      y: notchViewModel.presentedNotchSize.height / 2)
         }
-        .onChange(of: notchViewModel.displayedContent?.id) {
-            notchViewModel.handleStrokeVisibility()
-        }
-        .onChange(of: settingsViewModel.application.notchWidth) { _, _ in
-            notchViewModel.updateDimensions()
-        }
-        .onChange(of: settingsViewModel.application.notchHeight) { _, _ in
-            notchViewModel.updateDimensions()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }

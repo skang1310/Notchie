@@ -38,6 +38,10 @@ final class LockScreenFaceIDWindowManager {
         self.faceIDService = faceIDService ?? .shared
 
         bindState()
+        HeyMacFaceUnlockController.shared.$enabled
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.syncCurrentPresentation() }
+            .store(in: &cancellables)
         registerObservers()
     }
 
@@ -154,17 +158,8 @@ final class LockScreenFaceIDWindowManager {
     }
 
     private func handleScreenWake() {
-        guard PrivacyPolicy.passwordUnlockSupported, lockScreenManager.isShowingLockPresentation,
-              faceIDSettings.isFaceIDEnabled,
-              faceIDSettings.isEnrolled,
-              faceIDSettings.unlockOnWake else {
-            return
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
-            guard let self, self.lockScreenManager.isShowingLockPresentation else { return }
-            self.activateFaceID()
-        }
+        // The single engine owns wake detection and automatic scan budgets.
+        syncCurrentPresentation()
     }
 
     private func syncCurrentPresentation() {
@@ -183,7 +178,7 @@ final class LockScreenFaceIDWindowManager {
         showButton: Bool
     ) {
         let isShowingLock = isLocked && !lockScreenManager.didUnlockWithFaceID
-        let isAvailable = PrivacyPolicy.passwordUnlockSupported && faceIDSettings.isFaceIDEnabled && faceIDSettings.isEnrolled
+        let isAvailable = HeyMacFaceUnlockController.shared.enabled
 
         if isShowingLock && isAvailable && showButton {
             presentButton()
@@ -267,49 +262,8 @@ final class LockScreenFaceIDWindowManager {
     }
 
     func activateFaceID() {
-        guard faceIDService.state == .idle || faceIDService.state.isFailed else { return }
-
-        let requireEyes = faceIDSettings.requireOpenEyes
-        let liveness = faceIDSettings.livenessCheck
-
-        // In expanded style, show FaceIDNotchContent view as temporary notification
-        if faceIDSettings.presentationStyle == .expanded {
-            notchViewModel.send(.showTemporaryNotification(
-                FaceIDNotchContent(service: faceIDService, style: faceIDSettings.presentationStyle),
-                duration: 8.0
-            ))
-        } else {
-            notchViewModel.send(.showLiveActivity(
-                LockScreenNotchContent(
-                    lockScreenManager: lockScreenManager,
-                    faceIDSettings: faceIDSettings,
-                    faceIDService: faceIDService
-                )
-            ))
-        }
-
-        faceIDService.startScan(
-            requireOpenEyes: requireEyes,
-            livenessCheck: liveness
-        ) { [weak self] success in
-            guard let self else { return }
-            if success {
-                self.hideButton()
-                self.lockScreenManager.handleFaceIDUnlock()
-                // OS password injection is intentionally not supported.
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-                    self?.notchViewModel.hideTemporaryNotification()
-                    self?.notchViewModel.send(.hideLiveActivity(id: NotchContentRegistry.LockScreen.activity.id))
-                    self?.faceIDService.cancelScan()
-                }
-            } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in
-                    self?.notchViewModel.hideTemporaryNotification()
-                    self?.faceIDService.cancelScan()
-                }
-            }
-        }
+        // Never call the retired presentation-only scanner or simulate OS unlock.
+        HeyMacFaceUnlockController.shared.retryOnLockScreen()
     }
 
     private func makeWindowIfNeeded(for screen: NSScreen) -> OverlayPanelWindow {

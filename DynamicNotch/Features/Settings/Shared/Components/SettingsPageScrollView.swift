@@ -17,10 +17,10 @@ struct SettingsPageScrollView<Content: View>: View {
     var body: some View {
         if #available(macOS 26.0, *) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 18) {
                     content
                 }
-                .frame(maxWidth: 780, alignment: .leading)
+                .frame(maxWidth: 720, alignment: .leading)
                 .padding(.vertical, 24)
                 .padding(.horizontal, 18)
                 .frame(maxWidth: .infinity, alignment: .top)
@@ -29,10 +29,10 @@ struct SettingsPageScrollView<Content: View>: View {
             
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 18) {
                     content
                 }
-                .frame(maxWidth: 780, alignment: .leading)
+                .frame(maxWidth: 720, alignment: .leading)
                 .padding(.vertical, 24)
                 .padding(.horizontal, 18)
                 .frame(maxWidth: .infinity, alignment: .top)

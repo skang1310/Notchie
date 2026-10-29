@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct NotchBackgroundSurface: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let style: NotchBackgroundStyle
     let topCornerRadius: CGFloat
     let bottomCornerRadius: CGFloat
@@ -33,7 +34,7 @@ struct NotchBackgroundSurface: View {
     @ViewBuilder
     private func baseSurface<S: Shape>(shape: S) -> some View {
         let isExpanded = (height ?? 0) > ((baseHeight ?? 38) + 24)
-        switch style {
+        switch reduceTransparency || !isExpanded ? .black : style {
         case .black:
             ZStack {
                 shape.fill(.black)
@@ -63,6 +64,19 @@ struct NotchBackgroundSurface: View {
                         lineWidth: 0.9
                     )
                 }
+            }
+        case .dynamicGlass, .liquidGlass:
+            ZStack {
+                shape.fill(.ultraThinMaterial)
+                shape.fill(Color.black.opacity(style == .dynamicGlass ? 0.45 : 0.24))
+                if style == .dynamicGlass {
+                    shape.fill(LinearGradient(stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black.opacity(0.96), location: 0.19),
+                        .init(color: .black.opacity(0.12), location: 0.78)
+                    ], startPoint: .top, endPoint: .bottom))
+                }
+                shape.stroke(Color.white.opacity(0.16), lineWidth: 0.8)
             }
         }
     }

@@ -64,6 +64,12 @@ public final class EngineController: @unchecked Sendable {
         if unlocker != nil { log.write("engine stopped") }
     }
 
+    @discardableResult
+    public func requestScan() -> Bool {
+        let current = stateLock.withLock { unlocker }
+        return current?.requestScan() ?? false
+    }
+
     private func record(_ event: EngineEvent) {
         log.write(event.logText)
         onEvent(event)

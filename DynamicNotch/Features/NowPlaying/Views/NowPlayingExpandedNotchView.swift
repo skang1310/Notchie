@@ -7,7 +7,7 @@ struct NowPlayingExpandedNotchView: View {
     @ObservedObject var applicationSettings: ApplicationSettingsStore
     @ObservedObject private var quickToolsStore = QuickToolsStore.shared
 
-    let onOpenPlaybackSource: @MainActor () -> Void
+    let onOpenPlaybackSource: @MainActor @Sendable () -> Void
     private let detailedPresentationSource = "nowPlaying.notch.expanded"
 
     var body: some View {
@@ -16,7 +16,7 @@ struct NowPlayingExpandedNotchView: View {
             nowPlayingViewModel: nowPlayingViewModel,
             mediaSettings: settings,
             applicationSettings: applicationSettings,
-            onOpenPlaybackSource: onOpenPlaybackSource
+            onOpenPlaybackSource: { onOpenPlaybackSource() }
         )
         .onAppear {
             nowPlayingViewModel.setDetailedPresentationActive(

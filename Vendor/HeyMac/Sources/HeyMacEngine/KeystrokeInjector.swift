@@ -47,6 +47,10 @@ public final class KeystrokeInjector: PasswordTyping {
               let up = CGEvent(keyboardEventSource: source, virtualKey: press.virtualKey, keyDown: false)
         else { throw KeystrokeError.eventCreationFailed }
 
+        // Lock shortcuts may still hold Command/Control/Shift when recognition finishes.
+        // Synthetic password characters must not inherit those shortcut modifiers.
+        down.flags = []
+        up.flags = []
         if let unicode = press.unicode {
             unicode.withUnsafeBufferPointer { buffer in
                 guard let base = buffer.baseAddress else { return }

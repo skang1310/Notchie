@@ -5,6 +5,8 @@ struct FaceIDSettingsView: View {
     @ObservedObject var settings: FaceIDSettingsStore
     @ObservedObject var applicationSettings: ApplicationSettingsStore
     var notchViewModel: NotchViewModel?
+    var lockScreenSettings: LockScreenFeatureSettingsStore?
+    var initialSection = "face"
     @ObservedObject private var unlock = HeyMacFaceUnlockController.shared
     @State private var section = "face"
     @State private var password = ""
@@ -17,21 +19,28 @@ struct FaceIDSettingsView: View {
     private func text(_ en: String, _ ko: String) -> String { privacyText(en, ko) }
 
     var body: some View {
-        SettingsPageScrollView {
+        VStack(spacing: 0) {
             Picker(text("Security feature", "보안 기능"), selection: $section) {
                 Text(text("Face unlock", "얼굴 잠금 해제")).tag("face")
                 Text(text("App privacy", "앱 프라이버시")).tag("apps")
+                if lockScreenSettings != nil { Text(text("Lock screen", "잠금 화면")).tag("lock") }
             }
             .pickerStyle(.segmented).labelsHidden()
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 10)
-            if section == "apps" {
-                AppPrivacySettingsView()
+            .padding(.horizontal, 28)
+            .padding(.vertical, 16)
+            Divider().opacity(0.5)
+            if section == "lock", let lockScreenSettings {
+                LockScreenSettingsView(settings: lockScreenSettings, applicationSettings: applicationSettings)
             } else {
-                faceSettings
+                SettingsPageScrollView {
+                    if section == "apps" { AppPrivacySettingsView() }
+                    else { faceSettings }
+                }
             }
         }
         .onAppear {
+            section = initialSection
             startInlinePreviewCycle()
         }
         .onChange(of: section) { _, _ in password = ""; editingPassword = false; unlock.cancel() }
@@ -56,7 +65,12 @@ struct FaceIDSettingsView: View {
                         .labelsHidden().toggleStyle(.switch).disabled(unlock.busy)
                 }
             }
-            notchPresentationStyleCard
+            if unlock.passwordNeedsUpdate {
+                SettingsCard {
+                    Label(text("Update your saved password to resume face unlock.", "얼굴 잠금 해제를 다시 사용하려면 저장된 암호를 업데이트하세요."), systemImage: "exclamationmark.lock.fill")
+                        .foregroundStyle(.orange)
+                }
+            }
             SettingsCard(verbatimTitle: text("Set up this Mac", "이 Mac에서 설정"), spacing: 12) {
                 SettingsPreferenceRow(text("Your face", "얼굴"), detail: unlock.enrolled ? text("Registered on this Mac", "이 Mac에 등록됨") : text("Register and verify your face to get started.", "얼굴을 등록하고 인식을 확인하세요.")) {
                     HStack(spacing: 8) {
@@ -103,6 +117,11 @@ struct FaceIDSettingsView: View {
                         Spacer(minLength: 0)
                         if unlock.busy { Button(text("Cancel", "취소")) { unlock.cancel() } }
                     }.accessibilityElement(children: .contain)
+                }
+            }
+            SettingsCard(verbatimTitle: text("Appearance", "표시 방식")) {
+                DisclosureGroup(text("Notch style and preview", "노치 스타일 및 미리보기")) {
+                    notchPresentationStyleCard.padding(.top, 10)
                 }
             }
             SettingsCard(verbatimTitle: text("About face unlock", "얼굴 잠금 해제에 관하여")) {

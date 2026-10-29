@@ -21,9 +21,17 @@
    - Simplified `MenuBarMenu.swift` (`Notchie-20261028-v4`) so the menu bar item contains only **Settings (`설정`)**, **Restart (`재시작`)**, and **Quit (`종료`)**.
    - Created `docs/index.html` and updated `README.md` with rendered screenshots (`docs/screenshots/*.png`) and open-source attributions.
 
-# Notchie branding and icon replacement — 2026-10-28
+# Notchie branding and icon replacement — 2026-10-28 / 2026-10-29
 
 Renamed user-facing app display/bundle name to `Notchie` (`Info.plist`, `InfoPlist.xcstrings`, `Localizable.xcstrings`, `AboutAppSettingsView`, `SoftwareUpdateSettingsView`, `AppVersionText`, and FaceID/AppPrivacy strings) while retaining internal module/executable/bundle ID `com.Jackson.DynamicNotch` and `/Applications/DynamicNotch.app` bundle path to preserve existing settings, Keychain items, and TCC permissions. Removed legacy `AppIcon`, `logo`, and `simplifiedLogo` PNGs and replaced them with the Light and Dark icon sets from `Notchie-macOS-Icons`.
+
+On 2026-10-29, standardized all 20 app icon assets (`AppIcon.appiconset`, `NotchieIconDark`, `NotchieIconLight`, `logo`, `simplifiedLogo`, and `docs/assets`) to follow Apple's macOS Human Interface Guidelines (macOS Big Sur+):
+- 824×824 pt centered squircle on a 1024×1024 pt canvas (0.805 ratio) with 100 pt margins.
+- Dual native drop shadows: key shadow blur 30px, y -18px, opacity 0.25; ambient shadow blur 14px, y -4px, opacity 0.16.
+- Resolves oversized Dock / Finder / Launchpad icon appearance compared to other standard macOS apps (Safari, Notes, Calendar, Slack, ChatGPT).
+- Preserved master full-bleed 1024x1024 artwork under `Design/AppIconOriginal-FullBleed/`.
+- Removed redundant SwiftUI `.shadow(...)` modifiers in `AppearanceSettingsView.swift` to eliminate double-shadowing.
+- Added automated regression tests in `AlcoveSettingsExtensionTests.swift` enforcing 824px body width (815...835) and 100px margins.
 
 # HeyMac app privacy extension — 2026-10-28
 
@@ -135,3 +143,56 @@ Canonical app is /Applications/DynamicNotch.app. On 2026-10-28 duplicate app reg
   2. Unified Media Controls (`canPostEventAccessState`) with `AXIsProcessTrusted()` and updated Calendar `isGranted` to accept `.fullAccess`, `.writeOnly`, and `.authorized`.
   3. Updated `scripts/install-local.sh` to sign `/Applications/DynamicNotch.app` with the local `Apple Development` certificate + `DynamicNotch.entitlements` (instead of an ad-hoc `--sign -` signature whose changing `CDHash` invalidated macOS TCC permissions on every rebuild) and unregister build/DerivedData app copies from LaunchServices.
   4. Added live 1.5s permission status refresh while `PermissionsSettingsView` is visible and a "Fix Sync (`권한 인식 오류 해결`)" action (`resetAndReRequestMissingPermissions()`) to clear stale ad-hoc TCC entries and re-link permissions.
+
+## Notchie-Droppy-20261029-v16 — public-reference shelf extension
+
+Public Droppy references informed an independent extension; no Droppy source/assets are in the app. Existing Nook, tray, media, clipboard, weather, notes, Focus, privacy/authentication and user preferences are retained. Complete feature-by-feature scope, including gaps, is in `Documentation/DROPPY_FEATURE_COMPARISON_20261029.md`.
+
+- Shared solid / Dynamic Glass / Liquid Glass expanded surfaces, opaque compact region and Reduce Transparency fallback; existing appearance store persists selection.
+- Home / Tray / Widgets lower navigation; Tools remains beside the app-icon rail. Expanded media and Quick Tools share the extra navigation height.
+- Three persistent replaceable/reorderable widget slots reuse current media/calendar/weather/focus/notes engines. New local host CPU/RAM widget polls only while visible, has a bounded CPU history and explicitly missing first CPU value.
+- Local teleprompter script/speed persistence, monotonic progress, explicit read/edit/pause/reset and sleep-gap handling. Closing the view pauses; no recording or speech access.
+- Korean/English common emoji search and explicit copy. New tools also appear in the existing command palette and the shelf's All Tools menu without resetting chosen tabs.
+- Text clipboard favorites migrate existing version-one data, sort first and survive recapture; existing optional capture behavior unchanged.
+- Native Transform uses CoreGraphics/Vision and existing OCR: selected image/PDF combination, foreground cutout PNG, Korean/English image OCR. Bounded inputs, explicit Save and original-path protection. No cloud, new API key or model download.
+- New Mac system Dynamic Island is treated as design context, not a verified public API or hardware compatibility claim. No login launch, face enrollment, permissions or external accounts enabled.
+
+Delivery integrity repair: the pre-existing icon controller used `NSWorkspace.setIcon` on its own `.app`, creating `FinderInfo`/`ResourceFork` metadata and failing strict codesign verification after launch. Removed signed-bundle mutation; persisted Light/Dark/Auto selection, in-app icon previews and Dock runtime icon remain. Finder uses the bundled icon/appearance catalog. This intentionally stops forcing a custom Finder icon onto the signed bundle.
+
+## Notchie-Droppy-20261029-v17 — verified shelf polish
+- Replaced always-visible widget headers/reorder arrows with a dedicated widget editor popover; all three content slots have the same 136pt height. Local stats/focus/notes cards now fill and outline the same bounds.
+- Added a searchable two-column All Tools library with color-coded native SF symbols, selection feedback and English/Korean/ID lookup. Existing enabled tabs remain; selecting a tool enables it explicitly.
+- Shared tool tab labels use the app's localization resolver, avoiding mixed-language tool labels inside the notch. Idle media label localized. Stats have a bounded live CPU graph with a gradient fill, without fabricated data.
+- Teleprompter ticks only while reading; paused/editor states have no periodic task.
+- No raster asset was necessary for these small control surfaces. Existing artwork/icon assets are retained; new visual treatment uses native SwiftUI drawing.
+
+## Notchie-Clipboard-20261029-v19 — clipboard list/reference redesign
+- Compact Notes / Clipboard / Starred header, capsule search, type/sort menu, thin separators, source/time column, whole-row copy feedback and right-click preview/copy/star/remove. Reuses existing notes and snippet engines; existing personal snippets preserved.
+- Persisted text/link/code filter, favorites-only and sort controls. Keyboard Return copies the first visible result. Large previews are bounded, but copying always uses original complete text.
+- Clear history now confirms an explicit count and preserves favorites; current search/filter scope is disclosed in the dialog.
+- Optional sourceAppName metadata is added compatibly to v1 documents. Source is the foreground app observed at auto-capture time, not a guaranteed original app; old records remain unknown. Concealed/transient/autogenerated pasteboard exclusion remains.
+- Clipboard presentation receives additional height only in clipboard mode; tool changes refresh shared media/Quick Tools geometry, other layouts keep prior sizes.
+
+## Notchie-Nook-20261029-v20 — simplified Nook home
+- User explicitly removed the lower Home / Tray / Widgets navigation. Top Nook / Tray / Tools and existing engines/data remain. Removed the lower dock rendering and reclaimed its 36pt presentation height across shared media/Quick Tools paths.
+- Nook home now shows only media, calendar and a circular Mirror pod separated by subtle dividers; no weather/solar card, task chip or productivity-hub shortcut on this home. Calendar/media reuse existing adapters and controls; legacy widget preferences are not deleted.
+- Mirror is preview-only, not face enrollment/recognition: an explicit click starts authorized camera preview or requests access. Leaving Nook stops capture. Serial session start/stop and detached-view/late-permission guards prevent stale callbacks from reopening the camera. No audio/output recording or image persistence. Automated hosts never start or request the camera.
+
+### Centered hover reveal — 2026-10-29 (v21)
+- Pin the notch presentation to the overlay canvas horizontal midpoint throughout width changes.
+- Give content its destination-size centered frame before reveal transforms, avoiding flexible-row lateral reflow.
+- Replace the expanded content squeeze/vertical travel with a subtle centered 94%-to-100% fade/blur reveal; damp shell expansion and collapse springs.
+- Preserve existing hover timing, gesture engines, settings and hardware-notch/island behavior.
+
+### Nook calendar reference layout — 2026-10-29 (v22)
+- Remove the home Mirror pod and give its width to the calendar.
+- Place a large abbreviated month beside the seven-day strip, with blue selected day numerals, muted weekend dates and event dots; no filled date tiles.
+- Center the selected-day agenda/empty state below. Preserve the EventKit adapter, privacy-aware titles, meeting actions and media controls. Month resets selection to today; no automatic permission prompts.
+
+### Lock/authentication and Settings cleanup — 2026-10-29 v23
+- Settings: visible sidebar groups, quieter shared cards, remove redundant General haptic/media toggles (canonical controls remain in Gestures/Now Playing), combine system permissions under Privacy and lock-screen appearance under Lock & Authentication. Old enum/deep-link routes preserved.
+- Show persisted password-rejection recovery after relaunch; setup comes before collapsed animation previews.
+- One lock engine now owns explicit lock-screen button retries; remove the retired always-failing presentation scanner from that path. Explicit retries never reset the password submission budget.
+- Preserve retry budget on unknown lock state, distinguish unconfirmed unlock from password rejection, ignore camera contention for face retry counting, recheck cancellation after inference, clear inherited shortcut modifiers in synthetic key events.
+- Reduce polling/cooldown delays and raise frame cadence to 15 fps; retain strict thresholds, anti-spoof pipeline, two consecutive accepted frames, camera warmup and one password attempt per lock episode.
+- No camera permission, enrollment, password replacement, login launch or authentication enablement performed automatically. Physical Mac unlock timing requires the user's saved-password recovery and manual lock test.

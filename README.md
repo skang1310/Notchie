@@ -140,3 +140,13 @@ xcodebuild -project DynamicNotch.xcodeproj \
 - **[Lottie for iOS/macOS](https://github.com/airbnb/lottie-ios)** (`Apache-2.0`) — 벡터 애니메이션 렌더링
 
 자세한 라이선스 전문은 [LICENSE](LICENSE) 및 [LOCAL_CHANGES.md](LOCAL_CHANGES.md)를 참고하세요.
+
+## Droppy-inspired shelf update (2026-10-29)
+
+The existing Notchie features remain. The lower Home/Tray/Widgets footer was removed in v20. The Nook home shows media, calendar and an explicit-click camera mirror; top Nook/Tray/Tools navigation remains. In **General → Appearance → Shelf finish**, choose Solid, Dynamic Glass or Liquid Glass. Open **Tools → +** (All Tools) for Teleprompter, Emoji, System Stats and Transform; the command palette also finds these tools. Clipboard stars save favorites. New text supports English and Korean.
+
+Transform combines selected images/PDFs, removes image backgrounds locally and extracts Korean/English text from selected images. It always saves a new output and preserves sources. The reference comparison documents all partial/unsupported Droppy integrations: [feature comparison](Documentation/DROPPY_FEATURE_COMPARISON_20261029.md). New Mac system Dynamic Island coexistence and physical hardware are not yet verified.
+
+### Clipboard list (v19)
+
+Open **Tools → Clipboard** for the reference-inspired list. Use **Starred** for favorites, the filter menu for text/links/code and sort order, and click a row to copy the full text. Right-click for a preview and actions. The gear holds optional auto-save; the trash action asks before clearing unstarred history. Existing entries are preserved; source names are available only when observed during future automatic captures.

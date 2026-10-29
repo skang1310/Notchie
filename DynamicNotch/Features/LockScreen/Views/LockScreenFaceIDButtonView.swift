@@ -22,7 +22,7 @@ struct LockScreenFaceIDButtonView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Color.white.opacity(0.8))
                 
-                Text(verbatim: "Face ID")
+                Text(verbatim: privacyText("Face unlock", "얼굴 잠금 해제"))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.white.opacity(0.8))
             }

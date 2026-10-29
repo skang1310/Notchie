@@ -44,6 +44,7 @@ struct QuickToolsView: View {
 
             HStack {
                 Button("settings.tools.openNotch") {
+                    store.hubMode = .tools
                     NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
                 }
                 .accessibilityIdentifier("settings.tools.openNotch")
@@ -69,7 +70,7 @@ struct QuickToolsView: View {
                             HStack(spacing: 5) {
                                 Image(systemName: tab.systemImage)
                                     .font(.system(size: 11.5, weight: .semibold))
-                                Text(LocalizedStringKey(tab.titleKey))
+                                Text(L10n.app(tab.titleKey))
                                     .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium))
                                     .lineLimit(1)
                             }
@@ -130,7 +131,7 @@ struct QuickToolsView: View {
                                 Image(systemName: enabled ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 11))
                                     .foregroundStyle(enabled ? accentColor : .secondary)
-                                Text(LocalizedStringKey(tab.titleKey))
+                                Text(L10n.app(tab.titleKey))
                                     .font(.caption)
                             }
                             .padding(.horizontal, 8)
@@ -156,12 +157,16 @@ struct QuickToolDetailSwitcherView: View {
     var body: some View {
         Group {
             switch store.selectedTool {
+            case "transform": ShelfTransformView()
+            case "teleprompter": TeleprompterView(controller: store.teleprompter)
+            case "emoji": ShelfEmojiView()
+            case "stats": ShelfSystemStatsView()
             case "notes": QuickNotesView(store: store.notes)
             case "stopwatch": QuickStopwatchView(controller: store.stopwatch)
             case "awake": KeepAwakeView(controller: store.awake)
             case "focus": FocusSessionView(controller: store.focus)
             case "tasks": TodayTasksView()
-            case "snippets": ClipboardSnippetsView()
+            case "snippets": ClipboardSnippetsView(onOpenNotes: { store.selectedTool = "notes"; store.hubMode = .tools })
             case "rules": AppPresentationRulesView()
             case "jobs": LocalJobView(runner: store.jobs)
             case "status": ResourceStatusView(store: store)
@@ -212,7 +217,7 @@ struct QuickToolTabCustomizerPopover: View {
                             get: { store.isTabEnabled(tab.id) },
                             set: { store.setTabEnabled(tab.id, enabled: $0) }
                         )) {
-                            Label(LocalizedStringKey(tab.titleKey), systemImage: tab.systemImage)
+                            Label(L10n.app(tab.titleKey), systemImage: tab.systemImage)
                                 .font(.caption)
                         }
                         .toggleStyle(.checkbox)
@@ -236,12 +241,13 @@ struct NotchiePanoramicHubView: View {
     var nowPlayingViewModel: NowPlayingViewModel?
     var mediaSettings: MediaAndFilesSettingsStore?
     var applicationSettings: ApplicationSettingsStore?
-    var onOpenPlaybackSource: @MainActor () -> Void = {}
+    var onOpenPlaybackSource: @MainActor @Sendable () -> Void = {}
 
     @ObservedObject private var iconController = AppIconController.shared
     @State private var showingTabCustomizer = false
     @State private var showingIconPicker = false
     @State private var selectedDayOffset: Int = 0
+    @State private var showingToolLibrary = false
 
     private var accentColor: Color {
         ApplicationSettingsStore.currentCustomAccentColor()
@@ -271,6 +277,8 @@ struct NotchiePanoramicHubView: View {
             Group {
                 switch store.hubMode {
                 case .nook:
+                    nookThreeColumnDashboard
+                case .widgets:
                     nookThreeColumnDashboard
                 case .tray, .shots:
                     trayAndShotsUnifiedContainer
@@ -594,7 +602,7 @@ struct NotchiePanoramicHubView: View {
 
             Group {
                 if store.hubMode == .clips {
-                    ClipboardSnippetsView()
+                    ClipboardSnippetsView(onOpenNotes: { store.selectedTool = "notes"; store.hubMode = .tools })
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -663,44 +671,31 @@ struct NotchiePanoramicHubView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - 3-Column Apple Liquid Glass Bento Dashboard (Now Playing | Calendar | Weather & Golden Hour)
+    // MARK: - Nook media and calendar
 
     private var nookThreeColumnDashboard: some View {
-        HStack(alignment: .top, spacing: 10) {
-            // Bento Card 1: Now Playing Studio (210pt × 136pt)
+        HStack(alignment: .center, spacing: 12) {
             NotchieNowPlayingStudioColumn(
                 nowPlayingViewModel: resolvedNowPlayingViewModel,
                 mediaSettings: resolvedMediaSettings,
                 applicationSettings: resolvedApplicationSettings,
                 accentColor: accentColor,
-                onOpenPlaybackSource: onOpenPlaybackSource
+                onOpenPlaybackSource: { onOpenPlaybackSource() },
+                plainStyle: true
             )
-            .frame(width: 210, height: 136)
-
-            // Bento Card 2: 7-Day Calendar & Schedule / Quick Shortcuts (Flexible Center × 136pt)
+            .frame(width: 230, height: 136)
+            Rectangle().fill(.white.opacity(0.1)).frame(width: 1, height: 118)
             NotchieCalendarScheduleColumn(
                 calendarViewModel: store.calendarViewModel,
                 selectedDayOffset: $selectedDayOffset,
                 accentColor: accentColor,
-                onSwitchToTools: {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                        store.hubMode = .tools
-                    }
-                },
-                onSwitchToTasks: {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                        store.selectedTool = "tasks"
-                        store.hubMode = .tools
-                    }
-                }
+                onSwitchToTools: {},
+                onSwitchToTasks: {},
+                compactHome: true
             )
-            .frame(maxWidth: .infinity)
-            .frame(height: 136)
-
-            // Bento Card 3: Apple Weather & Golden Hour Widget (222pt × 136pt)
-            NotchieAppleWeatherWidgetColumn()
-                .frame(width: 222, height: 136)
+            .frame(maxWidth: .infinity).frame(height: 136)
         }
+        .accessibilityIdentifier("nook.home.mediaCalendar")
     }
 
     // MARK: - Extended Mode Containers (Clips, Notes, Tools)
@@ -766,7 +761,7 @@ struct NotchiePanoramicHubView: View {
                                 HStack(spacing: 5) {
                                     Image(systemName: tab.systemImage)
                                         .font(.system(size: 11, weight: .semibold))
-                                    Text(LocalizedStringKey(tab.titleKey))
+                                    Text(L10n.app(tab.titleKey))
                                         .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
                                         .lineLimit(1)
                                 }
@@ -785,6 +780,18 @@ struct NotchiePanoramicHubView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                }
+
+                Button { showingToolLibrary.toggle() } label: {
+                    Label(text("All tools", "모든 도구"), systemImage: "square.grid.2x2")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(accentColor.opacity(0.13), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("shelf.allTools")
+                .popover(isPresented: $showingToolLibrary) {
+                    ShelfToolLibrary(store: store) { showingToolLibrary = false }.preferredColorScheme(.dark)
                 }
 
                 Spacer(minLength: 4)
@@ -886,13 +893,15 @@ private struct NotchieNowPlayingStudioColumn: View {
     var mediaSettings: MediaAndFilesSettingsStore?
     var applicationSettings: ApplicationSettingsStore?
     let accentColor: Color
-    let onOpenPlaybackSource: @MainActor () -> Void
+    let onOpenPlaybackSource: @MainActor @Sendable () -> Void
+
+    var plainStyle = false
 
     @State private var scrubProgress: CGFloat?
 
     private var fallbackSnapshot: NowPlayingSnapshot {
         NowPlayingSnapshot(
-            title: locale.dn("notch.nowPlaying.nothingPlaying", fallback: "Not Playing"),
+            title: privacyText("Not Playing", "재생 대기 중"),
             artist: privacyText("Play music or video", "재생 중인 미디어 없음"),
             album: "Notchie Studio",
             duration: 0,
@@ -905,6 +914,7 @@ private struct NotchieNowPlayingStudioColumn: View {
 
     var body: some View {
         ZStack {
+            if !plainStyle {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -931,13 +941,14 @@ private struct NotchieNowPlayingStudioColumn: View {
                         )
                 )
 
+            }
             if let vm = nowPlayingViewModel {
                 ObservedNowPlayingStudioBody(
                     nowPlayingViewModel: vm,
                     mediaSettings: mediaSettings,
                     applicationSettings: applicationSettings,
                     accentColor: accentColor,
-                    onOpenPlaybackSource: onOpenPlaybackSource,
+                    onOpenPlaybackSource: { onOpenPlaybackSource() },
                     scrubProgress: $scrubProgress
                 )
                 .padding(.horizontal, 12)
@@ -1047,12 +1058,12 @@ private struct ObservedNowPlayingStudioBody: View {
     var mediaSettings: MediaAndFilesSettingsStore?
     var applicationSettings: ApplicationSettingsStore?
     let accentColor: Color
-    let onOpenPlaybackSource: @MainActor () -> Void
+    let onOpenPlaybackSource: @MainActor @Sendable () -> Void
     @Binding var scrubProgress: CGFloat?
 
     private var resolvedSnapshot: NowPlayingSnapshot {
         nowPlayingViewModel.snapshot ?? NowPlayingSnapshot(
-            title: locale.dn("notch.nowPlaying.nothingPlaying", fallback: "Not Playing"),
+            title: privacyText("Not Playing", "재생 대기 중"),
             artist: privacyText("Play music or video", "재생 중인 미디어 없음"),
             album: "",
             duration: 0,
@@ -1290,7 +1301,7 @@ private struct ObservedNowPlayingStudioBody: View {
 
     private func displayTitle(for snapshot: NowPlayingSnapshot) -> String {
         snapshot.title.trimmed.isEmpty
-            ? locale.dn("notch.nowPlaying.nothingPlaying", fallback: "Not Playing")
+            ? privacyText("Not Playing", "재생 대기 중")
             : snapshot.title
     }
 
@@ -1326,6 +1337,7 @@ private struct NotchieCalendarScheduleColumn: View {
     let accentColor: Color
     let onSwitchToTools: () -> Void
     let onSwitchToTasks: () -> Void
+    var compactHome = false
 
     @ObservedObject private var productivityStorage = ProductivityStorage.shared
 
@@ -1371,7 +1383,11 @@ private struct NotchieCalendarScheduleColumn: View {
     var body: some View {
         let pendingTask = productivityStorage.todayTasks.first(where: { !$0.done }) ?? productivityStorage.todayTasks.first
 
+        if compactHome {
+            nookCalendar
+        } else {
         ZStack {
+            if !compactHome {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -1398,6 +1414,7 @@ private struct NotchieCalendarScheduleColumn: View {
                         )
                 )
 
+            }
             VStack(alignment: .leading, spacing: 6) {
                 // Header Row: Month Title + Quick Task / Today Button
                 HStack(alignment: .center, spacing: 6) {
@@ -1420,6 +1437,7 @@ private struct NotchieCalendarScheduleColumn: View {
 
                     Spacer()
 
+                    if !compactHome {
                     if let task = pendingTask {
                         Button {
                             productivityStorage.toggleTask(task.id)
@@ -1455,6 +1473,7 @@ private struct NotchieCalendarScheduleColumn: View {
                             .background(Color.white.opacity(0.08), in: Capsule())
                         }
                         .buttonStyle(.plain)
+                    }
                     }
                 }
 
@@ -1527,6 +1546,14 @@ private struct NotchieCalendarScheduleColumn: View {
                 let dayEvents = events(on: selectedDate)
                 if let primaryEvent = dayEvents.first ?? (selectedDayOffset == 0 ? calendarViewModel?.nextEvent : nil) {
                     eventDetailCard(for: primaryEvent)
+                } else if compactHome {
+                    VStack(spacing: 4) {
+                        Image(systemName: "calendar.badge.checkmark").font(.system(size: 14))
+                        Text(calendarViewModel?.authorizationStatus == .fullAccess
+                             ? text("Nothing for today", "선택한 날짜에 일정 없음")
+                             : text("Calendar access is off", "캘린더 접근이 꺼져 있어요"))
+                            .font(.system(size: 11, weight: .medium)).lineLimit(1)
+                    }.foregroundStyle(.white.opacity(0.5)).frame(maxWidth: .infinity, minHeight: 36)
                 } else {
                     quickProductivityActionRow
                 }
@@ -1534,6 +1561,73 @@ private struct NotchieCalendarScheduleColumn: View {
             .padding(.horizontal, 11)
             .padding(.vertical, 9)
         }
+        }
+    }
+
+    /// The home calendar stays open and airy: month + dates above, agenda below.
+    private var nookCalendar: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { selectedDayOffset = 0 }
+                } label: {
+                    Text(selectedDate, format: .dateTime.month(.abbreviated))
+                        .font(.system(size: 30, weight: .bold))
+                        .tracking(-1)
+                        .foregroundStyle(.white)
+                        .fixedSize()
+                }
+                .buttonStyle(.plain)
+                .help(text("Return to today", "오늘로 돌아가기"))
+
+                HStack(spacing: 3) {
+                    ForEach(weekDays, id: \.offset) { day in
+                        let selected = day.offset == selectedDayOffset
+                        let weekend = Calendar.current.isDateInWeekend(day.date)
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.18)) { selectedDayOffset = day.offset }
+                        } label: {
+                            VStack(spacing: 3) {
+                                Text(day.weekdayShort)
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.white.opacity(selected ? 0.7 : 0.32))
+                                Text(day.dayNumber.count == 1 ? "0" + day.dayNumber : day.dayNumber)
+                                    .font(.system(size: selected ? 23 : 18, weight: selected ? .bold : .semibold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(selected ? Color.blue : weekend ? Color.red.opacity(0.55) : Color.white.opacity(0.5))
+                                Circle().fill(day.hasEvents ? Color.blue : .clear)
+                                    .frame(width: 3, height: 3)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(day.date.formatted(date: .complete, time: .omitted))
+                        .accessibilityAddTraits(selected ? .isSelected : [])
+                    }
+                }
+            }
+            Group {
+                if let event = events(on: selectedDate).first {
+                    eventDetailCard(for: event)
+                } else {
+                    VStack(spacing: 5) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.system(size: 17, weight: .medium))
+                        Text(calendarViewModel?.authorizationStatus == .fullAccess
+                             ? (selectedDayOffset == 0 ? text("Nothing for today", "오늘 일정 없음") : text("Nothing for this day", "이 날의 일정 없음"))
+                             : text("Calendar access is off", "캘린더 접근이 꺼져 있어요"))
+                            .font(.system(size: 13, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
     }
 
     private func eventDetailCard(for event: EKEvent) -> some View {
@@ -1648,768 +1742,6 @@ private struct NotchieCalendarScheduleColumn: View {
         return "\(formatter.string(from: event.startDate)) – \(formatter.string(from: event.endDate))"
     }
 }
-
-// MARK: - Column 3: Flip-Clock & Weather Studio Widget (Reference Image Design)
-
-struct NotchieForecastDay: Identifiable, Equatable {
-    let id: String
-    let dayTitle: String
-    let weatherCode: Int
-    let highTempC: Double
-    let lowTempC: Double
-
-    var formattedHighLow: String {
-        String(format: "%.1f°C / %.1f°C", highTempC, lowTempC)
-    }
-}
-
-struct NotchieWeatherSnapshot: Equatable {
-    var conditionLabel: String
-    var currentTempC: Double
-    var highTempC: Double
-    var lowTempC: Double
-    var weatherCode: Int
-    var forecastDays: [NotchieForecastDay]
-    var sunriseText: String
-    var sunsetText: String
-    var windText: String
-
-    var formattedCurrentTemp: String {
-        String(format: "%.1f °C", currentTempC)
-    }
-
-    var formattedHighLow: String {
-        String(format: "%.1f° / %.1f°", highTempC, lowTempC)
-    }
-
-    static func defaultReferenceSnapshot(now: Date = .now) -> NotchieWeatherSnapshot {
-        let calendar = Calendar.current
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "EEE d"
-
-        let sampleCodes = [0, 1, 2, 0]
-        let sampleHighs = [23.8, 22.8, 17.8, 17.8]
-        let sampleLows = [5.5, 6.1, 6.1, 6.1]
-
-        let days: [NotchieForecastDay] = (0..<4).map { offset in
-            let date = calendar.date(byAdding: .day, value: offset, to: now) ?? now
-            let title = formatter.string(from: date)
-            return NotchieForecastDay(
-                id: "day-\(offset)",
-                dayTitle: title,
-                weatherCode: sampleCodes[offset],
-                highTempC: sampleHighs[offset],
-                lowTempC: sampleLows[offset]
-            )
-        }
-
-        return NotchieWeatherSnapshot(
-            conditionLabel: "Dark Sky",
-            currentTempC: 21.1,
-            highTempC: 23.8,
-            lowTempC: 5.5,
-            weatherCode: 0,
-            forecastDays: days,
-            sunriseText: "6:47 AM",
-            sunsetText: "7:59 PM",
-            windText: "W 10.8 km/h"
-        )
-    }
-
-    static func conditionName(for code: Int) -> String {
-        switch code {
-        case 0:
-            return "Dark Sky"
-        case 1, 2:
-            return "Partly Cloudy"
-        case 3:
-            return "Overcast"
-        case 45, 48:
-            return "Misty Fog"
-        case 51, 53, 55, 61, 63, 65, 80, 81, 82:
-            return "Light Rain"
-        case 71, 73, 75, 77, 85, 86:
-            return "Snowfall"
-        case 95, 96, 99:
-            return "Thunderstorm"
-        default:
-            return "Dark Sky"
-        }
-    }
-
-    static func compassDirection(for degrees: Double) -> String {
-        let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-        let normalized = ((degrees.truncatingRemainder(dividingBy: 360)) + 360).truncatingRemainder(dividingBy: 360)
-        let index = Int((normalized + 22.5) / 45.0) % 8
-        return directions[index]
-    }
-}
-
-@MainActor
-final class NotchieWeatherStore: ObservableObject {
-    static let shared = NotchieWeatherStore()
-
-    @Published private(set) var snapshot: NotchieWeatherSnapshot = .defaultReferenceSnapshot()
-    @Published private(set) var isRefreshing: Bool = false
-    private var lastFetchDate: Date?
-
-    private init() {}
-
-    func refreshIfNeeded(force: Bool = false) {
-        guard !AppEnvironment.isRunningTests else { return }
-        if !force, let lastFetchDate, Date().timeIntervalSince(lastFetchDate) < 900 {
-            return
-        }
-        guard !isRefreshing else { return }
-        isRefreshing = true
-
-        guard let url = URL(
-            string: "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto&forecast_days=4"
-        ) else {
-            isRefreshing = false
-            return
-        }
-
-        Task {
-            defer { self.isRefreshing = false }
-            do {
-                let (data, response) = try await URLSession.shared.data(from: url)
-                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { return }
-                if let parsed = Self.parseOpenMeteoResponse(data: data) {
-                    self.snapshot = parsed
-                    self.lastFetchDate = Date()
-                }
-            } catch {
-                // Keep existing snapshot when offline
-            }
-        }
-    }
-
-    nonisolated static func parseOpenMeteoResponse(data: Data) -> NotchieWeatherSnapshot? {
-        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let current = root["current"] as? [String: Any],
-              let daily = root["daily"] as? [String: Any] else {
-            return nil
-        }
-
-        let currentTemp = (current["temperature_2m"] as? NSNumber)?.doubleValue ?? 21.1
-        let currentCode = (current["weather_code"] as? NSNumber)?.intValue ?? 0
-        let windSpeed = (current["wind_speed_10m"] as? NSNumber)?.doubleValue ?? 10.8
-        let windDirDeg = (current["wind_direction_10m"] as? NSNumber)?.doubleValue ?? 270.0
-
-        let dailyTimes = daily["time"] as? [String] ?? []
-        let dailyCodes = (daily["weather_code"] as? [NSNumber])?.map(\.intValue) ?? []
-        let dailyHighs = (daily["temperature_2m_max"] as? [NSNumber])?.map(\.doubleValue) ?? []
-        let dailyLows = (daily["temperature_2m_min"] as? [NSNumber])?.map(\.doubleValue) ?? []
-        let sunrises = daily["sunrise"] as? [String] ?? []
-        let sunsets = daily["sunset"] as? [String] ?? []
-
-        let inDateFormatter = DateFormatter()
-        inDateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        inDateFormatter.dateFormat = "yyyy-MM-dd"
-
-        let outDayFormatter = DateFormatter()
-        outDayFormatter.locale = Locale(identifier: "en_US_POSIX")
-        outDayFormatter.dateFormat = "EEE d"
-
-        var forecastDays: [NotchieForecastDay] = []
-        let count = min(4, min(dailyTimes.count, min(dailyHighs.count, dailyLows.count)))
-        for idx in 0..<count {
-            let dateObj = inDateFormatter.date(from: dailyTimes[idx]) ?? Date()
-            let dayTitle = outDayFormatter.string(from: dateObj)
-            let code = idx < dailyCodes.count ? dailyCodes[idx] : currentCode
-            forecastDays.append(
-                NotchieForecastDay(
-                    id: dailyTimes[idx],
-                    dayTitle: dayTitle,
-                    weatherCode: code,
-                    highTempC: dailyHighs[idx],
-                    lowTempC: dailyLows[idx]
-                )
-            )
-        }
-
-        if forecastDays.isEmpty {
-            forecastDays = NotchieWeatherSnapshot.defaultReferenceSnapshot().forecastDays
-        }
-
-        let high0 = dailyHighs.first ?? 23.8
-        let low0 = dailyLows.first ?? 5.5
-        let sunriseText = formatSunTime(sunrises.first) ?? "6:47 AM"
-        let sunsetText = formatSunTime(sunsets.first) ?? "7:59 PM"
-        let compass = NotchieWeatherSnapshot.compassDirection(for: windDirDeg)
-        let windText = String(format: "%@ %.1f km/h", compass, windSpeed)
-
-        return NotchieWeatherSnapshot(
-            conditionLabel: NotchieWeatherSnapshot.conditionName(for: currentCode),
-            currentTempC: currentTemp,
-            highTempC: high0,
-            lowTempC: low0,
-            weatherCode: currentCode,
-            forecastDays: forecastDays,
-            sunriseText: sunriseText,
-            sunsetText: sunsetText,
-            windText: windText
-        )
-    }
-
-    nonisolated private static func formatSunTime(_ isoString: String?) -> String? {
-        guard let isoString else { return nil }
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm"
-        guard let date = parser.date(from: isoString) else { return nil }
-        let out = DateFormatter()
-        out.locale = Locale(identifier: "en_US_POSIX")
-        out.dateFormat = "h:mm a"
-        return out.string(from: date)
-    }
-}
-
-// MARK: - Column 3: Weather & Golden Hour Solar Arc (Top: Weather / Bottom: Golden Hour Graph)
-
-private struct NotchieAppleWeatherWidgetColumn: View {
-    @ObservedObject private var weatherStore = NotchieWeatherStore.shared
-
-    private var isKorean: Bool {
-        Locale.preferredLanguages.first?.hasPrefix("ko") == true
-    }
-
-    private var locationTitle: String {
-        isKorean ? "서울" : "Seoul"
-    }
-
-    private var localizedCondition: String {
-        switch weatherStore.snapshot.weatherCode {
-        case 0:
-            return isKorean ? "대체로 맑음" : "Clear"
-        case 1, 2:
-            return isKorean ? "대체로 흐림" : "Partly Cloudy"
-        case 3:
-            return isKorean ? "흐림" : "Overcast"
-        case 45, 48:
-            return isKorean ? "안개" : "Fog"
-        case 51, 53, 55, 61, 63, 65, 80, 81, 82:
-            return isKorean ? "비" : "Rain"
-        case 71, 73, 75, 77, 85, 86:
-            return isKorean ? "눈" : "Snow"
-        case 95, 96, 99:
-            return isKorean ? "뇌우" : "Thunderstorm"
-        default:
-            return isKorean ? "맑음" : weatherStore.snapshot.conditionLabel
-        }
-    }
-
-    private var formattedHighLow: String {
-        let high = Int(round(weatherStore.snapshot.highTempC))
-        let low = Int(round(weatherStore.snapshot.lowTempC))
-        return isKorean ? "최고:\(high)°  최저:\(low)°" : "H:\(high)°  L:\(low)°"
-    }
-
-    private var goldenHourStatusText: String {
-        let now = Date()
-        let cal = Calendar.current
-        let currentHour = Double(cal.component(.hour, from: now)) + (Double(cal.component(.minute, from: now)) / 60.0)
-
-        let sunrise = Self.parseHourDecimal(weatherStore.snapshot.sunriseText) ?? 6.78
-        let sunset = Self.parseHourDecimal(weatherStore.snapshot.sunsetText) ?? 19.98
-
-        let isMorningGolden = (currentHour >= (sunrise - 0.25)) && (currentHour <= (sunrise + 0.75))
-        let isEveningGolden = (currentHour >= (sunset - 0.75)) && (currentHour <= (sunset + 0.25))
-
-        if isMorningGolden || isEveningGolden {
-            return isKorean ? "지금 골든아워 ✨" : "Golden Hour Now ✨"
-        } else if currentHour < sunrise {
-            let minsUntil = Int(round((sunrise - currentHour) * 60))
-            let h = minsUntil / 60
-            let m = minsUntil % 60
-            return isKorean ? (h > 0 ? "일출까지 \(h)시간 \(m)분" : "일출까지 \(m)분") : (h > 0 ? "\(h)h \(m)m to sunrise" : "\(m)m to sunrise")
-        } else if currentHour < sunset {
-            let minsUntil = Int(round((sunset - currentHour) * 60))
-            let h = minsUntil / 60
-            let m = minsUntil % 60
-            return isKorean ? (h > 0 ? "일몰까지 \(h)시간 \(m)분" : "일몰까지 \(m)분") : (h > 0 ? "\(h)h \(m)m to sunset" : "\(m)m to sunset")
-        } else {
-            return isKorean ? "내일 일출 \(weatherStore.snapshot.sunriseText)" : "Sunrise tomorrow"
-        }
-    }
-
-    var body: some View {
-        ZStack {
-            // Atmospheric Sky Gradient: Apple Weather Blue (Top) -> Twilight Sapphire (Bottom)
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color(red: 0.14, green: 0.38, blue: 0.74), location: 0.0),
-                            .init(color: Color(red: 0.08, green: 0.22, blue: 0.48), location: 0.48),
-                            .init(color: Color(red: 0.05, green: 0.10, blue: 0.28), location: 0.52),
-                            .init(color: Color(red: 0.04, green: 0.07, blue: 0.20), location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(
-                    // Golden Hour Warm Horizon Glow in lower chamber
-                    RadialGradient(
-                        colors: [
-                            Color(red: 1.0, green: 0.68, blue: 0.22).opacity(0.18),
-                            Color.clear
-                        ],
-                        center: UnitPoint(x: 0.5, y: 0.78),
-                        startRadius: 5,
-                        endRadius: 75
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                )
-                .overlay(
-                    // Liquid Glass Specular Rim Border
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.32),
-                                    Color.white.opacity(0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 0.85
-                        )
-                )
-
-            VStack(spacing: 0) {
-                // MARK: - TOP HALF: 날씨 (Weather Section - 65pt)
-                topWeatherHalfView
-                    .frame(height: 65)
-
-                // Frosted Center Hairline Divider
-                Rectangle()
-                    .fill(Color.white.opacity(0.18))
-                    .frame(height: 0.75)
-                    .padding(.horizontal, 8)
-
-                // MARK: - BOTTOM HALF: 일출/일몰 골든아워 그래프 (Golden Hour Solar Arc - 70pt)
-                bottomGoldenHourHalfView
-                    .frame(height: 70)
-            }
-        }
-        .onAppear {
-            weatherStore.refreshIfNeeded()
-        }
-    }
-
-    // MARK: - Top Half View: 날씨
-    private var topWeatherHalfView: some View {
-        VStack(spacing: 0) {
-            // Header: Location + Refresh
-            HStack(alignment: .center) {
-                HStack(spacing: 3.5) {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 9.0, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.88))
-                    Text(locationTitle)
-                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                Button {
-                    weatherStore.refreshIfNeeded(force: true)
-                } label: {
-                    if weatherStore.isRefreshing {
-                        ProgressView()
-                            .controlSize(.mini)
-                            .scaleEffect(0.65)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 9.0, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.65))
-                    }
-                }
-                .buttonStyle(.plain)
-                .help(isKorean ? "날씨 새로고침" : "Refresh Weather")
-            }
-            .padding(.horizontal, 10)
-            .padding(.top, 6)
-            .frame(height: 18)
-
-            // Weather Hero: Large Temp + Weather Symbol + Condition + High/Low
-            HStack(alignment: .center, spacing: 8) {
-                Text("\(Int(round(weatherStore.snapshot.currentTempC)))°")
-                    .font(.system(size: 34, weight: .light, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-
-                Spacer(minLength: 4)
-
-                HStack(spacing: 6) {
-                    NotchieAppleWeatherSymbolView(weatherCode: weatherStore.snapshot.weatherCode, size: 22)
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(localizedCondition)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-
-                        Text(formattedHighLow)
-                            .font(.system(size: 9.0, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.82))
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.bottom, 4)
-            .frame(height: 42)
-        }
-    }
-
-    // MARK: - Bottom Half View: 일출/일몰 골든아워 그래프
-    private var bottomGoldenHourHalfView: some View {
-        VStack(spacing: 0) {
-            // Header: Golden Hour Title + Status
-            HStack(alignment: .center) {
-                HStack(spacing: 3) {
-                    Image(systemName: "sun.horizon.fill")
-                        .font(.system(size: 8.5, weight: .bold))
-                        .foregroundStyle(Color(red: 1.0, green: 0.82, blue: 0.35))
-                    Text(isKorean ? "골든아워" : "Golden Hour")
-                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(red: 1.0, green: 0.88, blue: 0.45))
-                }
-
-                Spacer()
-
-                Text(goldenHourStatusText)
-                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.80))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 10)
-            .padding(.top, 4)
-            .frame(height: 14)
-
-            // Interactive Solar Arc Graph Canvas
-            NotchieGoldenHourSunArcCanvas(
-                sunriseText: weatherStore.snapshot.sunriseText,
-                sunsetText: weatherStore.snapshot.sunsetText,
-                isKorean: isKorean
-            )
-            .frame(height: 36)
-            .padding(.horizontal, 8)
-
-            // Footer: Sunrise Time + Warm Light Pill + Sunset Time
-            HStack(alignment: .center) {
-                HStack(spacing: 2) {
-                    Image(systemName: "sunrise.fill")
-                        .font(.system(size: 7.5))
-                        .foregroundStyle(Color(red: 1.0, green: 0.82, blue: 0.32))
-                    Text(isKorean ? "일출 \(weatherStore.snapshot.sunriseText)" : "Sunrise \(weatherStore.snapshot.sunriseText)")
-                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 2)
-
-                Text(isKorean ? "황금빛 조명" : "Golden Light")
-                    .font(.system(size: 7.0, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 1.0, green: 0.84, blue: 0.35))
-                    .padding(.horizontal, 4.5)
-                    .padding(.vertical, 1.0)
-                    .background(Color(red: 1.0, green: 0.65, blue: 0.15).opacity(0.20), in: Capsule())
-
-                Spacer(minLength: 2)
-
-                HStack(spacing: 2) {
-                    Image(systemName: "sunset.fill")
-                        .font(.system(size: 7.5))
-                        .foregroundStyle(Color(red: 1.0, green: 0.58, blue: 0.28))
-                    Text(isKorean ? "일몰 \(weatherStore.snapshot.sunsetText)" : "Sunset \(weatherStore.snapshot.sunsetText)")
-                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 18)
-        }
-    }
-
-    private static func parseHourDecimal(_ string: String) -> Double? {
-        let clean = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "h:mm a"
-        if let d = f.date(from: clean) {
-            let c = Calendar.current
-            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
-        }
-        f.dateFormat = "HH:mm"
-        if let d = f.date(from: clean) {
-            let c = Calendar.current
-            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
-        }
-        return nil
-    }
-}
-
-// MARK: - Golden Hour Solar Arc Canvas (Apple Sun Trajectory + Horizon Line + Glowing Sun Orb)
-
-private struct NotchieGoldenHourSunArcCanvas: View {
-    let sunriseText: String
-    let sunsetText: String
-    let isKorean: Bool
-
-    var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            let yHorizon = h * 0.68
-            let xSunrise = w * 0.14
-            let xSunset = w * 0.86
-            let yNoon = h * 0.14
-
-            let (isDaytime, sunProgress, isGoldenHour) = computeSolarStatus()
-
-            ZStack {
-                // 1. Horizon Line (Dashed)
-                Path { p in
-                    p.move(to: CGPoint(x: 4, y: yHorizon))
-                    p.addLine(to: CGPoint(x: w - 4, y: yHorizon))
-                }
-                .stroke(
-                    Color.white.opacity(0.18),
-                    style: StrokeStyle(lineWidth: 0.75, dash: [3.5, 2.5])
-                )
-
-                // 2. Daytime Solar Arc Fill (Subtle warm amber gradient)
-                Path { p in
-                    p.move(to: CGPoint(x: xSunrise, y: yHorizon))
-                    for x in stride(from: xSunrise, through: xSunset, by: 1.5) {
-                        let ratio = (x - xSunrise) / (xSunset - xSunrise)
-                        let y = yHorizon - (yHorizon - yNoon) * sin(ratio * .pi)
-                        p.addLine(to: CGPoint(x: x, y: y))
-                    }
-                    p.addLine(to: CGPoint(x: xSunset, y: yHorizon))
-                    p.closeSubpath()
-                }
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 1.0, green: 0.75, blue: 0.25).opacity(0.20),
-                            Color(red: 1.0, green: 0.50, blue: 0.15).opacity(0.05),
-                            Color.clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-
-                // 3. Complete Solar Curve (Daytime arc + Twilight dip below horizon)
-                Path { p in
-                    // Left night/twilight lead-in
-                    p.move(to: CGPoint(x: 4, y: yHorizon + 3))
-                    p.addQuadCurve(
-                        to: CGPoint(x: xSunrise, y: yHorizon),
-                        control: CGPoint(x: xSunrise * 0.5, y: yHorizon + 4)
-                    )
-                    // Daylight arc
-                    for x in stride(from: xSunrise, through: xSunset, by: 1.5) {
-                        let ratio = (x - xSunrise) / (xSunset - xSunrise)
-                        let y = yHorizon - (yHorizon - yNoon) * sin(ratio * .pi)
-                        p.addLine(to: CGPoint(x: x, y: y))
-                    }
-                    // Right night/twilight lead-out
-                    p.addQuadCurve(
-                        to: CGPoint(x: w - 4, y: yHorizon + 3),
-                        control: CGPoint(x: xSunset + (w - xSunset) * 0.5, y: yHorizon + 4)
-                    )
-                }
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.45, green: 0.55, blue: 0.75).opacity(0.4),
-                            Color(red: 1.0, green: 0.65, blue: 0.22),
-                            Color(red: 1.0, green: 0.94, blue: 0.55),
-                            Color(red: 1.0, green: 0.58, blue: 0.24),
-                            Color(red: 0.45, green: 0.55, blue: 0.75).opacity(0.4)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round)
-                )
-                .shadow(color: Color(red: 1.0, green: 0.75, blue: 0.25).opacity(0.45), radius: 2)
-
-                // 4. Golden Hour Horizon Highlights (Amber rings at Sunrise / Sunset points)
-                Circle()
-                    .fill(Color(red: 1.0, green: 0.78, blue: 0.28))
-                    .frame(width: 4, height: 4)
-                    .position(x: xSunrise, y: yHorizon)
-                    .shadow(color: Color(red: 1.0, green: 0.75, blue: 0.20).opacity(0.8), radius: 2)
-
-                Circle()
-                    .fill(Color(red: 1.0, green: 0.58, blue: 0.24))
-                    .frame(width: 4, height: 4)
-                    .position(x: xSunset, y: yHorizon)
-                    .shadow(color: Color(red: 1.0, green: 0.55, blue: 0.20).opacity(0.8), radius: 2)
-
-                // 5. Dynamic Sun / Moon Position Orb
-                if isDaytime {
-                    let sunX = xSunrise + CGFloat(sunProgress) * (xSunset - xSunrise)
-                    let sunY = yHorizon - (yHorizon - yNoon) * sin(CGFloat(sunProgress) * .pi)
-
-                    ZStack {
-                        // Ambient radial pulse glow
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [
-                                        isGoldenHour
-                                            ? Color(red: 1.0, green: 0.65, blue: 0.15).opacity(0.75)
-                                            : Color(red: 1.0, green: 0.88, blue: 0.35).opacity(0.65),
-                                        Color.clear
-                                    ],
-                                    center: .center,
-                                    startRadius: 1,
-                                    endRadius: 9
-                                )
-                            )
-                            .frame(width: 18, height: 18)
-
-                        // Core sun sphere
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white,
-                                        isGoldenHour
-                                            ? Color(red: 1.0, green: 0.72, blue: 0.20)
-                                            : Color(red: 1.0, green: 0.90, blue: 0.40)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .frame(width: 7.5, height: 7.5)
-                            .shadow(color: isGoldenHour ? Color.orange : Color.yellow, radius: 2.5)
-                    }
-                    .position(x: sunX, y: sunY)
-                } else {
-                    // Night: Moon position
-                    let nightX = w * 0.5
-                    let nightY = yHorizon + 4.5
-                    ZStack {
-                        Circle()
-                            .fill(Color(red: 0.6, green: 0.75, blue: 1.0).opacity(0.3))
-                            .frame(width: 12, height: 12)
-                        Image(systemName: "moon.fill")
-                            .font(.system(size: 6.5, weight: .bold))
-                            .foregroundStyle(Color(red: 0.85, green: 0.92, blue: 1.0))
-                    }
-                    .position(x: nightX, y: nightY)
-                }
-            }
-        }
-    }
-
-    private func computeSolarStatus() -> (isDaytime: Bool, sunProgress: Double, isGoldenHour: Bool) {
-        let now = Date()
-        let cal = Calendar.current
-        let currentHour = Double(cal.component(.hour, from: now)) + (Double(cal.component(.minute, from: now)) / 60.0)
-
-        let sunrise = Self.parseHourDecimal(sunriseText) ?? 6.78
-        let sunset = Self.parseHourDecimal(sunsetText) ?? 19.98
-
-        let isDaytime = currentHour >= sunrise && currentHour <= sunset
-        let progress: Double
-        if isDaytime {
-            let totalDay = max(0.1, sunset - sunrise)
-            progress = min(max((currentHour - sunrise) / totalDay, 0.0), 1.0)
-        } else {
-            progress = 0.5
-        }
-
-        // Golden hour: 45 min after sunrise or 45 min before sunset
-        let isMorningGolden = (currentHour >= (sunrise - 0.25)) && (currentHour <= (sunrise + 0.75))
-        let isEveningGolden = (currentHour >= (sunset - 0.75)) && (currentHour <= (sunset + 0.25))
-        let isGoldenHour = isMorningGolden || isEveningGolden
-
-        return (isDaytime, progress, isGoldenHour)
-    }
-
-    private static func parseHourDecimal(_ string: String) -> Double? {
-        let clean = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "h:mm a"
-        if let d = f.date(from: clean) {
-            let c = Calendar.current
-            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
-        }
-        f.dateFormat = "HH:mm"
-        if let d = f.date(from: clean) {
-            let c = Calendar.current
-            return Double(c.component(.hour, from: d)) + (Double(c.component(.minute, from: d)) / 60.0)
-        }
-        return nil
-    }
-}
-
-private struct NotchieAppleWeatherSymbolView: View {
-    let weatherCode: Int
-    let size: CGFloat
-
-    var body: some View {
-        Image(systemName: symbolName)
-            .symbolRenderingMode(.multicolor)
-            .font(.system(size: size, weight: .semibold))
-            .shadow(color: glowColor, radius: size * 0.28)
-    }
-
-    private var symbolName: String {
-        switch weatherCode {
-        case 0:
-            return "sun.max.fill"
-        case 1, 2:
-            return "cloud.sun.fill"
-        case 3:
-            return "cloud.fill"
-        case 45, 48:
-            return "cloud.fog.fill"
-        case 51, 53, 55, 61, 63, 65, 80, 81, 82:
-            return "cloud.sun.rain.fill"
-        case 71, 73, 75, 77, 85, 86:
-            return "cloud.snow.fill"
-        case 95, 96, 99:
-            return "cloud.bolt.rain.fill"
-        default:
-            return "sun.max.fill"
-        }
-    }
-
-    private var glowColor: Color {
-        switch weatherCode {
-        case 0, 1, 2:
-            return Color(red: 1.0, green: 0.76, blue: 0.20).opacity(0.45)
-        case 95, 96, 99:
-            return Color(red: 0.95, green: 0.80, blue: 0.25).opacity(0.35)
-        default:
-            return Color.black.opacity(0.25)
-        }
-    }
-}
-
-// Backward compatibility alias
-private typealias NotchieFlipClockWeatherColumn = NotchieAppleWeatherWidgetColumn
 
 // MARK: - Panoramic Tray Section (File Shelf + AirDrop Drop Zone)
 
@@ -2635,12 +1967,12 @@ struct QuickToolsNotchContent: NotchContentProtocol {
     }
 
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = store.hubMode.requiresExtendedHeight ? 210 : 172
+        let extraHeight: CGFloat = store.shelfExtraHeight(isIsland: false)
         return CGSize(width: max(712, baseWidth + 512), height: baseHeight + extraHeight)
     }
 
     func expandedDynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = store.hubMode.requiresExtendedHeight ? 200 : 164
+        let extraHeight: CGFloat = store.shelfExtraHeight(isIsland: true)
         return CGSize(width: max(692, baseWidth + 492), height: baseHeight + extraHeight)
     }
 

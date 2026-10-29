@@ -9,6 +9,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
     case clips
     case notes
     case tools
+    case widgets
 
     var id: String { rawValue }
 
@@ -19,13 +20,14 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         case .tray: return "tray.and.arrow.down.fill"
         case .clips: return "doc.on.clipboard.fill"
         case .notes: return "note.text"
+        case .widgets: return "square.grid.2x2.fill"
         case .tools: return "square.grid.2x2.fill"
         }
     }
 
     var requiresExtendedHeight: Bool {
         switch self {
-        case .nook, .tray:
+        case .nook, .tray, .widgets:
             return false
         case .shots, .clips, .notes, .tools:
             return true
@@ -39,6 +41,10 @@ struct QuickToolTab: Identifiable, Equatable {
     let systemImage: String
 
     static let allTabs: [QuickToolTab] = [
+        QuickToolTab(id: "transform", titleKey: "shelf.tool.transform", systemImage: "wand.and.stars"),
+        QuickToolTab(id: "teleprompter", titleKey: "shelf.tool.teleprompter", systemImage: "text.alignleft"),
+        QuickToolTab(id: "emoji", titleKey: "shelf.tool.emoji", systemImage: "face.smiling"),
+        QuickToolTab(id: "stats", titleKey: "shelf.tool.stats", systemImage: "waveform.path.ecg"),
         QuickToolTab(id: "notes", titleKey: "settings.tools.notes", systemImage: "note.text"),
         QuickToolTab(id: "snippets", titleKey: "productivity.tool.snippets", systemImage: "doc.on.clipboard"),
         QuickToolTab(id: "tasks", titleKey: "productivity.tool.tasks", systemImage: "checklist"),
@@ -67,13 +73,19 @@ final class QuickToolsStore: ObservableObject {
     static let shared = QuickToolsStore()
     static let enabledTabsKey = "DynamicNotch.QuickTools.enabledTabs.v1"
 
+    lazy var shelf = ShelfPreferences(defaults: defaults)
+    lazy var teleprompter = TeleprompterController(defaults: defaults)
     lazy var notes = QuickNotes()
     let stopwatch = StopwatchController()
     let awake = KeepAwakeController()
     lazy var focus = FocusSessionController()
     let jobs = LocalJobRunner()
 
-    @Published var selectedTool = "notes"
+    @Published var selectedTool = "notes" {
+        didSet {
+            if oldValue != selectedTool { notchViewModel?.refreshPresentationGeometry() }
+        }
+    }
     @Published var hubMode: NotchHubMode = .nook {
         didSet {
             guard oldValue != hubMode else { return }
@@ -157,6 +169,11 @@ final class QuickToolsStore: ObservableObject {
         if !enabledTabIDs.contains(selectedTool), let first = enabledTabIDs.first {
             selectedTool = first
         }
+    }
+
+    func shelfExtraHeight(isIsland: Bool) -> CGFloat {
+        if hubMode == .clips || (hubMode == .tools && selectedTool == "snippets") { return isIsland ? 384 : 394 }
+        return hubMode.requiresExtendedHeight ? (isIsland ? 200 : 210) : (isIsland ? 164 : 172)
     }
 
     func sampleColor() {

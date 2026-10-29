@@ -9,7 +9,7 @@
 	<key>DynamicNotchTestHost</key>
 	<string>$(DYNAMICNOTCH_TEST_HOST)</string>
 	<key>DynamicNotchLocalRevision</key>
-	<string>Notchie-20261029-v15</string>
+	<string>Notchie-SettingsAuth-20261029-v23</string>
 	<key>DynamicNotchLocalBuild</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>

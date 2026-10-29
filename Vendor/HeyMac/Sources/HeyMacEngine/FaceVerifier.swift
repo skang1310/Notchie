@@ -78,6 +78,7 @@ public final class FaceVerifier: FaceMatching, @unchecked Sendable {
             return outcome
         }
 
+        guard keepGoing() else { return outcome }
         let deadline = Date().addingTimeInterval(timeout)
         do {
             try camera.start()
@@ -99,6 +100,8 @@ public final class FaceVerifier: FaceMatching, @unchecked Sendable {
             lastSequence = frame.sequence
             do {
                 let evaluation = try pipeline.evaluate(image: frame.image, against: centroid)
+                // Inference may finish after cancellation or a manual unlock.
+                guard keepGoing() else { return outcome }
                 outcome.framesEvaluated += 1
                 outcome.bestSimilarity = max(outcome.bestSimilarity, evaluation.similarity)
                 outcome.bestLiveness = max(outcome.bestLiveness, evaluation.liveness)

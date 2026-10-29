@@ -49,7 +49,8 @@ final class SettingsRootViewModel {
     }
 
     var sections: [Section] {
-        Section.allCases
+        // Lock-screen appearance now lives beside authentication; keep the enum for saved routes.
+        Section.allCases.filter { $0 != .lockScreen }
     }
 
     func initialSelection() -> Section {

@@ -95,31 +95,25 @@ extension AnyTransition {
         notchHeight: CGFloat,
         baseHeight: CGFloat,
         isNotchlessScreen: Bool = false) -> AnyTransition {
-        let verticalOffset = NotchTransitionMetrics.verticalCompensationOffset(
-            for: notchHeight,
-            baseHeight: baseHeight,
-            isNotchlessScreen: isNotchlessScreen
-        )
-        
         return .asymmetric(
             insertion: .modifier(
                 active: NotchTransitionModifier(
-                    blur: 15,
+                    blur: 8,
                     opacity: 0,
-                    offsetY: verticalOffset,
-                    scaleX: 0.6,
-                    scaleY: 0.2,
+                    offsetY: 0,
+                    scaleX: 0.94,
+                    scaleY: 0.94,
                     anchor: .center
                 ),
                 identity: NotchTransitionModifier(anchor: .center)
             ),
             removal: .modifier(
                 active: NotchTransitionModifier(
-                    blur: 15,
+                    blur: 8,
                     opacity: 0,
-                    offsetY: verticalOffset,
-                    scaleX: isNotchlessScreen ? 0.001 : 0.4,
-                    scaleY: 0.2,
+                    offsetY: 0,
+                    scaleX: 0.94,
+                    scaleY: 0.94,
                     anchor: .center
                 ),
                 identity: NotchTransitionModifier(anchor: .center)

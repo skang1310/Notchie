@@ -26,7 +26,7 @@ public final class CameraCapture: NSObject, FrameSource, AVCaptureVideoDataOutpu
     private let sessionLock = NSLock()
     private let frameLock = NSLock()
     private let warmup: TimeInterval
-    private let minFrameInterval: TimeInterval = 0.1
+    private let minFrameInterval: TimeInterval = 1.0 / 15.0
     private var configured = false
     private var startedAt = Date.distantFuture
     private var lastConverted = Date.distantPast

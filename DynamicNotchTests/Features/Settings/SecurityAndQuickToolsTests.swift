@@ -24,6 +24,19 @@ final class SecurityAndQuickToolsTests: XCTestCase {
         controller.setEnabled(false)
         XCTAssertFalse(defaults.bool(forKey: HeyMacFaceUnlockController.enabledKey))
     }
+    func testRejectedPasswordIsVisibleAfterRelaunchWithoutStartingEngine() {
+        let name = "DynamicNotch.AuthRecovery.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(true, forKey: "DynamicNotch.HeyMac.lockScreenNeedsPassword")
+        let controller = HeyMacFaceUnlockController(defaults: defaults,
+            directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        XCTAssertTrue(controller.passwordNeedsUpdate)
+        XCTAssertFalse(controller.status.isEmpty)
+        XCTAssertFalse(controller.enabled)
+        XCTAssertFalse(controller.busy)
+    }
+
     func testSavedFaceFilesDoNotAutomaticallyEnableCameraOrEngine() throws {
         let name = "DynamicNotch.HeyMacTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

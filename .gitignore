@@ -14,3 +14,6 @@ xcuserdata/
 # Build products
 DerivedData/
 build/
+
+# Local design research (third-party reference images, never bundled)
+.lazyweb/

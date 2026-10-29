@@ -576,7 +576,8 @@ private enum SettingsSectionCatalog {
                     "unlock",
                     "security",
                     "liveness",
-                    "eyes"
+                    "eyes", "lock screen", "lock sound", "unlock sound", "media panel", "widget appearance",
+                    "잠금 화면", "인증", "암호", "얼굴", "앱 잠금"
                 ],
                 systemImage: "faceid",
                 imageName: nil,

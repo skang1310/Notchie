@@ -47,7 +47,6 @@ struct SettingsCard<Content: View>: View {
             VStack(alignment: .leading, spacing: spacing) {
                 content
             }
-            .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             
         } label: {
@@ -82,6 +81,10 @@ private struct SettingsCardGroupBoxStyle: GroupBoxStyle {
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(cardFillStyle)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.045), lineWidth: 1)
+                        }
                 )
         }
         .frame(maxWidth: .infinity, alignment: .leading)

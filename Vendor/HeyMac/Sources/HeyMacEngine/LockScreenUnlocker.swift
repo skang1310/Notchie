@@ -55,6 +55,7 @@ public enum LockScreenTick: Equatable {
     case typingFailed(String)
     case unlocked
     case passwordRejected
+    case unlockUnconfirmed
     case retriesExhausted
 }
 
@@ -65,9 +66,9 @@ public enum LockScreenTick: Equatable {
 public final class LockScreenUnlocker: @unchecked Sendable {
     static let unlockConfirmationDelay: TimeInterval = 5
     static let unlockPollInterval: TimeInterval = 0.15
-    static let pollInterval: TimeInterval = 0.25
-    static let noMatchCooldown: TimeInterval = 3.5
-    static let noFaceCooldown: TimeInterval = 1
+    static let pollInterval: TimeInterval = 0.10
+    static let noMatchCooldown: TimeInterval = 0.8
+    static let noFaceCooldown: TimeInterval = 0.35
     static let scanWindow: TimeInterval = 6
     static let maxScansPerEpisode = 2
 
@@ -81,6 +82,7 @@ public final class LockScreenUnlocker: @unchecked Sendable {
     private var stopRequested = false
     private var attemptedThisEpisode = false
     private var scansThisEpisode = 0
+    private var manualScanRequested = false
     private var lastReportedProblem: String?
 
     public init(
@@ -115,19 +117,40 @@ public final class LockScreenUnlocker: @unchecked Sendable {
         stateLock.withLock { stopRequested = true }
     }
 
+    /// An explicit user retry only rearms face scanning, never password submission.
+    @discardableResult
+    public func requestScan() -> Bool {
+        guard environment.isLocked() == true, environment.displayIsAwake(),
+              VerificationGate.lockScreen(settings, accessibilityTrusted: environment.accessibilityTrusted()) == .allow else { return false }
+        return stateLock.withLock {
+            guard !stopRequested, !attemptedThisEpisode else { return false }
+            manualScanRequested = true
+            return true
+        }
+    }
+
     private var isStopRequested: Bool { stateLock.withLock { stopRequested } }
 
     @discardableResult
     func tick() -> LockScreenTick {
-        guard environment.isLocked() == true else {
+        // Unknown must not reset the once-per-lock typing budget.
+        guard let locked = environment.isLocked() else { return .blocked("lock state unknown") }
+        guard locked else {
             stateLock.withLock {
                 attemptedThisEpisode = false
                 scansThisEpisode = 0
+                manualScanRequested = false
                 lastReportedProblem = nil
             }
             return .notLocked
         }
         if stateLock.withLock({ attemptedThisEpisode }) { return .alreadyAttempted }
+        stateLock.withLock {
+            if manualScanRequested {
+                manualScanRequested = false
+                scansThisEpisode = 0
+            }
+        }
         if stateLock.withLock({ scansThisEpisode }) >= Self.maxScansPerEpisode {
             if !environment.displayIsAwake() { stateLock.withLock { scansThisEpisode = 0 } }
             return .retriesExhausted
@@ -153,6 +176,11 @@ public final class LockScreenUnlocker: @unchecked Sendable {
         )
         guard outcome.matched else {
             if let failure = outcome.failure {
+                // A foreground face test owning the camera is not a failed face scan.
+                if failure == "camera busy with another verification" {
+                    stateLock.withLock { scansThisEpisode -= 1 }
+                    waitOutAnimation(Self.noFaceCooldown)
+                }
                 onEvent(.lockScreenScanEnded)
                 return report(failure)
             }
@@ -188,13 +216,20 @@ public final class LockScreenUnlocker: @unchecked Sendable {
         // under a second, and the HUD should appear the moment it does, not after a
         // flat wait. Still gives a wrong/stale password the full window before giving up.
         var elapsed: TimeInterval = 0
+        var confirmationUnknown = false
         while elapsed < Self.unlockConfirmationDelay {
             environment.sleep(Self.unlockPollInterval)
             elapsed += Self.unlockPollInterval
-            if environment.isLocked() == false {
+            let lockState = environment.isLocked()
+            if lockState == nil { confirmationUnknown = true }
+            if lockState == false {
                 onEvent(.lockScreenUnlocked(summary: outcome.summary))
                 return .unlocked
             }
+        }
+        if confirmationUnknown {
+            onEvent(.lockScreenProblem("Unlock could not be confirmed. Use macOS login; no second password attempt will be made."))
+            return .unlockUnconfirmed
         }
         settings.lockScreenNeedsPassword = true
         onEvent(.lockScreenPasswordRejected)

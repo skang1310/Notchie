@@ -2,6 +2,8 @@ import SwiftUI
 
 enum NotchBackgroundStyle: String, CaseIterable {
     case black
+    case dynamicGlass
+    case liquidGlass
 
     static var availableOptions: [Self] {
         return Array(allCases)
@@ -9,15 +11,17 @@ enum NotchBackgroundStyle: String, CaseIterable {
 
     var title: LocalizedStringKey {
         switch self {
-        case .black:
-            return "settings.notch.backgroundStyle.black"
+        case .black: return "settings.notch.backgroundStyle.black"
+        case .dynamicGlass: return "shelf.finish.dynamic"
+        case .liquidGlass: return "shelf.finish.liquid"
         }
     }
 
     var symbolName: String {
         switch self {
-        case .black:
-            return "circle.fill"
+        case .black: return "circle.fill"
+        case .dynamicGlass: return "circle.lefthalf.filled"
+        case .liquidGlass: return "drop.fill"
         }
     }
 

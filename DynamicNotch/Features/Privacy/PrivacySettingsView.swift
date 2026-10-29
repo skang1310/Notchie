@@ -1,7 +1,21 @@
 import SwiftUI
 struct PrivacySettingsView: View {
+    @ObservedObject var permissionController: SettingsPermissionController
+    @ObservedObject var applicationSettings: ApplicationSettingsStore
+    @State private var section = "connections"
     @StateObject private var preferences = PrivacyPreferences()
     var body: some View {
+        VStack(spacing: 0) {
+            Picker(privacyText("Privacy settings", "개인정보 설정"), selection: $section) {
+                Text(privacyText("Connections", "연결 및 데이터")).tag("connections")
+                Text(privacyText("Permissions", "시스템 권한")).tag("permissions")
+            }
+            .pickerStyle(.segmented).labelsHidden()
+            .padding(.horizontal, 28).padding(.vertical, 16)
+            Divider().opacity(0.5)
+            if section == "permissions" {
+                PermissionsSettingsView(permissionController: permissionController, applicationSettings: applicationSettings)
+            } else {
         SettingsPageScrollView {
             SettingsCard(title: "settings.security.local.title") {
                 Label("settings.security.local.desc", systemImage: "checkmark.shield")
@@ -16,6 +30,8 @@ struct PrivacySettingsView: View {
             }
             SettingsCard(title: "settings.security.unlock.title") {
                 Text("settings.security.unlock.desc").foregroundStyle(.secondary)
+            }
+        }
             }
         }
     }

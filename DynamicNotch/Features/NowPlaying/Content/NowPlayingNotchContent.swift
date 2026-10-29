@@ -12,13 +12,13 @@ struct NowPlayingNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     let nowPlayingViewModel: NowPlayingViewModel
     let settings: MediaAndFilesSettingsStore
     let applicationSettings: ApplicationSettingsStore
-    let onOpenPlaybackSource: @MainActor () -> Void
+    let onOpenPlaybackSource: @MainActor @Sendable () -> Void
 
     init(
         nowPlayingViewModel: NowPlayingViewModel,
         settings: MediaAndFilesSettingsStore,
         applicationSettings: ApplicationSettingsStore,
-        onOpenPlaybackSource: @escaping @MainActor () -> Void = {}
+        onOpenPlaybackSource: @escaping @MainActor @Sendable () -> Void = {}
     ) {
         self.nowPlayingViewModel = nowPlayingViewModel
         self.settings = settings
@@ -51,12 +51,12 @@ struct NowPlayingNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     }
     
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 210 : 172
+        let extraHeight: CGFloat = QuickToolsStore.shared.shelfExtraHeight(isIsland: false)
         return .init(width: max(712, baseWidth + 512), height: baseHeight + extraHeight)
     }
     
     func expandedDynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraHeight: CGFloat = QuickToolsStore.shared.hubMode.requiresExtendedHeight ? 200 : 164
+        let extraHeight: CGFloat = QuickToolsStore.shared.shelfExtraHeight(isIsland: true)
         return .init(width: max(692, baseWidth + 492), height: baseHeight + extraHeight)
     }
     

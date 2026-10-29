@@ -90,6 +90,11 @@ struct NotchSurfaceContainerView: View {
     private var contentOverlay: some View {
         let content = notchViewModel.effectiveDisplayedContent
         renderedContentView(for: content)
+            // Lay out at the destination size before applying the reveal transform.
+            // Flexible rows otherwise reflow sideways as the shell expands.
+            .frame(width: notchViewModel.interactiveNotchSize.width,
+                   height: notchViewModel.interactiveNotchSize.height,
+                   alignment: .center)
             .scaleEffect(
                 x: shouldApplyPressScale ? notchViewModel.pressScale : 1,
                 y: shouldApplyPressScale ? notchViewModel.pressScale : 1,

@@ -35,12 +35,15 @@ final class ProductivityCoordinator: ObservableObject {
                 let currentCount = NSPasteboard.general.changeCount
                 guard currentCount != self.lastClipboardChangeCount else { return }
                 self.lastClipboardChangeCount = currentCount
-                _ = ProductivityStorage.shared.captureFromPasteboard()
+                let foreground = NSWorkspace.shared.frontmostApplication
+                let source = foreground?.bundleIdentifier == Bundle.main.bundleIdentifier ? nil : foreground?.localizedName
+                _ = ProductivityStorage.shared.captureFromPasteboard(sourceAppName: source)
             }
     }
     func openTool(_ id: String) {
         panel?.orderOut(nil)
         QuickToolsStore.shared.selectedTool = id
+        QuickToolsStore.shared.hubMode = .tools
         NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
     }
     func showPalette() {
@@ -65,16 +68,19 @@ struct CommandPaletteView: View {
     @ObservedObject private var notes = QuickToolsStore.shared.notes
     @State private var query = ""
     @FocusState private var searching: Bool
-    private let tools = ["notes", "stopwatch", "awake", "color", "focus", "tasks", "snippets", "rules", "jobs", "status", "calculator", "shortcuts", "zip", "developer", "reports", "cases"]
-    private var matches: [String] { tools.filter { query.isEmpty || L10n.app(($0 == "calculator" || $0 == "shortcuts" || $0 == "zip" || $0 == "developer" || $0 == "reports" || $0 == "cases") ? "support.tool.\($0)" : "productivity.tool.\($0)").localizedCaseInsensitiveContains(query) } }
+    private var matches: [QuickToolTab] {
+        QuickToolTab.allTabs.filter { query.isEmpty || L10n.app($0.titleKey).localizedCaseInsensitiveContains(query) }
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             TextField("productivity.palette.search", text: $query).textFieldStyle(.roundedBorder).focused($searching)
-                .onSubmit { if let first = matches.first { coordinator.openTool(first) } }
+                .onSubmit { if let first = matches.first { coordinator.openTool(first.id) } }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(matches, id: \.self) { id in
-                        Button { coordinator.openTool(id) } label: { Label(L10n.app(["calculator","shortcuts","zip","developer","reports","cases"].contains(id) ? "support.tool.\(id)" : "productivity.tool.\(id)"), systemImage: "arrow.up.forward.app") }.buttonStyle(.plain).padding(7)
+                    ForEach(matches) { tab in
+                        Button { coordinator.openTool(tab.id) } label: {
+                            Label(L10n.app(tab.titleKey), systemImage: tab.systemImage)
+                        }.buttonStyle(.plain).padding(7)
                     }
                     if !query.isEmpty {
                         ForEach(notes.notes.filter { $0.text.localizedCaseInsensitiveContains(query) }.prefix(8)) { note in

@@ -88,6 +88,28 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
         let filenames = images.compactMap { $0["filename"] as? String }
         XCTAssertEqual(filenames.count, 20)
         XCTAssertTrue(filenames.allSatisfy { $0.hasPrefix("Notchie-Light_") || $0.hasPrefix("Notchie-Dark_") })
+
+        // Validate that macOS HIG standard 824x824 icon grid (80.5% squircle scale with margins) is followed
+        let masterIconURL = iconURL.deletingLastPathComponent().appendingPathComponent("Notchie-Dark_512x512@2x.png")
+        let masterImage = try XCTUnwrap(NSImage(contentsOf: masterIconURL))
+        let rep = try XCTUnwrap(masterImage.representations.first as? NSBitmapImageRep)
+        XCTAssertEqual(rep.pixelsWide, 1024)
+        XCTAssertEqual(rep.pixelsHigh, 1024)
+
+        var minX = rep.pixelsWide, maxX = 0
+        for y in 0..<rep.pixelsHigh {
+            for x in 0..<rep.pixelsWide {
+                if let c = rep.colorAt(x: x, y: y), c.alphaComponent > 0.5 {
+                    if x < minX { minX = x }
+                    if x > maxX { maxX = x }
+                }
+            }
+        }
+        let bodyWidth = maxX - minX + 1
+        XCTAssertGreaterThanOrEqual(bodyWidth, 815)
+        XCTAssertLessThanOrEqual(bodyWidth, 835)
+        XCTAssertGreaterThanOrEqual(minX, 90)
+        XCTAssertLessThanOrEqual(minX, 110)
     }
     func testCustomAccentColorAndIdleHoverMenuPersist() {
         isolated { defaults in
@@ -184,7 +206,7 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
 
         store.hubMode = .clips
         let clipsSize = hubContent.expandedSize(baseWidth: 190, baseHeight: 38)
-        XCTAssertEqual(clipsSize.height, 38 + 210)
+        XCTAssertEqual(clipsSize.height, 38 + 394)
         store.hubMode = .nook
 
         let appSettings = ApplicationSettingsStore(defaults: defaults)

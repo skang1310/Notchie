@@ -30,7 +30,12 @@ final class HeyMacFaceUnlockController: ObservableObject {
         // Separate from HeyMac's preferences, credentials and registration.
         engineSettings = EngineSettings(defaults: defaults)
         refreshFiles()
+        if engineSettings.lockScreenNeedsPassword {
+            status = text("Saved password needs attention. Update it before enabling face unlock.", "저장된 암호를 확인해야 합니다. 암호를 다시 저장한 뒤 얼굴 잠금 해제를 켜세요.")
+        }
     }
+    var passwordNeedsUpdate: Bool { engineSettings.lockScreenNeedsPassword }
+
     private func refreshFiles() {
         enrolled = FileManager.default.fileExists(atPath: directory.appendingPathComponent(StoredItems.faceCentroid).path)
         hasPassword = FileManager.default.fileExists(atPath: directory.appendingPathComponent(StoredItems.loginPassword).path)
@@ -136,32 +141,33 @@ final class HeyMacFaceUnlockController: ObservableObject {
         }
         busy = true
         let token = FaceOperation(); operation = token
-        Task {
-            defer { busy = false; operation = nil }
+        Task { [weak self] in
+            guard let self else { return }
+            defer { self.busy = false; self.operation = nil }
             do {
-                let runtime = try await loadRuntime()
+                let runtime = try await self.loadRuntime()
                 guard token.active else { return }
                 // Ensure background key access succeeds without a permission dialog.
                 _ = try await Task.detached { try runtime.backgroundStore.load(StoredItems.faceCentroid) }.value
                 guard token.active else { return }
                 // A rejected password remains blocked across relaunch until explicitly saved again.
-                guard !engineSettings.lockScreenNeedsPassword else {
-                    status = text("macOS rejected the password. Save the correct password before enabling again.", "macOS가 암호를 거부했습니다. 올바른 암호를 다시 저장하세요."); return
+                guard !self.engineSettings.lockScreenNeedsPassword else {
+                    self.status = self.text("macOS rejected the password. Save the correct password before enabling again.", "macOS가 암호를 거부했습니다. 올바른 암호를 다시 저장하세요."); return
                 }
-                engineSettings.setupComplete = true
-                engineSettings.strictness = .strict
-                engineSettings.paused = false
-                engineSettings.launchAtLogin = false
-                engineSettings.lockScreenEnabled = true
-                let log = AppLog(url: directory.appendingPathComponent("events.log"), alsoStandardError: false)
-                let controller = EngineController(runtime: runtime, settings: engineSettings, log: log) { [weak self] event in
+                self.engineSettings.setupComplete = true
+                self.engineSettings.strictness = .strict
+                self.engineSettings.paused = false
+                self.engineSettings.launchAtLogin = false
+                self.engineSettings.lockScreenEnabled = true
+                let log = AppLog(url: self.directory.appendingPathComponent("events.log"), alsoStandardError: false)
+                let controller = EngineController(runtime: runtime, settings: self.engineSettings, log: log) { [weak self] event in
                     Task { @MainActor [weak self] in self?.handle(event) }
                 }
                 try controller.start()
-                engine = controller; enabled = true
-                defaults.set(true, forKey: Self.enabledKey)
-                status = text("Enabled while Notchie is running. Test on your next manual lock.", "Notchie 실행 중 활성화됩니다. 다음에 직접 화면을 잠가 확인하세요.")
-            } catch { setEnabled(false); status = error.localizedDescription }
+                self.engine = controller; self.enabled = true
+                self.defaults.set(true, forKey: Self.enabledKey)
+                self.status = self.text("Enabled while Notchie is running. Test on your next manual lock.", "Notchie 실행 중 활성화됩니다. 다음에 직접 화면을 잠가 확인하세요.")
+            } catch { self.setEnabled(false); self.status = error.localizedDescription }
         }
     }
     private func handle(_ event: EngineEvent) {
@@ -173,7 +179,7 @@ final class HeyMacFaceUnlockController: ObservableObject {
         case .lockScreenNoMatch: status = text("Face did not match.", "얼굴이 일치하지 않습니다.")
         case .lockScreenNoFace: status = text("No live face detected. Use the normal macOS login.", "실제 얼굴을 감지하지 못했습니다. 일반 macOS 로그인을 이용하세요.")
         case .lockScreenScanEnded: status = text("Camera check ended.", "카메라 확인을 마쳤습니다.")
-        case .lockScreenProblem: status = text("Face unlock could not run. Check permissions and test your face from Settings.", "얼굴 잠금 해제를 실행하지 못했습니다. 권한을 확인하고 설정에서 얼굴 인식을 테스트하세요.")
+        case .lockScreenProblem(let reason): status = text("Face unlock could not run. Check permissions and test your face from Settings.", "얼굴 잠금 해제를 실행하지 못했습니다. 권한을 확인하고 설정에서 얼굴 인식을 테스트하세요.") + "\n" + reason
         }
         FaceIDService.shared.receive(event)
         if event != .lockScreenScanning {
@@ -192,6 +198,11 @@ final class HeyMacFaceUnlockController: ObservableObject {
         let runtime = try await loadRuntime()
         return FaceVerifierAuthSource(matcher: runtime.verifier(interactive: true, strictness: .strict))
     }
+    func retryOnLockScreen() {
+        guard enabled, !busy, engine?.requestScan() == true else { return }
+        status = text("Checking your face…", "얼굴을 확인합니다…")
+    }
+
     func cancel() { operation?.cancel() }
     func shutdown() { cancel(); engine?.stop(); engine = nil }
     func removeData() {

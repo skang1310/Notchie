@@ -12,6 +12,11 @@ struct GeneralSettingsView: View {
     
     var body: some View {
         SettingsPageScrollView {
+            SettingsFeatureHeader(
+                title: privacyText("Make Notchie yours", "나에게 맞는 Notchie"),
+                subtitle: privacyText("Appearance, interaction and app preferences in one place.", "모양과 사용 방식, 앱 환경을 한곳에서 설정하세요."),
+                symbol: "slider.horizontal.3", status: privacyText("Preferences", "환경설정"), active: true
+            )
             quickControls
             firstCard
             secondCard
@@ -52,20 +57,7 @@ struct GeneralSettingsView: View {
                 ),
                 accessibilityIdentifier: "settings.general.quickHover"
             )
-            Divider().opacity(0.6)
-            SettingsToggleRow(
-                title: "settings.notch.gestures.hoverHaptic.title", description: "settings.notch.gestures.hoverHaptic.desc",
-                systemImage: "waveform", color: .red,
-                isOn: $applicationSettings.isNotchHoverHapticEnabled,
-                accessibilityIdentifier: "settings.general.quickHaptic"
-            )
-            Divider().opacity(0.6)
-            SettingsToggleRow(
-                title: "settings.local.quick.hideSource.title", description: "settings.local.quick.hideSource.desc",
-                systemImage: "macwindow", color: .purple,
-                isOn: $applicationSettings.isCloseAtFocusLiveActivityEnabled,
-                accessibilityIdentifier: "settings.general.hideActiveMediaSource"
-            )
+
         }
     }
 
@@ -121,22 +113,12 @@ struct GeneralSettingsView: View {
     private var thirdCard: some View {
         SettingsCard(spacing: 0, padding: 0) {
             SettingsNavigationRowView(
-                title: "settings.section.permissions.title",
-                description: "settings.section.permissions.subtitle",
-                systemImage: "checkmark.seal.fill",
-                color: .green.opacity(0.9),
-                accessibilityIdentifier: "settings.general.permissions",
-                position: .first,
-                value: SettingsSubPage.permissions
-            )
-            
-            SettingsNavigationRowView(
                 title: "settings.section.about.title",
                 description: "settings.section.about.subtitle",
                 systemImage: "info.circle.fill",
                 color: .gray,
                 accessibilityIdentifier: "settings.general.about",
-                position: .last,
+                position: .single,
                 value: SettingsSubPage.about
             )
         }
