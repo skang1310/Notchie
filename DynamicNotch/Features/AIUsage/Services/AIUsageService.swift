@@ -279,6 +279,70 @@ public final class AIUsageService: ObservableObject {
             config.clientVersion = version
         }
 
+        // 2. Query state_5.sqlite for recent threads
+        let stateDB = directory.appendingPathComponent("state_5.sqlite")
+        if FileManager.default.fileExists(atPath: stateDB.path) {
+            var db: OpaquePointer?
+            if sqlite3_open_v2(stateDB.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
+                defer { sqlite3_close(db) }
+                let query = "SELECT id, title, updated_at FROM threads ORDER BY updated_at DESC LIMIT 20;"
+                var stmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
+                    defer { sqlite3_finalize(stmt) }
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        let id = sqlite3_column_text(stmt, 0).map { String(cString: $0) } ?? UUID().uuidString
+                        let title = sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? "Session"
+                        let updatedSec = sqlite3_column_int64(stmt, 2)
+                        let updated = updatedSec > 0 ? Date(timeIntervalSince1970: Double(updatedSec)) : Date()
+
+                        if !sessions.contains(where: { $0.id == id }) {
+                            sessions.append(CodexSessionEntry(id: id, threadName: title, updatedAt: updated))
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Query thread_history_1.sqlite for rate limit / quota exhaustion
+        let historyDB = directory.appendingPathComponent("thread_history_1.sqlite")
+        if FileManager.default.fileExists(atPath: historyDB.path) {
+            var db: OpaquePointer?
+            if sqlite3_open_v2(historyDB.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
+                defer { sqlite3_close(db) }
+                let query = "SELECT error_json, completed_at FROM thread_turns WHERE error_json IS NOT NULL ORDER BY completed_at DESC LIMIT 5;"
+                var stmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
+                    defer { sqlite3_finalize(stmt) }
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        if let errorC = sqlite3_column_text(stmt, 0) {
+                            let errorStr = String(cString: errorC)
+                            if errorStr.contains("usageLimitExceeded") || errorStr.contains("hit your usage limit") {
+                                if let range = errorStr.range(of: "try again at ") {
+                                    let sub = String(errorStr[range.upperBound...])
+                                    let cleaned = sub.replacingOccurrences(of: "st,", with: ",")
+                                                     .replacingOccurrences(of: "nd,", with: ",")
+                                                     .replacingOccurrences(of: "rd,", with: ",")
+                                                     .replacingOccurrences(of: "th,", with: ",")
+                                                     .replacingOccurrences(of: ".", with: "")
+                                                     .replacingOccurrences(of: "\"", with: "")
+                                                     .trimmingCharacters(in: .whitespacesAndNewlines)
+                                    let df = DateFormatter()
+                                    df.locale = Locale(identifier: "en_US_POSIX")
+                                    df.dateFormat = "MMM d, yyyy h:mm a"
+                                    if let resetDate = df.date(from: cleaned), resetDate > Date() {
+                                        config.isRateLimited = true
+                                        config.rateLimitResetsAt = resetDate
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        sessions.sort { $0.updatedAt > $1.updatedAt }
         return (sessions, config)
     }
 
@@ -385,7 +449,10 @@ public final class AIUsageService: ObservableObject {
         let sessionUtilization: Double
         let sessionResetsAt: Date
 
-        if !recentSessions.isEmpty {
+        if config.isRateLimited, let limitResetsAt = config.rateLimitResetsAt, limitResetsAt > now {
+            sessionUtilization = 100.0
+            sessionResetsAt = limitResetsAt
+        } else if !recentSessions.isEmpty {
             let earliestTimestamp = recentSessions.map(\.updatedAt).min() ?? now
             sessionResetsAt = earliestTimestamp.addingTimeInterval(5 * 3600)
             sessionUtilization = min(100.0, max(5.0, (Double(recentSessions.count) / 25.0) * 100.0))
@@ -398,8 +465,8 @@ public final class AIUsageService: ObservableObject {
             id: "codex-session",
             title: "5-Hour Session Window",
             titleKo: "5시간 세션 롤링 창",
-            subtitle: "Active rolling window",
-            subtitleKo: "롤링 작업 세션 한도",
+            subtitle: config.isRateLimited ? "Quota limit reached" : "Active rolling window",
+            subtitleKo: config.isRateLimited ? "할당량 소진됨" : "롤링 작업 세션 한도",
             utilization: sessionUtilization,
             resetsAt: sessionResetsAt,
             totalLimitDesc: config.model
@@ -412,17 +479,22 @@ public final class AIUsageService: ObservableObject {
             matchingPolicy: .nextTime
         ) ?? now.addingTimeInterval(86400)
 
-        let todaySessions = sessions.filter { calendar.isDateInToday($0.updatedAt) }.count
-        let dailyUtilization = min(100.0, max(2.0, (Double(todaySessions) / 40.0) * 100.0))
+        let dailyUtilization: Double
+        if config.isRateLimited {
+            dailyUtilization = 100.0
+        } else {
+            let todaySessions = sessions.filter { calendar.isDateInToday($0.updatedAt) }.count
+            dailyUtilization = min(100.0, max(2.0, (Double(todaySessions) / 40.0) * 100.0))
+        }
 
         let secondaryWindow = AIQuotaWindow(
             id: "codex-daily",
             title: "This week",
             titleKo: "이번 주 한도",
-            subtitle: "Weekly allowance",
-            subtitleKo: "주간 쿼터 한도",
+            subtitle: config.isRateLimited ? "Limit exceeded" : "Weekly allowance",
+            subtitleKo: config.isRateLimited ? "한도 초과" : "주간 쿼터 한도",
             utilization: dailyUtilization,
-            resetsAt: nextMidnight,
+            resetsAt: config.isRateLimited ? sessionResetsAt : nextMidnight,
             totalLimitDesc: "Effort: \(config.reasoningEffort)"
         )
 

@@ -651,7 +651,9 @@ struct NotchiePanoramicHubView: View {
                 switch store.hubMode {
                 case .nook, .widgets:
                     nookThreeColumnDashboard
-                case .tray, .shots, .transform, .clips, .ai:
+                case .ai:
+                    aiIndependentNotchContainer
+                case .tray, .shots, .transform, .clips:
                     trayAndShotsUnifiedContainer
                 case .notes:
                     studioUnifiedContainer
@@ -702,8 +704,8 @@ struct NotchiePanoramicHubView: View {
                 }
 
                 primaryWingTabButton(
-                    title: "AI",
-                    systemImage: "sparkles.square.filled.on.square",
+                    title: text("AI Usage", "AI 사용량"),
+                    systemImage: "brain.head.profile",
                     isSelected: store.hubMode == .ai,
                     badgeCount: 0,
                     badgeIsAlert: false
@@ -848,6 +850,15 @@ struct NotchiePanoramicHubView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Independent AI Usage Notch Container
+
+    private var aiIndependentNotchContainer: some View {
+        VStack(spacing: 8) {
+            AIUsageNotchView()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
     // MARK: - Unified Tray + Screenshots Container
 
     private var trayAndShotsUnifiedContainer: some View {
@@ -887,15 +898,6 @@ struct NotchiePanoramicHubView: View {
                     isSelected: store.hubMode == .clips
                 ) {
                     store.hubMode = .clips
-                }
-
-                subModeSegmentButton(
-                    title: text("AI Usage", "AI 사용량"),
-                    icon: "sparkles",
-                    count: 0,
-                    isSelected: store.hubMode == .ai
-                ) {
-                    store.hubMode = .ai
                 }
 
                 Spacer()
@@ -947,17 +949,6 @@ struct NotchiePanoramicHubView: View {
                             SettingsWindowController.shared.showWindow()
                         }
                     )
-                        .padding(8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.045))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
-                                )
-                        )
-                case .ai:
-                    AIUsageNotchView()
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)

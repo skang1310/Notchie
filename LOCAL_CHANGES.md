@@ -1,19 +1,22 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **Side-by-Side Codenotch Cards & Active Session Tracker (Claude Code, OpenAI Codex & Google Gemini) (2026-10-29 v36)**:
-   - Redesigned Notch AI Usage view to match the exact Codenotch side-by-side card UI:
-     - **Side-by-Side Multi-Provider Grid**: Displays active providers (Claude Code, OpenAI Codex, Google Gemini) in sleek parallel cards with horizontal scrolling and fast provider filtering (`All / 전체`, `Claude`, `Codex`, `Gemini`).
-     - **Live Running Session Indicator (`지금 어떤 세션이 돌아가고 있는지`)**:
-       - Each card features a dedicated active session row right below the header:
-         - Vibrant pulsating live dot + `[실행 중] / [Active]` badge when an active task is running.
-         - Displays clean active project / session thread title (e.g. `DynamicNotch`, `Droppy UI/UX 적용`, `App Icon Size Adjustment`).
-         - Displays relative timestamp of last activity (`2 min ago`, `25 min ago`, `방금 전`, `5분 전`).
-     - **Codenotch Quota Bar Rows**:
-       - **5 Hours (`5시간 세션`)**: Progress bar filled to exact % used with clean rounded capsule, followed by `Resets 11:01 AM · in 1 hr 29 min` (or `11:01 AM 리셋 · 1시간 29분 후`, or `한도 전체 사용 가능 · 즉시 사용 가능`).
-       - **This week (`이번 주`)**: Progress bar filled to exact % used with `Resets Thu 2:31 PM` (or `목 오후 2:31 리셋`).
-       - **Tier / Plan Badges**: `Max 5x`, `Plus`, `Advanced` in subtle pill tags matching observed Codenotch design.
-     - Accurate local ingestion from `~/.claude/projects/*/*.jsonl`, `~/.codex/session_index.jsonl`, and `~/.gemini/antigravity/conversation_summaries.db` / `transcript.jsonl`.
-     - 309 unit tests passed; Release build installed and running at `/Applications/DynamicNotch.app` (PID 13221, UUID `E2AC71A6-F335-3ED9-A7F1-5C2CE35275BC`).
+1. **Independent AI Usage Notch Tab, Official Product Logos & Precise Codex Rate-Limit Exhaustion Tracking (2026-10-29 v37)**:
+   - **Independent Primary Notch Tab (`별도 독립 노치 탭 분리`)**:
+     - Removed AI Usage from the Tray secondary sub-mode segmented bar (`trayAndShotsUnifiedContainer`).
+     - Promoted AI Usage to an independent, top-level primary tab in the Notch Wing bar (`topWingHeaderBar`) with `brain.head.profile` icon and dedicated `aiIndependentNotchContainer` rendering full-width side-by-side cards.
+   - **Official Product Logos (`공식 제품 로고 탑재`)**:
+     - Extracted and bundled official high-resolution application icons for **Claude** (Anthropic), **OpenAI Codex / ChatGPT**, and **Google Gemini** into `DynamicNotch/Resources/Assets.xcassets/icons/`:
+       - `claudeLogo.imageset` (1x, 2x, 3x)
+       - `codexLogo.imageset` (1x, 2x, 3x)
+       - `geminiLogo.imageset` (1x, 2x, 3x)
+     - Implemented `AIProductLogoView` in `AIUsageNotchView.swift` rendering crisp native assets with smooth squircle corner curvature and graceful SF Symbol fallbacks. Displayed in both provider filter pills and card headers.
+   - **Precise Codex Quota Exhaustion & Rate-Limit Detection (`Codex 할당량 소진 감지 및 리셋 카운트다운`)**:
+     - Resolved issue where exhausted Codex quota previously showed as 100% available due to stale `session_index.jsonl`.
+     - Added native SQLite reader for `~/.codex/thread_history_1.sqlite` querying `thread_turns.error_json` for `usageLimitExceeded` and parsing the backend's explicit reset time string (e.g. `try again at Oct 30th, 2026 1:15 AM`).
+     - Accurately reports 100% quota utilization, displays `"소진 / Max"` badge, red progress bar, `"할당량 소진됨"` subtitle, and real-time countdown to exact reset (e.g. `1:15 AM 리셋 · 1시간 28분 후 (한도 소진)`).
+   - **Side-by-Side Codenotch Cards & Active Session Tracker (Claude Code, OpenAI Codex & Google Gemini)**:
+     - Side-by-side multi-provider grid with live pulsating indicator, active session/thread titles, 5-hour rolling session bars, and weekly quota bars.
+   - 309 unit tests passed; Release build installed and running at `/Applications/DynamicNotch.app` (PID 15841, UUID `7D63F14D-FD95-33C9-BB78-D1228A3D78A6`).
 
 2. **Fluid Dynamic Island Motion & Apple Spring Physics (2026-10-29 v33)**:
    - Added `.fluid` animation preset to `NotchAnimationPreset` and `NotchAnimations`:

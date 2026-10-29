@@ -27,12 +27,12 @@ public struct AIUsageNotchView: View {
             }
         }
 
-        func iconName() -> String {
+        func provider() -> AIProviderType? {
             switch self {
-            case .all: return "square.grid.2x2"
-            case .claude: return "sparkles"
-            case .codex: return "terminal.fill"
-            case .gemini: return "wand.and.stars"
+            case .all: return nil
+            case .claude: return .claudeCode
+            case .codex: return .codex
+            case .gemini: return .gemini
             }
         }
     }
@@ -77,10 +77,14 @@ public struct AIUsageNotchView: View {
                             selectedFilter = filter
                         }
                     } label: {
-                        HStack(spacing: 3.5) {
-                            Image(systemName: filter.iconName())
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(filterColor(filter, isSelected: isSelected))
+                        HStack(spacing: 4) {
+                            if let prov = filter.provider() {
+                                AIProductLogoView(provider: prov, size: 12)
+                            } else {
+                                Image(systemName: "square.grid.2x2")
+                                    .font(.system(size: 8.5, weight: .semibold))
+                                    .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.6))
+                            }
 
                             Text(filter.title(isKorean: isKorean))
                                 .font(.system(size: 10, weight: isSelected ? .semibold : .medium, design: .rounded))
@@ -193,15 +197,11 @@ public struct AIUsageNotchView: View {
     // MARK: - Codenotch Card View (Exact Match to User UI Reference)
 
     private func codenotchCard(summary: AIProviderUsageSummary) -> some View {
-        let accent = providerColor(summary.provider)
-
-        return VStack(alignment: .leading, spacing: 8) {
-            // Header Row: [Icon] Provider [TierBadge] ... TimeAgo
-            HStack(spacing: 5.5) {
-                // Provider Icon
-                Image(systemName: summary.provider.iconName)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(accent)
+        VStack(alignment: .leading, spacing: 8) {
+            // Header Row: [Product Logo] Provider [TierBadge] ... TimeAgo
+            HStack(spacing: 6) {
+                // Official Product Logo
+                AIProductLogoView(provider: summary.provider, size: 16)
 
                 // Provider Name
                 Text(summary.provider.displayName)
@@ -240,7 +240,7 @@ public struct AIUsageNotchView: View {
                         .truncationMode(.tail)
                 } else {
                     Text(isKorean ? "활성 세션 대기 중" : "No active session")
-                        .font(.system(size: 9, weight: .regular))
+                        .font(.system(size: 9.5, weight: .regular))
                         .foregroundStyle(.white.opacity(0.4))
                 }
 
@@ -295,7 +295,7 @@ public struct AIUsageNotchView: View {
                 .fill(Color.black.opacity(0.35))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.8)
+                        .strokeBorder(summary.primaryWindow.utilization >= 98.0 ? Color.red.opacity(0.4) : Color.white.opacity(0.08), lineWidth: 0.8)
                 )
         )
     }
@@ -309,6 +309,8 @@ public struct AIUsageNotchView: View {
         accentColor: Color
     ) -> some View {
         let clampedUtil = max(0.0, min(100.0, utilization))
+        let isLimitReached = clampedUtil >= 98.0
+        let barColor = isLimitReached ? Color.red.opacity(0.9) : accentColor
 
         return VStack(alignment: .leading, spacing: 3.5) {
             // Label & Percentage
@@ -319,9 +321,20 @@ public struct AIUsageNotchView: View {
 
                 Spacer()
 
-                Text(String(format: "%.0f%%", clampedUtil))
-                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                HStack(spacing: 3) {
+                    if isLimitReached {
+                        Text(isKorean ? "소진" : "Max")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(Color.red)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.red.opacity(0.15), in: Capsule())
+                    }
+
+                    Text(String(format: "%.0f%%", clampedUtil))
+                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(isLimitReached ? Color.red : Color.white)
+                }
             }
 
             // Horizontal Progress Bar
@@ -332,7 +345,7 @@ public struct AIUsageNotchView: View {
                         .frame(height: 4.5)
 
                     Capsule(style: .continuous)
-                        .fill(accentColor)
+                        .fill(barColor)
                         .frame(
                             width: max(clampedUtil > 0 ? 4.0 : 0.0, geo.size.width * CGFloat(clampedUtil / 100.0)),
                             height: 4.5
@@ -344,7 +357,7 @@ public struct AIUsageNotchView: View {
             // Reset Subtext: e.g. "Resets 11:01 AM · in 1 hr 29 min"
             Text(resetDetail)
                 .font(.system(size: 8.5, weight: .regular))
-                .foregroundStyle(.white.opacity(0.48))
+                .foregroundStyle(isLimitReached ? Color.yellow.opacity(0.8) : Color.white.opacity(0.48))
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
@@ -380,9 +393,7 @@ public struct AIUsageNotchView: View {
 
     private func emptyProviderView(for provider: AIProviderType) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: provider.iconName)
-                .font(.system(size: 22))
-                .foregroundStyle(providerColor(provider).opacity(0.7))
+            AIProductLogoView(provider: provider, size: 28)
 
             Text(String(format: text("%@ not detected", "%@가 감지되지 않았습니다"), provider.displayName))
                 .font(.system(size: 11, weight: .medium))
@@ -404,26 +415,6 @@ public struct AIUsageNotchView: View {
         )
     }
 
-    // MARK: - Colors & Helpers
-
-    private func providerColor(_ provider: AIProviderType) -> Color {
-        switch provider {
-        case .claudeCode: return Color.orange
-        case .codex: return Color.green
-        case .gemini: return Color.cyan
-        }
-    }
-
-    private func filterColor(_ filter: ProviderFilter, isSelected: Bool) -> Color {
-        guard isSelected else { return Color.white.opacity(0.6) }
-        switch filter {
-        case .all: return Color.white
-        case .claude: return Color.orange
-        case .codex: return Color.green
-        case .gemini: return Color.cyan
-        }
-    }
-
     private func openActiveDirectory() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let target: URL
@@ -443,5 +434,56 @@ public struct AIUsageNotchView: View {
         formatter.locale = Locale(identifier: isKorean ? "ko_KR" : "en_US")
         formatter.dateFormat = isKorean ? "a h:mm" : "h:mm a"
         return formatter.string(from: date)
+    }
+}
+
+// MARK: - Official AI Product Logo View
+
+public struct AIProductLogoView: View {
+    public let provider: AIProviderType
+    public let size: CGFloat
+
+    public init(provider: AIProviderType, size: CGFloat = 16) {
+        self.provider = provider
+        self.size = size
+    }
+
+    public var body: some View {
+        Group {
+            switch provider {
+            case .claudeCode:
+                if let nsImage = NSImage(named: "claudeLogo") {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: size * 0.75, weight: .semibold))
+                        .foregroundStyle(Color.orange)
+                }
+            case .codex:
+                if let nsImage = NSImage(named: "codexLogo") {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else {
+                    Image(systemName: "terminal.fill")
+                        .font(.system(size: size * 0.75, weight: .semibold))
+                        .foregroundStyle(Color.green)
+                }
+            case .gemini:
+                if let nsImage = NSImage(named: "geminiLogo") {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: size * 0.75, weight: .semibold))
+                        .foregroundStyle(Color.cyan)
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
     }
 }

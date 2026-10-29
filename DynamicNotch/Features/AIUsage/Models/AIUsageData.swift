@@ -182,10 +182,12 @@ public struct AIQuotaWindow: Identifiable, Codable, Equatable, Sendable {
 
             if isKorean {
                 let countdownPart = hours > 0 ? "\(hours)시간 \(minutes)분 후" : "\(max(1, minutes))분 후"
-                return "\(exactLabel) 리셋 · \(countdownPart)"
+                let suffix = utilization >= 100.0 ? " (한도 소진)" : ""
+                return "\(exactLabel) 리셋 · \(countdownPart)\(suffix)"
             } else {
                 let countdownPart = hours > 0 ? "in \(hours) hr \(minutes) min" : "in \(max(1, minutes)) min"
-                return "Resets \(exactLabel) · \(countdownPart)"
+                let suffix = utilization >= 100.0 ? " (Limit Reached)" : ""
+                return "Resets \(exactLabel) · \(countdownPart)\(suffix)"
             }
         } else {
             return isKorean ? "\(exactLabel) 리셋" : "Resets \(exactLabel)"
@@ -445,17 +447,23 @@ public struct CodexConfigData: Equatable, Sendable {
     public var reasoningEffort: String
     public var sandboxMode: String
     public var clientVersion: String
+    public var isRateLimited: Bool
+    public var rateLimitResetsAt: Date?
 
     public init(
         model: String = "gpt-6.1-sol",
         reasoningEffort: String = "low",
         sandboxMode: String = "danger-full-access",
-        clientVersion: String = "0.165.0"
+        clientVersion: String = "0.165.0",
+        isRateLimited: Bool = false,
+        rateLimitResetsAt: Date? = nil
     ) {
         self.model = model
         self.reasoningEffort = reasoningEffort
         self.sandboxMode = sandboxMode
         self.clientVersion = clientVersion
+        self.isRateLimited = isRateLimited
+        self.rateLimitResetsAt = rateLimitResetsAt
     }
 }
 

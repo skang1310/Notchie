@@ -298,6 +298,24 @@ final class AIUsageTests: XCTestCase {
         XCTAssertEqual(codexSummary.activeSessionTitle, "Codex thread")
         XCTAssertTrue(codexSummary.isSessionActive)
 
+        // Test rate limit exhaustion handling
+        let rateLimitReset = now.addingTimeInterval(3600)
+        let rateLimitedConfig = CodexConfigData(
+            model: "gpt-6.1-sol",
+            reasoningEffort: "low",
+            sandboxMode: "danger-full-access",
+            clientVersion: "0.165.0",
+            isRateLimited: true,
+            rateLimitResetsAt: rateLimitReset
+        )
+        let rateLimitedSummary = AIUsageService.computeCodexSummary(sessions: [codexSession], config: rateLimitedConfig, now: now)
+        XCTAssertEqual(rateLimitedSummary.primaryWindow.utilization, 100.0)
+        XCTAssertEqual(rateLimitedSummary.primaryWindow.remainingPercentage, 0.0)
+        XCTAssertEqual(rateLimitedSummary.primaryWindow.subtitleKo, "할당량 소진됨")
+        XCTAssertEqual(rateLimitedSummary.secondaryWindow?.utilization, 100.0)
+        XCTAssertTrue(rateLimitedSummary.primaryWindow.formattedResetDetail(isKorean: true, now: now).contains("한도 소진"))
+        XCTAssertTrue(rateLimitedSummary.primaryWindow.formattedResetDetail(isKorean: false, now: now).contains("Limit Reached"))
+
         let geminiSession = GeminiSessionEntry(id: "g1", title: "Gemini agent", stepCount: 15, lastModified: now.addingTimeInterval(-900))
         let geminiSummary = AIUsageService.computeGeminiSummary(sessions: [geminiSession], modelName: "gemini-2.5-pro", now: now)
         XCTAssertEqual(geminiSummary.provider, .gemini)
