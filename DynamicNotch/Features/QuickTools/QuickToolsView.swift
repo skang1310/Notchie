@@ -12,6 +12,15 @@ struct QuickToolsView: View {
     @ObservedObject var store: QuickToolsStore
     var inNotch = false
     @State private var showingTabCustomizer = false
+    @State private var localTraySection: NotchHubMode?
+
+    private var effectiveTraySection: NotchHubMode {
+        if let local = localTraySection { return local }
+        if store.selectedTool == "snippets" || store.hubMode == .clips { return .clips }
+        if store.selectedTool == "transform" || store.hubMode == .transform { return .transform }
+        if store.hubMode == .shots { return .shots }
+        return .tray
+    }
 
     private var accentColor: Color {
         ApplicationSettingsStore.currentCustomAccentColor()
@@ -36,24 +45,197 @@ struct QuickToolsView: View {
     }
 
     private var settingsToolsBody: some View {
-        VStack(spacing: 10) {
-            notchNookTabBar
-            customizableTabsCard
-            QuickToolDetailSwitcherView(store: store)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 12) {
+            traySettingsTabBar
+
+            Group {
+                switch effectiveTraySection {
+                case .tray:
+                    trayFilesSettingsCard
+                case .shots:
+                    trayShotsSettingsCard
+                case .transform:
+                    trayTransformSettingsCard
+                case .clips:
+                    trayClipboardSettingsCard
+                default:
+                    trayFilesSettingsCard
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             HStack {
-                Button("settings.tools.openNotch") {
-                    store.hubMode = .tools
+                Button {
+                    store.hubMode = effectiveTraySection
                     NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
+                } label: {
+                    Label(L10n.app("settings.tools.openNotch"), systemImage: "tray.full.fill")
                 }
                 .accessibilityIdentifier("settings.tools.openNotch")
+
                 Spacer()
             }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .frame(minHeight: 235)
+        .frame(minHeight: 280)
+    }
+
+    private var traySettingsTabBar: some View {
+        HStack(spacing: 8) {
+            traySectionButton(
+                title: text("Files", "파일 보관함"),
+                systemImage: "tray.full.fill",
+                mode: .tray,
+                badgeCount: store.fileTrayViewModel?.count ?? 0
+            )
+
+            traySectionButton(
+                title: text("Captures", "스크린샷 기록"),
+                systemImage: "camera.viewfinder",
+                mode: .shots,
+                badgeCount: store.screenshotViewModel?.history.count ?? 0
+            )
+
+            traySectionButton(
+                title: text("Transform", "파일 변환"),
+                systemImage: "wand.and.stars",
+                mode: .transform,
+                badgeCount: 0
+            )
+
+            traySectionButton(
+                title: text("Clipboard", "클립보드"),
+                systemImage: "doc.on.clipboard.fill",
+                mode: .clips,
+                badgeCount: ProductivityStorage.shared.document.snippets.count
+            )
+
+            Spacer()
+        }
+    }
+
+    private func traySectionButton(
+        title: String,
+        systemImage: String,
+        mode: NotchHubMode,
+        badgeCount: Int
+    ) -> some View {
+        let isSelected = effectiveTraySection == mode
+        return Button {
+            withAnimation(.snappy(duration: 0.2)) {
+                localTraySection = mode
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 11.5, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium))
+                    .lineLimit(1)
+                if badgeCount > 0 {
+                    Text("\(badgeCount)")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 4.5)
+                        .padding(.vertical, 1)
+                        .background(isSelected ? accentColor : Color.primary.opacity(0.12), in: Capsule())
+                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(isSelected ? accentColor.opacity(0.24) : Color.primary.opacity(0.06))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(isSelected ? accentColor.opacity(0.75) : Color.clear, lineWidth: 1)
+            )
+            .foregroundStyle(isSelected ? accentColor : .primary.opacity(0.85))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var trayFilesSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(text("Drag & Drop File Tray", "드래그 앤 드롭 파일 보관함"))
+                    .font(.headline)
+                Text(text("Drag files to the notch to temporarily stash them. Drag them out to any application whenever you need them.", "원하는 파일이나 폴더를 노치 영역으로 드래그하여 임시로 보관하고, 언제든지 다른 앱이나 위치로 다시 드래그하여 사용할 수 있습니다."))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 12) {
+                Label {
+                    Text(text("Stored Items: \(store.fileTrayViewModel?.count ?? 0)", "보관된 항목: \(store.fileTrayViewModel?.count ?? 0)개"))
+                        .font(.subheadline.weight(.medium))
+                } icon: {
+                    Image(systemName: "tray.full.fill")
+                        .foregroundStyle(accentColor)
+                }
+
+                Spacer()
+
+                if (store.fileTrayViewModel?.count ?? 0) > 0 {
+                    Button(role: .destructive) {
+                        store.fileTrayViewModel?.clear()
+                    } label: {
+                        Label(text("Clear Tray", "보관함 비우기"), systemImage: "trash")
+                    }
+                    .controlSize(.small)
+                }
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+
+            Spacer()
+        }
+    }
+
+    private var trayShotsSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(text("Screenshot History", "스크린샷 기록"))
+                    .font(.headline)
+                Text(text("Screen captures taken through Notchie are automatically organized in your Notch Tray for instant drag-out and clipboard copy.", "Notchie를 통해 캡처된 스크린샷은 트레이에 모아두어 즉시 다른 앱으로 드래그하거나 클립보드로 복사할 수 있습니다."))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 12) {
+                Label {
+                    Text(text("Captured Shots: \(store.screenshotViewModel?.history.count ?? 0)", "저장된 스크린샷: \(store.screenshotViewModel?.history.count ?? 0)개"))
+                        .font(.subheadline.weight(.medium))
+                } icon: {
+                    Image(systemName: "camera.viewfinder")
+                        .foregroundStyle(accentColor)
+                }
+
+                Spacer()
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+
+            Spacer()
+        }
+    }
+
+    private var trayTransformSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ShelfTransformView()
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var trayClipboardSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ClipboardSnippetsView(onOpenNotes: { localTraySection = .tray })
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var notchNookTabBar: some View {
@@ -434,13 +616,11 @@ struct NotchiePanoramicHubView: View {
 
             Group {
                 switch store.hubMode {
-                case .nook:
+                case .nook, .widgets:
                     nookThreeColumnDashboard
-                case .widgets:
-                    nookThreeColumnDashboard
-                case .tray, .shots:
+                case .tray, .shots, .transform, .clips:
                     trayAndShotsUnifiedContainer
-                case .clips, .notes:
+                case .notes:
                     studioUnifiedContainer
                 case .tools:
                     panoramicToolsBrowser
@@ -475,14 +655,15 @@ struct NotchiePanoramicHubView: View {
                     store.hubMode = .nook
                 }
 
+                let isTrayActive = store.hubMode == .tray || store.hubMode == .shots || store.hubMode == .transform || store.hubMode == .clips
                 primaryWingTabButton(
                     title: text("Tray", "트레이"),
                     systemImage: "tray.full.fill",
-                    isSelected: store.hubMode == .tray || store.hubMode == .shots,
-                    badgeCount: (store.fileTrayViewModel?.count ?? 0) + (store.screenshotViewModel?.history.count ?? 0),
+                    isSelected: isTrayActive,
+                    badgeCount: (store.fileTrayViewModel?.count ?? 0) + (store.screenshotViewModel?.history.count ?? 0) + ProductivityStorage.shared.document.snippets.count,
                     badgeIsAlert: false
                 ) {
-                    if store.hubMode != .tray && store.hubMode != .shots {
+                    if !isTrayActive {
                         store.hubMode = .tray
                     }
                 }
@@ -493,19 +674,9 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: Tools Tab Attached Directly Next to App Icon Utility Rail
+            // Right Wing: Apple Glass Settings Button
             HStack(spacing: 5) {
                 Spacer(minLength: 0)
-
-                primaryWingTabButton(
-                    title: text("Tools", "도구"),
-                    systemImage: "wrench.and.screwdriver.fill",
-                    isSelected: store.hubMode == .tools,
-                    badgeCount: (store.focus.timer.isActive ? 1 : 0),
-                    badgeIsAlert: store.focus.timer.isActive
-                ) {
-                    store.hubMode = .tools
-                }
 
                 // Apple Glass Settings Button
                 Button {
@@ -634,6 +805,24 @@ struct NotchiePanoramicHubView: View {
                     store.hubMode = .shots
                 }
 
+                subModeSegmentButton(
+                    title: text("Transform", "파일 변환"),
+                    icon: "wand.and.stars",
+                    count: 0,
+                    isSelected: store.hubMode == .transform
+                ) {
+                    store.hubMode = .transform
+                }
+
+                subModeSegmentButton(
+                    title: text("Clipboard", "클립보드"),
+                    icon: "doc.on.clipboard.fill",
+                    count: ProductivityStorage.shared.document.snippets.count,
+                    isSelected: store.hubMode == .clips
+                ) {
+                    store.hubMode = .clips
+                }
+
                 Spacer()
 
                 Button {
@@ -656,19 +845,45 @@ struct NotchiePanoramicHubView: View {
                 .buttonStyle(.plain)
             }
 
-            if store.hubMode == .shots {
-                NotchieScreenshotHubView(
-                    screenshotViewModel: store.screenshotViewModel,
-                    fileTrayViewModel: store.fileTrayViewModel,
-                    accentColor: accentColor
-                )
-            } else {
-                NotchiePanoramicTraySection(
-                    fileTrayViewModel: store.fileTrayViewModel,
-                    mediaSettings: resolvedMediaSettings,
-                    accentColor: accentColor
-                )
+            Group {
+                switch store.hubMode {
+                case .shots:
+                    NotchieScreenshotHubView(
+                        screenshotViewModel: store.screenshotViewModel,
+                        fileTrayViewModel: store.fileTrayViewModel,
+                        accentColor: accentColor
+                    )
+                case .transform:
+                    ShelfTransformView()
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.045))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
+                                )
+                        )
+                case .clips:
+                    ClipboardSnippetsView(onOpenNotes: { store.hubMode = .tray })
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.045))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
+                                )
+                        )
+                default:
+                    NotchiePanoramicTraySection(
+                        fileTrayViewModel: store.fileTrayViewModel,
+                        mediaSettings: resolvedMediaSettings,
+                        accentColor: accentColor
+                    )
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -806,7 +1021,9 @@ struct NotchiePanoramicHubView: View {
                 calendarViewModel: store.calendarViewModel,
                 selectedDayOffset: $selectedDayOffset,
                 accentColor: accentColor,
-                onSwitchToTools: {},
+                onSwitchToTools: {
+                    store.hubMode = .tray
+                },
                 onSwitchToTasks: {},
                 compactHome: true
             )
@@ -1815,17 +2032,17 @@ private struct NotchieCalendarScheduleColumn: View {
                     .fill(Color(red: 1.0, green: 0.78, blue: 0.32))
                     .frame(width: 3, height: 22)
 
-                Image(systemName: "wrench.and.screwdriver.fill")
+                Image(systemName: "tray.full.fill")
                     .font(.system(size: 10.5, weight: .semibold))
                     .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.32))
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(text("Quick Tools Hub", "생산성 도구함"))
+                    Text(text("Tray & Clipboard Hub", "트레이 및 클립보드"))
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
-                    Text(text("Timer · Calculator · Quick Notes · Dev", "타이머 · 계산기 · 빠른 메모 · 개발 도구"))
+                    Text(text("File Tray · Captures · Transform · Clipboard", "파일 보관함 · 스크린샷 · 파일 변환 · 클립보드"))
                         .font(.system(size: 8.5, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.55))
                         .lineLimit(1)

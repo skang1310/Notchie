@@ -11,6 +11,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
     case notes
     case tools
     case widgets
+    case transform
 
     var id: String { rawValue }
 
@@ -23,6 +24,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         case .notes: return "note.text"
         case .widgets: return "square.grid.2x2.fill"
         case .tools: return "square.grid.2x2.fill"
+        case .transform: return "wand.and.stars"
         }
     }
 
@@ -30,7 +32,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         switch self {
         case .nook, .tray, .widgets:
             return false
-        case .shots, .clips, .notes, .tools:
+        case .shots, .clips, .notes, .tools, .transform:
             return true
         }
     }
@@ -194,6 +196,7 @@ final class QuickToolsStore: ObservableObject {
 
     func shelfExtraHeight(isIsland: Bool) -> CGFloat {
         if hubMode == .clips || (hubMode == .tools && selectedTool == "snippets") { return isIsland ? 384 : 394 }
+        if hubMode == .transform || (hubMode == .tools && selectedTool == "transform") { return isIsland ? 220 : 230 }
         return hubMode.requiresExtendedHeight ? (isIsland ? 200 : 210) : (isIsland ? 164 : 172)
     }
 

@@ -279,13 +279,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quick Tools"
+            "value": "Tray Settings"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "빠른 도구"
+            "value": "트레이 설정"
           }
         }
       }
@@ -296,13 +296,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Local notes, stopwatch, Keep Awake and color picker."
+            "value": "File tray, screenshot history, file transform, and clipboard."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로컬 메모, 스톱워치, 잠자기 방지, 색상 추출"
+            "value": "파일 보관함, 스크린샷 기록, 파일 변환 및 클립보드 히스토리 관리."
           }
         }
       }
@@ -432,13 +432,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open tools in the notch"
+            "value": "Open Tray in Notch"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "노치에서 도구 열기"
+            "value": "노치에서 트레이 열기"
           }
         }
       }

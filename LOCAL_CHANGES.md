@@ -201,3 +201,14 @@ Delivery integrity repair: the pre-existing icon controller used `NSWorkspace.se
 - Preserve retry budget on unknown lock state, distinguish unconfirmed unlock from password rejection, ignore camera contention for face retry counting, recheck cancellation after inference, clear inherited shortcut modifiers in synthetic key events.
 - Reduce polling/cooldown delays and raise frame cadence to 15 fps; retain strict thresholds, anti-spoof pipeline, two consecutive accepted frames, camera warmup and one password attempt per lock episode.
 - No camera permission, enrollment, password replacement, login launch or authentication enablement performed automatically. Physical Mac unlock timing requires the user's saved-password recovery and manual lock test.
+
+## Notchie-TrayHub-20261029-v28 — Tray & Tools unification
+- **Notch Top Wing Header Bar Cleanup**: Eliminated redundant "Tools" (`도구`) wing tab from the Notch header bar, yielding an uncluttered, camera-centered layout flanking the physical camera cutout: `Nook` & `Tray` on the left wing, and Apple Glass Settings gear button (`⚙`) on the right wing.
+- **Unified 4-Segment Tray Drawer**: Expanded the Notch Tray into a full-featured 4-segment workspace:
+  1. `Files` (`파일 보관함` / `tray.full.fill`): Drop files or folders onto the notch to temporarily stash and drag out anywhere.
+  2. `Captures` (`스크린샷 기록` / `camera.viewfinder`): Auto-organized screenshot captures with quick clipboard copy and drag out.
+  3. `Transform` (`파일 변환` / `wand.and.stars`): Native on-device PDF merger, background cutout remover, and OCR text extractor.
+  4. `Clipboard` (`클립보드` / `doc.on.clipboard.fill`): Full local clipboard snippet history with live search, favorites, preview, and copy.
+- **Settings Rebranding**: Renamed "Quick Tools Settings" (`빠른 도구 설정`) to "Tray Settings" (`트레이 설정`) across sidebar, headers, and localized strings (`Localizable.xcstrings`). Provided a 4-segment tabbed settings experience with direct "Open Tray in Notch" (`settings.tools.openNotch`) launch.
+- **Dynamic Geometry**: Added height calculation for `.transform` and `.clips` modes in `shelfExtraHeight(isIsland:)` ensuring seamless presentation geometry across notch and Dynamic Island layouts.
+- **Verification**: 292/292 DynamicNotchTests passed; Release build succeeded with 0 warnings; installed locally to `/Applications/DynamicNotch.app` and runtime identity verified (PID 51376, UUID `E2A5C1EC-E5E0-363A-A497-45E6BFFC09B5`, codesign verified).

@@ -221,7 +221,7 @@ private enum SettingsSectionCatalog {
         case .privacy:
             return .init(sidebarGroup: .application, titleKey: "settings.security.title", fallbackTitle: "Privacy & Security", subtitleKey: "settings.security.subtitle", fallbackSubtitle: "Permissions and optional network access.", searchKeywords: ["privacy", "security", "network", "permissions", "개인정보", "보안"], systemImage: "hand.raised.fill", imageName: nil, tint: .green, resetGroup: nil)
         case .quickTools:
-            return .init(sidebarGroup: .application, titleKey: "settings.tools.title", fallbackTitle: "Quick Tools", subtitleKey: "settings.tools.subtitle", fallbackSubtitle: "Local notes, stopwatch, Keep Awake and color picker.", searchKeywords: ["notes", "stopwatch", "awake", "color", "메모", "스톱워치", "색상"], systemImage: "square.grid.2x2.fill", imageName: nil, tint: .mint, resetGroup: nil)
+            return .init(sidebarGroup: .application, titleKey: "settings.tools.title", fallbackTitle: "Tray Settings", subtitleKey: "settings.tools.subtitle", fallbackSubtitle: "File tray, screenshot history, file transform, and clipboard.", searchKeywords: ["tray", "files", "captures", "transform", "clipboard", "트레이", "보관함", "스크린샷", "변환", "클립보드"], systemImage: "tray.full.fill", imageName: nil, tint: .teal, resetGroup: nil)
         case .general:
             return .init(
                 sidebarGroup: .application,
