@@ -13,6 +13,7 @@ struct NotchSettingsView: View {
 
     var body: some View {
         SettingsPageScrollView {
+            animationCard
             appearanceCard
             otherSettings
         }
@@ -23,6 +24,22 @@ struct NotchSettingsView: View {
         }
     }
     
+    private var animationCard: some View {
+        SettingsCard(verbatimTitle: privacyText("Motion & Dynamic Island Physics", "모션 및 다이내믹 아일랜드 물리 애니메이션"), spacing: 12) {
+            Picker(privacyText("Animation Style", "애니메이션 스타일"), selection: $applicationSettings.notchAnimationPreset) {
+                ForEach(NotchAnimationPreset.allCases) { preset in
+                    Label(preset.title, systemImage: preset.symbolName).tag(preset)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.notch.animationPreset")
+
+            Text(applicationSettings.notchAnimationPreset.description)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var appearanceCard: some View {
         SettingsCard() {
 

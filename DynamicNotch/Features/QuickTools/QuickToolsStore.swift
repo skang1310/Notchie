@@ -44,6 +44,7 @@ struct QuickToolTab: Identifiable, Equatable {
     let systemImage: String
 
     static let allTabs: [QuickToolTab] = [
+        QuickToolTab(id: "ai", titleKey: "shelf.tool.ai", systemImage: "sparkles"),
         QuickToolTab(id: "transform", titleKey: "shelf.tool.transform", systemImage: "wand.and.stars"),
         QuickToolTab(id: "teleprompter", titleKey: "shelf.tool.teleprompter", systemImage: "text.alignleft"),
         QuickToolTab(id: "emoji", titleKey: "shelf.tool.emoji", systemImage: "face.smiling"),
@@ -67,7 +68,7 @@ struct QuickToolTab: Identifiable, Equatable {
     ]
 
     static let defaultEnabledIDs: [String] = [
-        "notes", "snippets", "tasks", "focus", "stopwatch", "awake", "color", "calculator"
+        "ai", "notes", "snippets", "tasks", "focus", "stopwatch", "awake", "color", "calculator"
     ]
 }
 
@@ -196,6 +197,7 @@ final class QuickToolsStore: ObservableObject {
 
     func shelfExtraHeight(isIsland: Bool) -> CGFloat {
         if hubMode == .clips || (hubMode == .tools && selectedTool == "snippets") { return isIsland ? 384 : 394 }
+        if hubMode == .tools && selectedTool == "ai" { return isIsland ? 220 : 230 }
         if hubMode == .transform || (hubMode == .tools && selectedTool == "transform") { return isIsland ? 220 : 230 }
         return hubMode.requiresExtendedHeight ? (isIsland ? 200 : 210) : (isIsland ? 164 : 172)
     }

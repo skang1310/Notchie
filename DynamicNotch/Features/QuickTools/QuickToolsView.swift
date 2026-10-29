@@ -443,6 +443,7 @@ struct QuickToolDetailSwitcherView: View {
     var body: some View {
         Group {
             switch store.selectedTool {
+            case "ai": AIUsageNotchView()
             case "transform": ShelfTransformView()
             case "teleprompter": TeleprompterView(controller: store.teleprompter)
             case "emoji": ShelfEmojiView()

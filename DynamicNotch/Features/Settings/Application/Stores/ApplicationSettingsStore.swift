@@ -68,6 +68,9 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
     @StoredDefault(key: GeneralSettingsStorage.Keys.notchBackgroundStyle, defaultValue: .black)
     var notchBackgroundStyle: NotchBackgroundStyle
 
+    @StoredDefault(key: GeneralSettingsStorage.Keys.notchAnimationPreset, defaultValue: .fluid)
+    var notchAnimationPreset: NotchAnimationPreset
+
     @Published var notchWidth: Int {
         didSet {
             let clamped = min(20, max(-20, notchWidth))
@@ -364,6 +367,9 @@ final class ApplicationSettingsStore: SettingsStoreBase, NotchSettingsProviding 
         notchStrokeOpacity = defaultDouble(for: GeneralSettingsStorage.Keys.notchStrokeOpacity)
         notchBackgroundStyle = NotchBackgroundStyle.resolved(
             defaultString(for: GeneralSettingsStorage.Keys.notchBackgroundStyle)
+        )
+        notchAnimationPreset = NotchAnimationPreset.resolved(
+            defaultString(for: GeneralSettingsStorage.Keys.notchAnimationPreset)
         )
         notchWidth = defaultInt(for: GeneralSettingsStorage.Keys.notchWidth)
         notchHeight = defaultInt(for: GeneralSettingsStorage.Keys.notchHeight)

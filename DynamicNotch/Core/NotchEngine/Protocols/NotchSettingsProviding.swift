@@ -17,10 +17,12 @@ protocol NotchSettingsProviding: AnyObject {
     var isNotchHoverHapticEnabled: Bool { get }
     var isCloseAtFocusLiveActivityEnabled: Bool { get }
     var isIdleNotchHoverMenuEnabled: Bool { get }
+    var notchAnimationPreset: NotchAnimationPreset { get }
 }
 
 // Existing providers retain their previous timing until they opt into a separate delay.
 extension NotchSettingsProviding {
     var notchHoverExpandDelay: TimeInterval { notchPressHoldDuration }
     var isIdleNotchHoverMenuEnabled: Bool { false }
+    var notchAnimationPreset: NotchAnimationPreset { .fluid }
 }

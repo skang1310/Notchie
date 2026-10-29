@@ -47,37 +47,74 @@ struct NotchAnimations {
     let queuePacingDelay: TimeInterval
 
     // MARK: - Presets
-    static let `default`: Self = .balanced
+    static let `default`: Self = .fluid
+
+    static let fluid: Self = {
+        // Authentic Apple Dynamic Island physics:
+        // Response: 0.38s (quick snappy anticipation)
+        // Damping: 0.68 (controlled organic bounce, fluid liquid feel)
+        // Blend: 0.15s (seamless gesture handoff and morphing)
+        let damping: Double = 0.68
+        let expandDamping: Double = 0.72
+        let baseResponse: Double = 0.38
+        let blend: Double = 0.15
+
+        return Self(
+            updateContent: .spring(response: baseResponse, dampingFraction: 0.78, blendDuration: blend),
+            hideContent: .spring(response: 0.32, dampingFraction: 0.82, blendDuration: blend),
+            showContent: .spring(response: baseResponse, dampingFraction: damping, blendDuration: blend),
+            compactContentTransition: .spring(response: baseResponse, dampingFraction: damping, blendDuration: blend),
+
+            expandLiveActivity: .spring(response: baseResponse, dampingFraction: expandDamping, blendDuration: blend),
+            expandedLiveActivityContentTransition: .spring(response: baseResponse, dampingFraction: expandDamping, blendDuration: blend),
+
+            collapseLiveActivity: .spring(response: 0.32, dampingFraction: 0.80, blendDuration: 0.12),
+            collapsedLiveActivityContentTransition: .spring(response: baseResponse, dampingFraction: 0.80, blendDuration: blend),
+
+            stretchReset: .spring(response: 0.35, dampingFraction: 0.62, blendDuration: 0.10),
+            focusDismissBounce: .spring(response: 0.35, dampingFraction: 0.62, blendDuration: 0.10),
+            strokeVisibility: .spring(response: baseResponse, blendDuration: blend),
+            notchVisibility: .spring(response: baseResponse, blendDuration: blend),
+
+            transitionDelay: 0.22,
+            queuePacingDelay: 0.20
+        )
+    }()
 
     static let balanced: Self = {
         let damping: Double = 0.70
         let expandDamping: Double = 0.90
         let baseResponse: Double = 0.47
         let blend: Double = 1.0
-        
+
         return Self(
             updateContent: .spring(response: baseResponse, dampingFraction: 0.90, blendDuration: 0.15),
             hideContent: .spring(response: baseResponse, dampingFraction: damping, blendDuration: blend),
             showContent: .spring(response: baseResponse, dampingFraction: damping, blendDuration: blend),
             compactContentTransition: .spring(response: baseResponse, dampingFraction: damping, blendDuration: blend),
-            
+
             expandLiveActivity: .spring(response: baseResponse, dampingFraction: expandDamping, blendDuration: blend),
             expandedLiveActivityContentTransition: .spring(response: baseResponse, dampingFraction: expandDamping, blendDuration: blend),
-            
+
             collapseLiveActivity: .spring(response: 0.40, dampingFraction: 0.94, blendDuration: 0.15),
             collapsedLiveActivityContentTransition: .spring(response: baseResponse, blendDuration: blend),
-            
+
             stretchReset: .spring(response: baseResponse, blendDuration: blend),
             focusDismissBounce: .spring(response: baseResponse, blendDuration: blend),
             strokeVisibility: .spring(response: baseResponse, blendDuration: blend),
             notchVisibility: .spring(response: baseResponse, blendDuration: blend),
-            
+
             transitionDelay: 0.32,
             queuePacingDelay: 0.30
         )
     }()
 
-    static func preset(_ preset: NotchAnimationPreset = .balanced) -> Self {
-        .balanced
+    static func preset(_ preset: NotchAnimationPreset = .fluid) -> Self {
+        switch preset {
+        case .fluid:
+            return .fluid
+        case .balanced:
+            return .balanced
+        }
     }
 }

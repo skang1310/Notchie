@@ -332,8 +332,9 @@ final class NotchViewModel: ObservableObject {
             NSScreen.metrics(for: settings)
         }
         self.engine = engine ?? NotchEngine(
-            animations: {
-                animations ?? .balanced
+            animations: { [weak settings] in
+                if let animations { return animations }
+                return .preset(settings?.notchAnimationPreset ?? .fluid)
             },
             hideDelay: hideDelay,
             queueDelay: queueDelay

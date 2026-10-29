@@ -1,6 +1,26 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **Face ID-Grade Instant Face Recognition & Eye Openness Liveness (2026-10-29 v32)**:
+1. **AI Usage Tracker (Claude Code & OpenAI Codex) (2026-10-29 v33)**:
+   - Integrated a dedicated AI Usage Tracker into the Notch Quick Tools bar (`QuickToolTab.id == "ai"` with `sparkles` icon), placed right at the front of developer utilities.
+   - Designed and implemented `AIUsageService` and `AIUsageData` parsing real local data:
+     - **Claude Code**: reads `~/.claude/stats-cache.json` (`modelUsage`, `dailyActivity`, `totalSessions`, `totalMessages`, tokens, costs) and `~/.claude/history.jsonl` (recent prompts, projects, timestamps).
+     - **OpenAI Codex**: reads `~/.codex/session_index.jsonl` (active threads, updated timestamps), `~/.codex/config.toml` (model, reasoning effort, sandbox mode), and `version.json` / `models_cache.json`.
+   - Created `AIUsageNotchView` with Apple macOS Liquid Glass aesthetic:
+     - Segmented switcher between **Claude Code** and **OpenAI Codex**.
+     - Real-time metric cards (Total Tokens with format `47.7M`, Messages & Sessions count, Active Model pill with token breakdown).
+     - Recent session/prompt history list with project folder badge, relative timestamp, and one-click copy affordance.
+     - Direct Finder shortcut buttons to open `~/.claude` or `~/.codex`.
+   - Added automated unit test suite in `AIUsageTests.swift` covering stats decoding, token formatting, history parsing, mock service loading, and settings persistence.
+
+2. **Fluid Dynamic Island Motion & Apple Spring Physics (2026-10-29 v33)**:
+   - Added `.fluid` animation preset to `NotchAnimationPreset` and `NotchAnimations`:
+     - Incorporates Apple's organic spring physics (`response: 0.38`, `dampingFraction: 0.68`, `blendDuration: 0.15`), providing lively, bouncy squish on notch expansion, collapse, and notification morphing.
+     - Pacing delay optimized to `0.20s` and transition delay to `0.22s` for snappy, fluid interactions.
+   - Connected `NotchSettingsProviding` and `ApplicationSettingsStore` with `@StoredDefault(key: GeneralSettingsStorage.Keys.notchAnimationPreset, defaultValue: .fluid)`.
+   - Added interactive Motion & Dynamic Island Physics picker card in `NotchSettingsView` (`설정 - 노치`) with localized English & Korean titles and descriptions.
+   - Added unit tests verifying physics parameters, default values, and settings persistence.
+
+3. **Face ID-Grade Instant Face Recognition & Eye Openness Liveness (2026-10-29 v32)**:
    - Optimized face unlock pipeline latency from 3.5s+ down to ~0.2-0.3s (Face ID equivalent speed).
    - Integrated eye openness evaluation (Eye Openness Ratio via Vision landmarks) and camera gaze/pose attention (`isFacingCamera`, `isGazeDirect`) into `DetectedFace` and `FrameEvaluation`.
    - Enabled instant 1-frame match when live eye attention and enrolled ArcFace facial similarity are verified, removing artificial multi-frame delays while preserving anti-spoof security.

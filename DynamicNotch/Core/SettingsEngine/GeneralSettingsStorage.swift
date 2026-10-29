@@ -10,6 +10,7 @@ enum GeneralSettingsStorage {
         static let startupPermissionCheckEnabled = "settings.permissions.startupCheckEnabled"
 
         static let notchBackgroundStyle = "settings.notch.backgroundStyle"
+        static let notchAnimationPreset = "settings.notch.animationPreset"
         static let notchWidth = "notchWidth"
         static let notchHeight = "notchHeight"
         static let menuBarIcon = "isMenuBarIconVisible"
@@ -147,6 +148,7 @@ enum GeneralSettingsStorage {
         Keys.startupPermissionCheckEnabled: true,
 
         Keys.notchBackgroundStyle: NotchBackgroundStyle.black.rawValue,
+        Keys.notchAnimationPreset: NotchAnimationPreset.fluid.rawValue,
         Keys.notchWidth: 0,
         Keys.notchHeight: 0,
         Keys.menuBarIcon: true,
