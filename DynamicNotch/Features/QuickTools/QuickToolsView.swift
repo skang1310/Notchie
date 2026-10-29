@@ -18,6 +18,7 @@ struct QuickToolsView: View {
         if let local = localTraySection { return local }
         if store.selectedTool == "snippets" || store.hubMode == .clips { return .clips }
         if store.selectedTool == "transform" || store.hubMode == .transform { return .transform }
+        if store.selectedTool == "ai" || store.hubMode == .ai { return .ai }
         if store.hubMode == .shots { return .shots }
         return .tray
     }
@@ -58,6 +59,8 @@ struct QuickToolsView: View {
                     trayTransformSettingsCard
                 case .clips:
                     trayClipboardSettingsCard
+                case .ai:
+                    trayAISettingsCard
                 default:
                     trayFilesSettingsCard
                 }
@@ -123,6 +126,13 @@ struct QuickToolsView: View {
                 systemImage: "doc.on.clipboard.fill",
                 mode: .clips,
                 badgeCount: ProductivityStorage.shared.document.snippets.count
+            )
+
+            traySectionButton(
+                title: text("AI Usage", "AI 사용량"),
+                systemImage: "sparkles",
+                mode: .ai,
+                badgeCount: 0
             )
 
             Spacer()
@@ -247,6 +257,14 @@ struct QuickToolsView: View {
     private var trayClipboardSettingsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             ClipboardSnippetsView(onOpenNotes: { localTraySection = .tray }, maxItems: nil)
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var trayAISettingsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AIUsageNotchView()
         }
         .padding(10)
         .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
@@ -633,7 +651,7 @@ struct NotchiePanoramicHubView: View {
                 switch store.hubMode {
                 case .nook, .widgets:
                     nookThreeColumnDashboard
-                case .tray, .shots, .transform, .clips:
+                case .tray, .shots, .transform, .clips, .ai:
                     trayAndShotsUnifiedContainer
                 case .notes:
                     studioUnifiedContainer
@@ -681,6 +699,16 @@ struct NotchiePanoramicHubView: View {
                     if !isTrayActive {
                         store.hubMode = .tray
                     }
+                }
+
+                primaryWingTabButton(
+                    title: "AI",
+                    systemImage: "sparkles.square.filled.on.square",
+                    isSelected: store.hubMode == .ai,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    store.hubMode = .ai
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -861,6 +889,15 @@ struct NotchiePanoramicHubView: View {
                     store.hubMode = .clips
                 }
 
+                subModeSegmentButton(
+                    title: text("AI Usage", "AI 사용량"),
+                    icon: "sparkles",
+                    count: 0,
+                    isSelected: store.hubMode == .ai
+                ) {
+                    store.hubMode = .ai
+                }
+
                 Spacer()
 
                 Button {
@@ -910,6 +947,17 @@ struct NotchiePanoramicHubView: View {
                             SettingsWindowController.shared.showWindow()
                         }
                     )
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.045))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
+                                )
+                        )
+                case .ai:
+                    AIUsageNotchView()
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)

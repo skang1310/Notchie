@@ -247,8 +247,8 @@ final class AIUsageTests: XCTestCase {
         XCTAssertEqual(aiTab?.systemImage, "sparkles")
 
         store.selectedTool = "ai"
-        store.hubMode = .tools
+        store.hubMode = .ai
         let extraHeight = store.shelfExtraHeight(isIsland: false)
-        XCTAssertEqual(extraHeight, 230)
+        XCTAssertEqual(extraHeight, 250)
     }
 }
