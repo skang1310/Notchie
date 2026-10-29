@@ -1,6 +1,14 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **Notch Clipboard 10-Item Limit & Full Settings History (2026-10-29 v30)**:
+1. **Multi-Directory Screenshot Capture & Preload Modernization (2026-10-29 v31)**:
+   - Fixed screenshot history not recording/displaying: `ScreenshotMonitorService` now reads modern macOS `location-screenshot`, `location-last`, and `location` keys from `com.apple.screencapture` domain.
+   - Added `candidateScreenshotDirectories()` and `candidateScreenRecordingDirectories()` scanning across system screencapture paths, user custom settings path, `~/Documents`, `~/Desktop`, `~/Pictures` (and `Pictures/Screenshots`), and `~/Downloads`.
+   - Expanded multilingual screenshot filename detection (`isScreenshotFilename`) to support Korean (both NFD and NFC `스크린샷`, `화면 캡처`, `캡처`), Japanese, Chinese, German, French, Spanish, Russian, and third-party tools (CleanShot, Shottr, Snagit).
+   - Upgraded real-time scanner timer with `.common` run loop mode and safe path-based deduplication to prevent dropping rapid captures.
+   - Fixed `processNewScreenshot` so non-staging files already on disk (e.g. in `~/Documents`) are marked `isSavedToDisk = true`, preserving user original files without redundant moving.
+   - Added `.onAppear { preloadRecentScreenshots(); scanNow() }` and always-visible reload button in `NotchieScreenshotHubView`.
+   - Added automated regression tests in `ScreenshotViewModelTests.swift` (`testScreenshotCandidateDirectoriesAndMultiFolderScanning` and `testScreenshotFilenameDetectionMultilingual`).
+2. **Notch Clipboard 10-Item Limit & Full Settings History (2026-10-29 v30)**:
    - Limited clipboard snippet display inside the Notch (`trayAndShotsUnifiedContainer` and `studioUnifiedContainer`) to the most recent 10 items (`maxItems: 10`).
    - Added an interactive overflow affordance at the bottom of the list when additional items exist (`"외 N개 항목은 앱 설정에서 보기…"` / `"+N more in App Settings…"`) with `arrow.up.forward.app` icon, opening `SettingsWindowController.shared.showWindow()` on click.
    - Preserved unlimited full clipboard history (`maxItems: nil`) in App Settings (`Tray Settings` -> `Clipboard` tab / `trayClipboardSettingsCard`), supporting search, type filtering, preview, favorites, and clearing.

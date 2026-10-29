@@ -2479,6 +2479,10 @@ private struct NotchieScreenshotHubInnerView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.8)
         )
+        .onAppear {
+            viewModel.preloadRecentScreenshots()
+            viewModel.scanNow()
+        }
     }
 
     private var screenshotTopBar: some View {
@@ -2532,19 +2536,18 @@ private struct NotchieScreenshotHubInnerView: View {
             }
             .buttonStyle(.plain)
 
-            if !viewModel.history.isEmpty {
-                Button {
-                    viewModel.preloadRecentScreenshots()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.75))
-                        .frame(width: 22, height: 22)
-                        .background(Color.white.opacity(0.08), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .help(text("Refresh Screenshot Folder", "스크린샷 폴더 새로고침"))
+            Button {
+                viewModel.preloadRecentScreenshots()
+                viewModel.scanNow()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .frame(width: 22, height: 22)
+                    .background(Color.white.opacity(0.08), in: Circle())
             }
+            .buttonStyle(.plain)
+            .help(text("Refresh Screenshot Folder", "스크린샷 폴더 새로고침"))
         }
     }
 

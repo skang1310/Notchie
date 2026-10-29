@@ -33,6 +33,7 @@ final class ScreenshotViewModel: ObservableObject {
     private(set) var isCopied = false
     
     private var lastProcessedDate: Date?
+    private var lastProcessedPath: String?
     private let monitorService: ScreenshotMonitorService
     private let ocrService: OCRService
     private let fileManager = FileManager.default
@@ -58,8 +59,11 @@ final class ScreenshotViewModel: ObservableObject {
     
     func processNewScreenshot(image: NSImage, fileURL: URL?, fileName: String) {
         let now = Date()
-        if let last = lastProcessedDate, now.timeIntervalSince(last) < 0.8 {
-            return
+        if let path = fileURL?.standardizedFileURL.path {
+            if let last = lastProcessedDate, lastProcessedPath == path, now.timeIntervalSince(last) < 2.0 {
+                return
+            }
+            lastProcessedPath = path
         }
         lastProcessedDate = now
         
@@ -80,20 +84,21 @@ final class ScreenshotViewModel: ObservableObject {
             tempURL = generatedTempURL
         }
         
-        let targetDir = monitorService.userTargetDirectoryURL
-        let name = fileName.hasSuffix(".png") ? fileName : "\(fileName).png"
+        let isStaging = fileURL?.standardizedFileURL.path.contains("RawScreenshots") ?? false
         let targetURL: URL
-        if let originalURL = fileURL,
-           originalURL.deletingLastPathComponent().standardizedFileURL == targetDir.standardizedFileURL {
+        if let originalURL = fileURL, !isStaging {
             targetURL = originalURL
             isSavedToDisk = true
         } else {
+            let targetDir = monitorService.userTargetDirectoryURL
+            let name = fileName.hasSuffix(".png") ? fileName : "\(fileName).png"
             targetURL = targetDir.appendingPathComponent(name)
+            isSavedToDisk = false
         }
         
         let model = ScreenshotModel(
             image: image,
-            fileURL: tempURL,
+            fileURL: targetURL,
             tempFileURL: tempURL,
             targetDestinationURL: targetURL,
             fileName: fileName,
@@ -141,11 +146,7 @@ final class ScreenshotViewModel: ObservableObject {
     }
 
     func preloadRecentScreenshots() {
-        var dirs = [monitorService.userTargetDirectoryURL, monitorService.rawStagingDirectoryURL()]
-        if let desktop = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first,
-           !dirs.contains(where: { $0.standardizedFileURL == desktop.standardizedFileURL }) {
-            dirs.append(desktop)
-        }
+        let dirs = monitorService.candidateScreenshotDirectories()
 
         var candidateFiles: [(url: URL, date: Date)] = []
         var seenPaths = Set<String>()
@@ -160,8 +161,9 @@ final class ScreenshotViewModel: ObservableObject {
                 let stdPath = url.standardizedFileURL.path
                 guard !seenPaths.contains(stdPath) else { continue }
                 let filename = url.lastPathComponent
+                let lower = filename.lowercased()
                 let matches = isStaging
-                    ? (filename.lowercased().hasSuffix(".png") || filename.lowercased().hasSuffix(".jpg"))
+                    ? (lower.hasSuffix(".png") || lower.hasSuffix(".jpg") || lower.hasSuffix(".heic"))
                     : ScreenshotMonitorService.isScreenshotFilename(filename)
                 guard matches,
                       let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
@@ -174,7 +176,7 @@ final class ScreenshotViewModel: ObservableObject {
 
         candidateFiles.sort { $0.date > $1.date }
         var loaded: [ScreenshotModel] = []
-        for entry in candidateFiles.prefix(16) {
+        for entry in candidateFiles.prefix(Self.maxHistoryCount) {
             guard let image = NSImage(contentsOf: entry.url), image.size.width > 16 else { continue }
             let model = ScreenshotModel(
                 image: image,
@@ -190,7 +192,9 @@ final class ScreenshotViewModel: ObservableObject {
         }
         if !loaded.isEmpty {
             self.history = loaded
-            self.selectedHistoryItemID = loaded.first?.id
+            if self.selectedHistoryItemID == nil || !loaded.contains(where: { $0.id == self.selectedHistoryItemID }) {
+                self.selectedHistoryItemID = loaded.first?.id
+            }
         }
     }
 
