@@ -8,7 +8,34 @@ internal import AppKit
 
 public struct AIUsageNotchView: View {
     @StateObject private var service = AIUsageService.shared
-    @State private var selectedProvider: AIProviderType = .claudeCode
+    @State private var selectedFilter: ProviderFilter = .all
+
+    private enum ProviderFilter: String, CaseIterable, Identifiable {
+        case all = "all"
+        case claude = "claude"
+        case codex = "codex"
+        case gemini = "gemini"
+
+        var id: String { rawValue }
+
+        func title(isKorean: Bool) -> String {
+            switch self {
+            case .all: return isKorean ? "전체 보기" : "All"
+            case .claude: return "Claude"
+            case .codex: return "Codex"
+            case .gemini: return "Gemini"
+            }
+        }
+
+        func iconName() -> String {
+            switch self {
+            case .all: return "square.grid.2x2"
+            case .claude: return "sparkles"
+            case .codex: return "terminal.fill"
+            case .gemini: return "wand.and.stars"
+            }
+        }
+    }
 
     private var isKorean: Bool {
         let raw = UserDefaults.standard.string(forKey: GeneralSettingsStorage.Keys.appLanguage) ?? DynamicNotchLanguage.system.rawValue
@@ -19,56 +46,45 @@ public struct AIUsageNotchView: View {
         privacyText(en, ko)
     }
 
-    private var currentSummary: AIProviderUsageSummary? {
-        service.summary(for: selectedProvider)
-    }
-
     public init() {}
 
     public var body: some View {
         VStack(spacing: 8) {
-            headerBar
+            topControlBar
 
-            if let summary = currentSummary {
-                heroQuotaCard(summary: summary)
-                breakdownTiers(summary: summary)
-            } else {
-                loadingOrEmptyCard
-            }
+            cardsContainer
+                .frame(maxWidth: .infinity)
 
-            footerStatusBar
+            bottomStatusBar
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
         .onAppear {
             service.refresh()
         }
     }
 
-    // MARK: - Header Bar
+    // MARK: - Top Control Bar
 
-    private var headerBar: some View {
+    private var topControlBar: some View {
         HStack(spacing: 8) {
-            // Provider Segmented Switcher (Claude Code / Codex / Gemini)
+            // Filter Pills (All / Claude / Codex / Gemini)
             HStack(spacing: 2.5) {
-                ForEach(AIProviderType.allCases) { provider in
-                    let isSelected = selectedProvider == provider
+                ForEach(ProviderFilter.allCases) { filter in
+                    let isSelected = selectedFilter == filter
                     Button {
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                            selectedProvider = provider
+                            selectedFilter = filter
                         }
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: provider.iconName)
-                                .font(.system(size: 9.5, weight: .semibold))
-                                .foregroundStyle(
-                                    isSelected
-                                        ? providerAccentColor(provider)
-                                        : Color.white.opacity(0.6)
-                                )
-                            Text(provider.shortDisplayName)
-                                .font(.system(size: 10.5, weight: isSelected ? .semibold : .medium, design: .rounded))
-                                .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.7))
+                        HStack(spacing: 3.5) {
+                            Image(systemName: filter.iconName())
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(filterColor(filter, isSelected: isSelected))
+
+                            Text(filter.title(isKorean: isKorean))
+                                .font(.system(size: 10, weight: isSelected ? .semibold : .medium, design: .rounded))
+                                .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.65))
                         }
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3.5)
@@ -86,345 +102,295 @@ public struct AIUsageNotchView: View {
                     .fill(Color.white.opacity(0.06))
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8)
+                            .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
                     )
             )
 
             Spacer()
 
-            // Status indicator & Actions
+            // Actions: Refresh & Directory
             HStack(spacing: 6) {
-                Circle()
-                    .fill(isCurrentProviderActive ? Color.green : Color.orange)
-                    .frame(width: 6, height: 6)
-
-                Text(isCurrentProviderActive ? text("Active", "연결됨") : text("Ready", "대기"))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.7))
-
                 Button {
                     service.refresh()
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9.5, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.8))
                         .rotationEffect(.degrees(service.isLoading ? 360 : 0))
                         .animation(service.isLoading ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .default, value: service.isLoading)
                 }
                 .buttonStyle(.plain)
-                .help(text("Refresh Quota", "사용량 및 리셋 새로고침"))
+                .help(text("Refresh AI Quotas & Sessions", "사용량 및 활성 세션 새로고침"))
 
                 Button {
-                    openCurrentDirectory()
+                    openActiveDirectory()
                 } label: {
                     Image(systemName: "folder")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9.5, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.8))
                 }
                 .buttonStyle(.plain)
                 .help(text("Open Directory in Finder", "Finder에서 폴더 열기"))
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 7)
             .padding(.vertical, 3.5)
             .background(
                 Capsule(style: .continuous)
                     .fill(Color.white.opacity(0.06))
-                    .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8))
+                    .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8))
             )
         }
     }
 
-    private var isCurrentProviderActive: Bool {
-        switch selectedProvider {
-        case .claudeCode:
-            return service.isClaudeInstalled
-        case .codex:
-            return service.isCodexInstalled
-        case .gemini:
-            return service.isGeminiInstalled
-        }
-    }
+    // MARK: - Cards Container
 
-    private func openCurrentDirectory() {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let target: URL
-        switch selectedProvider {
-        case .claudeCode:
-            target = home.appendingPathComponent(".claude")
-        case .codex:
-            target = home.appendingPathComponent(".codex")
-        case .gemini:
-            target = home.appendingPathComponent(".gemini")
-        }
-        NSWorkspace.shared.open(target)
-    }
-
-    // MARK: - Hero Quota Card (Codenotch Style Ring Gauge + Reset Pill)
-
-    private func heroQuotaCard(summary: AIProviderUsageSummary) -> some View {
-        let primary = summary.primaryWindow
-        let remainingPct = primary.remainingPercentage
-        let usedPct = primary.utilization
-        let health = primary.health
-
-        return HStack(spacing: 14) {
-            // Circular Ring Gauge (Codenotch signature)
-            ZStack {
-                // Background Track
-                Circle()
-                    .stroke(Color.white.opacity(0.1), lineWidth: 7)
-
-                // Progress Fill (Remaining Quota)
-                Circle()
-                    .trim(from: 0, to: CGFloat(remainingPct / 100.0))
-                    .stroke(
-                        AngularGradient(
-                            gradient: Gradient(colors: ringGradientColors(for: selectedProvider, health: health)),
-                            center: .center,
-                            startAngle: .degrees(-90),
-                            endAngle: .degrees(270)
-                        ),
-                        style: StrokeStyle(lineWidth: 7, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8), value: remainingPct)
-
-                // Centered Label: Remaining %
-                VStack(spacing: 1) {
-                    Text(String(format: "%.0f%%", remainingPct))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Text(text("LEFT", "남음"))
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.65))
-                }
-            }
-            .frame(width: 66, height: 66)
-            .padding(.leading, 4)
-
-            // Right Info: Window Title, Status, and Prominent Reset Timer
-            VStack(alignment: .leading, spacing: 4) {
-                // Window Title + Health Status Pill
-                HStack(spacing: 6) {
-                    Text(primary.localizedTitle(isKorean: isKorean))
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.95))
-
-                    Spacer()
-
-                    // Health Pill (Optimal / Warning / Limit Reached)
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(health.color)
-                            .frame(width: 5.5, height: 5.5)
-                        Text(health.title(isKorean: isKorean))
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(health.color)
+    private var cardsContainer: some View {
+        Group {
+            switch selectedFilter {
+            case .all:
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        if let claude = service.claudeSummary {
+                            codenotchCard(summary: claude)
+                                .frame(width: 236)
+                        }
+                        if let codex = service.codexSummary {
+                            codenotchCard(summary: codex)
+                                .frame(width: 236)
+                        }
+                        if let gemini = service.geminiSummary {
+                            codenotchCard(summary: gemini)
+                                .frame(width: 236)
+                        }
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2.5)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(health.color.opacity(0.14))
-                            .overlay(Capsule(style: .continuous).strokeBorder(health.color.opacity(0.3), lineWidth: 0.7))
-                    )
+                    .padding(.horizontal, 2)
                 }
 
-                // Prominent Reset Countdown Pill
-                HStack(spacing: 5) {
-                    Image(systemName: "hourglass")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Color.yellow.opacity(0.9))
-
-                    Text(primary.formattedCountdown(isKorean: isKorean))
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Text("(\(primary.formattedExactTime(isKorean: isKorean)))")
-                        .font(.system(size: 9.5, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.6))
+            case .claude:
+                if let claude = service.claudeSummary {
+                    codenotchCard(summary: claude)
+                } else {
+                    emptyProviderView(for: .claudeCode)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3.5)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
-                        )
-                )
 
-                // Used Percentage Subtitle
-                HStack(spacing: 4) {
-                    Text(String(format: text("%.0f%% used", "%.0f%% 사용됨"), usedPct))
-                        .font(.system(size: 9.5, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.55))
-
-                    if let desc = primary.totalLimitDesc {
-                        Text("· \(desc)")
-                            .font(.system(size: 9.5, weight: .regular))
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
+            case .codex:
+                if let codex = service.codexSummary {
+                    codenotchCard(summary: codex)
+                } else {
+                    emptyProviderView(for: .codex)
                 }
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.8)
-                )
-        )
-    }
 
-    // MARK: - Dual Tier Breakdown (5-Hour Session & 7-Day Weekly / Daily Limit)
-
-    private func breakdownTiers(summary: AIProviderUsageSummary) -> some View {
-        VStack(spacing: 6) {
-            tierRow(
-                window: summary.primaryWindow,
-                icon: "clock.arrow.circlepath",
-                accent: providerAccentColor(selectedProvider)
-            )
-
-            if let secondary = summary.secondaryWindow {
-                tierRow(
-                    window: secondary,
-                    icon: "calendar.badge.clock",
-                    accent: providerSecondaryAccentColor(selectedProvider)
-                )
+            case .gemini:
+                if let gemini = service.geminiSummary {
+                    codenotchCard(summary: gemini)
+                } else {
+                    emptyProviderView(for: .gemini)
+                }
             }
         }
     }
 
-    private func tierRow(window: AIQuotaWindow, icon: String, accent: Color) -> some View {
-        let remainingPct = window.remainingPercentage
-        let usedPct = window.utilization
+    // MARK: - Codenotch Card View (Exact Match to User UI Reference)
 
-        return VStack(spacing: 4) {
-            HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: icon)
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .foregroundStyle(accent)
+    private func codenotchCard(summary: AIProviderUsageSummary) -> some View {
+        let accent = providerColor(summary.provider)
 
-                    Text(window.localizedTitle(isKorean: isKorean))
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+        return VStack(alignment: .leading, spacing: 8) {
+            // Header Row: [Icon] Provider [TierBadge] ... TimeAgo
+            HStack(spacing: 5.5) {
+                // Provider Icon
+                Image(systemName: summary.provider.iconName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(accent)
+
+                // Provider Name
+                Text(summary.provider.displayName)
+                    .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                // Tier / Model Badge (e.g. Max 5x, Plus, Advanced)
+                Text(summary.tierBadge)
+                    .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1.5)
+                    .background(Color.white.opacity(0.12), in: Capsule())
+
+                Spacer()
+
+                // Relative Time Ago
+                if let timeAgo = summary.localizedTimeAgo(isKorean: isKorean) {
+                    Text(timeAgo)
+                        .font(.system(size: 9, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.48))
+                }
+            }
+
+            // Active Session Row: ● DynamicNotch [Running]
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(summary.isSessionActive ? Color.green : Color.white.opacity(0.3))
+                    .frame(width: 5, height: 5)
+
+                if let title = summary.activeSessionTitle, !title.isEmpty {
+                    Text(title)
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(summary.isSessionActive ? 0.95 : 0.65))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                } else {
+                    Text(isKorean ? "활성 세션 대기 중" : "No active session")
+                        .font(.system(size: 9, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.4))
                 }
 
                 Spacer()
 
-                HStack(spacing: 4) {
-                    Text(String(format: text("%.0f%% left", "%.0f%% 남음"), remainingPct))
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.95))
-
-                    Text(String(format: text("(%.0f%% used)", "(%.0f%% 사용)"), usedPct))
-                        .font(.system(size: 8.5, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.45))
+                if summary.isSessionActive {
+                    HStack(spacing: 3) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 3.5, height: 3.5)
+                        Text(isKorean ? "실행 중" : "Active")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(Color.green)
+                    }
+                    .padding(.horizontal, 4.5)
+                    .padding(.vertical, 1.5)
+                    .background(Color.green.opacity(0.15), in: Capsule())
                 }
             }
+            .padding(.horizontal, 6.5)
+            .padding(.vertical, 3.5)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.white.opacity(0.045))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.6)
+                    )
+            )
 
-            // Capsule Progress Bar (Left: Remaining Quota, Right: Used)
+            // Primary Window: 5 hours (Util %)
+            quotaBarSection(
+                label: isKorean ? "5시간 세션" : "5 hours",
+                utilization: summary.primaryWindow.utilization,
+                resetDetail: summary.primaryWindow.formattedResetDetail(isKorean: isKorean, includeCountdown: true),
+                accentColor: Color.white.opacity(0.92)
+            )
+
+            // Secondary Window: This week / Daily Quota
+            if let secondary = summary.secondaryWindow {
+                quotaBarSection(
+                    label: isKorean ? "이번 주" : "This week",
+                    utilization: secondary.utilization,
+                    resetDetail: secondary.formattedResetDetail(isKorean: isKorean, includeCountdown: false),
+                    accentColor: Color.white.opacity(0.92)
+                )
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.black.opacity(0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.8)
+                )
+        )
+    }
+
+    // MARK: - Quota Bar Section (Exact Codenotch Format)
+
+    private func quotaBarSection(
+        label: String,
+        utilization: Double,
+        resetDetail: String,
+        accentColor: Color
+    ) -> some View {
+        let clampedUtil = max(0.0, min(100.0, utilization))
+
+        return VStack(alignment: .leading, spacing: 3.5) {
+            // Label & Percentage
+            HStack {
+                Text(label)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.82))
+
+                Spacer()
+
+                Text(String(format: "%.0f%%", clampedUtil))
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+
+            // Horizontal Progress Bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.1))
-                        .frame(height: 5.5)
+                        .fill(Color.white.opacity(0.12))
+                        .frame(height: 4.5)
 
                     Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [accent, accent.opacity(0.75)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                        .fill(accentColor)
+                        .frame(
+                            width: max(clampedUtil > 0 ? 4.0 : 0.0, geo.size.width * CGFloat(clampedUtil / 100.0)),
+                            height: 4.5
                         )
-                        .frame(width: max(4, geo.size.width * CGFloat(remainingPct / 100.0)), height: 5.5)
                 }
             }
-            .frame(height: 5.5)
+            .frame(height: 4.5)
 
-            // Reset time row
-            HStack {
-                Text(window.localizedSubtitle(isKorean: isKorean))
-                    .font(.system(size: 8.5, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.4))
-
-                Spacer()
-
-                Text("\(text("Resets", "리셋")): \(window.formattedCountdown(isKorean: isKorean))")
-                    .font(.system(size: 8.5, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.6))
-            }
+            // Reset Subtext: e.g. "Resets 11:01 AM · in 1 hr 29 min"
+            Text(resetDetail)
+                .font(.system(size: 8.5, weight: .regular))
+                .foregroundStyle(.white.opacity(0.48))
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Color.white.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 0.8)
-                )
-        )
     }
 
-    // MARK: - Footer Status Bar
+    // MARK: - Bottom Status Bar
 
-    private var footerStatusBar: some View {
+    private var bottomStatusBar: some View {
         HStack {
-            if let summary = currentSummary {
-                HStack(spacing: 4) {
-                    Image(systemName: "cpu.fill")
-                        .font(.system(size: 8.5))
-                        .foregroundStyle(.white.opacity(0.5))
+            HStack(spacing: 4) {
+                Image(systemName: "sparkle.magnifyingglass")
+                    .font(.system(size: 8.5))
+                    .foregroundStyle(.white.opacity(0.45))
 
-                    Text(shortModelName(summary.activeModel))
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
+                Text(text("Live local session tracking", "실시간 로컬 세션 감지"))
+                    .font(.system(size: 9, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
 
-                Spacer()
+            Spacer()
 
-                HStack(spacing: 4) {
-                    Image(systemName: summary.isLiveAPI ? "antenna.radiowaves.left.and.right" : "internaldrive.fill")
-                        .font(.system(size: 8.5))
-                        .foregroundStyle(.white.opacity(0.5))
-
-                    Text(summary.isLiveAPI ? text("Live Quota", "실시간 연동") : text("Local Sync", "로컬 세션 동기화"))
-                        .font(.system(size: 9, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.55))
-                }
+            if let lastRefreshed = service.lastRefreshed {
+                Text("\(text("Updated", "업데이트")): \(timeOnly(lastRefreshed))")
+                    .font(.system(size: 8.5, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.4))
             }
         }
         .padding(.horizontal, 4)
         .padding(.top, 1)
     }
 
-    // MARK: - Loading / Empty Card
+    // MARK: - Empty Provider View
 
-    private var loadingOrEmptyCard: some View {
+    private func emptyProviderView(for provider: AIProviderType) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: selectedProvider.iconName)
+            Image(systemName: provider.iconName)
                 .font(.system(size: 22))
-                .foregroundStyle(providerAccentColor(selectedProvider).opacity(0.7))
+                .foregroundStyle(providerColor(provider).opacity(0.7))
 
-            Text(text("Reading local AI usage...", "로컬 AI 사용량을 읽는 중..."))
+            Text(String(format: text("%@ not detected", "%@가 감지되지 않았습니다"), provider.displayName))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.75))
 
-            Text(text("Run `claude`, `codex`, or `gemini` to start tracking quota", "터미널에서 `claude`, `codex`, 또는 `gemini`를 실행하면 사용량이 기록됩니다"))
+            Text(text("Run it in terminal to start tracking quota", "터미널에서 실행하면 사용량이 기록됩니다"))
                 .font(.system(size: 9, weight: .regular))
                 .foregroundStyle(.white.opacity(0.45))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 16)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
@@ -438,9 +404,9 @@ public struct AIUsageNotchView: View {
         )
     }
 
-    // MARK: - Helpers
+    // MARK: - Colors & Helpers
 
-    private func providerAccentColor(_ provider: AIProviderType) -> Color {
+    private func providerColor(_ provider: AIProviderType) -> Color {
         switch provider {
         case .claudeCode: return Color.orange
         case .codex: return Color.green
@@ -448,34 +414,34 @@ public struct AIUsageNotchView: View {
         }
     }
 
-    private func providerSecondaryAccentColor(_ provider: AIProviderType) -> Color {
-        switch provider {
-        case .claudeCode: return Color.yellow
-        case .codex: return Color.mint
-        case .gemini: return Color.blue
+    private func filterColor(_ filter: ProviderFilter, isSelected: Bool) -> Color {
+        guard isSelected else { return Color.white.opacity(0.6) }
+        switch filter {
+        case .all: return Color.white
+        case .claude: return Color.orange
+        case .codex: return Color.green
+        case .gemini: return Color.cyan
         }
     }
 
-    private func ringGradientColors(for provider: AIProviderType, health: AIQuotaHealth) -> [Color] {
-        switch health {
-        case .optimal:
-            switch provider {
-            case .claudeCode:
-                return [Color.orange, Color.yellow, Color.orange]
-            case .codex:
-                return [Color.green, Color.mint, Color.green]
-            case .gemini:
-                return [Color.blue, Color.cyan, Color.blue]
-            }
-        case .warning:
-            return [Color.yellow, Color.orange, Color.yellow]
-        case .critical:
-            return [Color.red, Color.orange, Color.red]
+    private func openActiveDirectory() {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let target: URL
+        switch selectedFilter {
+        case .all, .claude:
+            target = home.appendingPathComponent(".claude")
+        case .codex:
+            target = home.appendingPathComponent(".codex")
+        case .gemini:
+            target = home.appendingPathComponent(".gemini")
         }
+        NSWorkspace.shared.open(target)
     }
 
-    private func shortModelName(_ model: String) -> String {
-        model.replacingOccurrences(of: "claude-", with: "")
-             .replacingOccurrences(of: "-latest", with: "")
+    private func timeOnly(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: isKorean ? "ko_KR" : "en_US")
+        formatter.dateFormat = isKorean ? "a h:mm" : "h:mm a"
+        return formatter.string(from: date)
     }
 }

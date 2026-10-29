@@ -144,6 +144,53 @@ public struct AIQuotaWindow: Identifiable, Codable, Equatable, Sendable {
             return formatter.string(from: resetsAt)
         }
     }
+
+    public func formattedResetDetail(isKorean: Bool, now: Date = Date(), includeCountdown: Bool = true) -> String {
+        if utilization <= 0.0 {
+            return isKorean ? "한도 전체 사용 가능 · 즉시 사용 가능" : "Full Quota Available · Ready"
+        }
+        let diff = resetsAt.timeIntervalSince(now)
+        if diff <= 0 {
+            return isKorean ? "방금 리셋됨" : "Just reset"
+        }
+
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(resetsAt)
+        let isTomorrow = calendar.isDateInTomorrow(resetsAt)
+
+        let timeFormatter = DateFormatter()
+        timeFormatter.locale = Locale(identifier: isKorean ? "ko_KR" : "en_US")
+        timeFormatter.dateFormat = isKorean ? "a h:mm" : "h:mm a"
+        let timeStr = timeFormatter.string(from: resetsAt)
+
+        let exactLabel: String
+        if isToday {
+            exactLabel = timeStr
+        } else if isTomorrow {
+            exactLabel = isKorean ? "내일 \(timeStr)" : "Tomorrow \(timeStr)"
+        } else {
+            let dayFormatter = DateFormatter()
+            dayFormatter.locale = Locale(identifier: isKorean ? "ko_KR" : "en_US")
+            dayFormatter.dateFormat = isKorean ? "E a h:mm" : "E h:mm a"
+            exactLabel = dayFormatter.string(from: resetsAt)
+        }
+
+        if includeCountdown {
+            let totalSeconds = Int(diff)
+            let hours = totalSeconds / 3600
+            let minutes = (totalSeconds % 3600) / 60
+
+            if isKorean {
+                let countdownPart = hours > 0 ? "\(hours)시간 \(minutes)분 후" : "\(max(1, minutes))분 후"
+                return "\(exactLabel) 리셋 · \(countdownPart)"
+            } else {
+                let countdownPart = hours > 0 ? "in \(hours) hr \(minutes) min" : "in \(max(1, minutes)) min"
+                return "Resets \(exactLabel) · \(countdownPart)"
+            }
+        } else {
+            return isKorean ? "\(exactLabel) 리셋" : "Resets \(exactLabel)"
+        }
+    }
 }
 
 // MARK: - Provider Usage Summary (Codenotch Style)
@@ -156,6 +203,11 @@ public struct AIProviderUsageSummary: Identifiable, Equatable, Sendable {
     public let activeModel: String
     public let isLiveAPI: Bool                  // True if fetched from OAuth /usage API
     public let lastUpdated: Date
+    public let tierBadge: String                // e.g. "Max 5x", "Plus", "Advanced"
+    public let activeSessionTitle: String?      // e.g. "DynamicNotch", "Droppy 기능 적용", etc.
+    public let activeSessionSubtitle: String?   // snippet or prompt
+    public let activeSessionDate: Date?         // last session timestamp
+    public let isSessionActive: Bool            // true if active session running or recent
 
     public nonisolated init(
         id: String = UUID().uuidString,
@@ -164,7 +216,12 @@ public struct AIProviderUsageSummary: Identifiable, Equatable, Sendable {
         secondaryWindow: AIQuotaWindow? = nil,
         activeModel: String,
         isLiveAPI: Bool = false,
-        lastUpdated: Date = Date()
+        lastUpdated: Date = Date(),
+        tierBadge: String = "Pro",
+        activeSessionTitle: String? = nil,
+        activeSessionSubtitle: String? = nil,
+        activeSessionDate: Date? = nil,
+        isSessionActive: Bool = false
     ) {
         self.id = id
         self.provider = provider
@@ -173,6 +230,28 @@ public struct AIProviderUsageSummary: Identifiable, Equatable, Sendable {
         self.activeModel = activeModel
         self.isLiveAPI = isLiveAPI
         self.lastUpdated = lastUpdated
+        self.tierBadge = tierBadge
+        self.activeSessionTitle = activeSessionTitle
+        self.activeSessionSubtitle = activeSessionSubtitle
+        self.activeSessionDate = activeSessionDate
+        self.isSessionActive = isSessionActive
+    }
+
+    public func localizedTimeAgo(isKorean: Bool, now: Date = Date()) -> String? {
+        guard let date = activeSessionDate else { return nil }
+        let diff = max(0, Int(now.timeIntervalSince(date)))
+        if diff < 60 {
+            return isKorean ? "방금 전" : "just now"
+        } else if diff < 3600 {
+            let m = max(1, diff / 60)
+            return isKorean ? "\(m)분 전" : "\(m) min ago"
+        } else if diff < 86400 {
+            let h = diff / 3600
+            return isKorean ? "\(h)시간 전" : "\(h)h ago"
+        } else {
+            let d = diff / 86400
+            return isKorean ? "\(d)일 전" : "\(d)d ago"
+        }
     }
 }
 

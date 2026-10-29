@@ -159,11 +159,23 @@ public final class AIUsageService: ObservableObject {
                             if prompt.isEmpty {
                                 prompt = "Claude Interaction"
                             }
+                            let cwd = json["cwd"] as? String
+                            let cleanProject: String
+                            if let cwd, !cwd.isEmpty {
+                                cleanProject = URL(fileURLWithPath: cwd).lastPathComponent
+                            } else {
+                                let raw = pDir.lastPathComponent
+                                if raw.hasPrefix("-") {
+                                    cleanProject = raw.components(separatedBy: "-").filter { !$0.isEmpty }.last ?? raw
+                                } else {
+                                    cleanProject = raw
+                                }
+                            }
                             history.append(ClaudeHistoryEntry(
                                 id: UUID().uuidString,
                                 display: prompt,
                                 timestamp: timestamp,
-                                project: pDir.lastPathComponent,
+                                project: cleanProject,
                                 sessionId: sFile.deletingPathExtension().lastPathComponent
                             ))
                         } else if type == "assistant" && detectedModel == nil {
@@ -339,6 +351,13 @@ public final class AIUsageService: ObservableObject {
             totalLimitDesc: "All Models"
         )
 
+        let latestEntry = history.first
+        let sessionTitle = latestEntry?.projectName
+        let sessionPrompt = latestEntry?.display
+        let sessionDate = latestEntry?.timestamp
+        let isSessionActive = (sessionDate.map { now.timeIntervalSince($0) < 1800 } ?? false)
+        let tierBadge = activeModel.contains("opus") ? "Max 5x" : (activeModel.contains("sonnet") ? "Sonnet 3.7" : "Max 5x")
+
         return AIProviderUsageSummary(
             id: "claude-summary",
             provider: .claudeCode,
@@ -346,7 +365,12 @@ public final class AIUsageService: ObservableObject {
             secondaryWindow: secondaryWindow,
             activeModel: activeModel,
             isLiveAPI: false,
-            lastUpdated: now
+            lastUpdated: now,
+            tierBadge: tierBadge,
+            activeSessionTitle: sessionTitle,
+            activeSessionSubtitle: sessionPrompt,
+            activeSessionDate: sessionDate,
+            isSessionActive: isSessionActive
         )
     }
 
@@ -372,8 +396,8 @@ public final class AIUsageService: ObservableObject {
 
         let primaryWindow = AIQuotaWindow(
             id: "codex-session",
-            title: "Session Rate Limit",
-            titleKo: "코덱스 세션 창",
+            title: "5-Hour Session Window",
+            titleKo: "5시간 세션 롤링 창",
             subtitle: "Active rolling window",
             subtitleKo: "롤링 작업 세션 한도",
             utilization: sessionUtilization,
@@ -393,14 +417,20 @@ public final class AIUsageService: ObservableObject {
 
         let secondaryWindow = AIQuotaWindow(
             id: "codex-daily",
-            title: "Daily Quota",
-            titleKo: "일일 쿼터 한도",
-            subtitle: "24-hour limit",
-            subtitleKo: "24시간 쿼터 한도",
+            title: "This week",
+            titleKo: "이번 주 한도",
+            subtitle: "Weekly allowance",
+            subtitleKo: "주간 쿼터 한도",
             utilization: dailyUtilization,
             resetsAt: nextMidnight,
             totalLimitDesc: "Effort: \(config.reasoningEffort)"
         )
+
+        let latestSession = sessions.first
+        let codexTitle = latestSession?.threadName
+        let codexDate = latestSession?.updatedAt
+        let isCodexActive = (codexDate.map { now.timeIntervalSince($0) < 1800 } ?? false)
+        let codexTier = "Plus"
 
         return AIProviderUsageSummary(
             id: "codex-summary",
@@ -409,7 +439,12 @@ public final class AIUsageService: ObservableObject {
             secondaryWindow: secondaryWindow,
             activeModel: config.model,
             isLiveAPI: false,
-            lastUpdated: now
+            lastUpdated: now,
+            tierBadge: codexTier,
+            activeSessionTitle: codexTitle,
+            activeSessionSubtitle: "Codex Session",
+            activeSessionDate: codexDate,
+            isSessionActive: isCodexActive
         )
     }
 
@@ -446,9 +481,32 @@ public final class AIUsageService: ObservableObject {
         let now = Date()
         let cutoff = now.addingTimeInterval(-7 * 86400) // last 7 days
 
+        // Preload conversation titles and active states from conversation_summaries.db
+        var convoMetadata: [String: (title: String, notIdle: Bool)] = [:]
+        let dbURL = directory.appendingPathComponent("antigravity").appendingPathComponent("conversation_summaries.db")
+        if fileManager.fileExists(atPath: dbURL.path) {
+            var db: OpaquePointer?
+            if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
+                defer { sqlite3_close(db) }
+                let query = "SELECT conversation_id, title, not_fully_idle FROM conversation_summaries ORDER BY last_modified_time DESC LIMIT 30;"
+                var stmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
+                    defer { sqlite3_finalize(stmt) }
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        if let idStr = sqlite3_column_text(stmt, 0).map({ String(cString: $0) }) {
+                            let title = sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? "Conversation"
+                            let notIdle = sqlite3_column_int(stmt, 2) != 0
+                            convoMetadata[idStr] = (title, notIdle)
+                        }
+                    }
+                }
+            }
+        }
+
         // 2. Scan recent transcript.jsonl files under ~/.gemini/antigravity/brain/*/.system_generated/logs/transcript.jsonl
         if let convoDirs = try? fileManager.contentsOfDirectory(at: brainURL, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles) {
             for convoDir in convoDirs {
+                let convoId = convoDir.lastPathComponent
                 let transcriptURL = convoDir.appendingPathComponent(".system_generated").appendingPathComponent("logs").appendingPathComponent("transcript.jsonl")
                 guard fileManager.fileExists(atPath: transcriptURL.path) else { continue }
                 if let values = try? transcriptURL.resourceValues(forKeys: [.contentModificationDateKey]),
@@ -473,9 +531,11 @@ public final class AIUsageService: ObservableObject {
                                 .trimmingCharacters(in: .whitespacesAndNewlines)
                             if snippet.isEmpty { snippet = "Gemini Request" }
 
+                            let resolvedTitle = convoMetadata[convoId]?.title ?? String(snippet.prefix(50))
+
                             sessions.append(GeminiSessionEntry(
-                                id: UUID().uuidString,
-                                title: String(snippet.prefix(50)),
+                                id: convoId,
+                                title: resolvedTitle,
                                 stepCount: 1,
                                 lastModified: date
                             ))
@@ -574,14 +634,20 @@ public final class AIUsageService: ObservableObject {
 
         let secondaryWindow = AIQuotaWindow(
             id: "gemini-daily",
-            title: "Daily Request Quota",
-            titleKo: "일일 쿼터 한도",
-            subtitle: "24-hour limit",
-            subtitleKo: "24시간 요청 쿼터 한도",
+            title: "This week",
+            titleKo: "이번 주 한도",
+            subtitle: "Daily & weekly limit",
+            subtitleKo: "일일 및 주간 요청 한도",
             utilization: dailyUtilization,
             resetsAt: nextMidnight,
             totalLimitDesc: "Google AI"
         )
+
+        let latestGemini = sessions.first
+        let geminiTitle = latestGemini?.title
+        let geminiDate = latestGemini?.lastModified
+        let isGeminiActive = (geminiDate.map { now.timeIntervalSince($0) < 1800 } ?? false)
+        let geminiTier = "Advanced"
 
         return AIProviderUsageSummary(
             id: "gemini-summary",
@@ -590,7 +656,12 @@ public final class AIUsageService: ObservableObject {
             secondaryWindow: secondaryWindow,
             activeModel: modelName,
             isLiveAPI: false,
-            lastUpdated: now
+            lastUpdated: now,
+            tierBadge: geminiTier,
+            activeSessionTitle: geminiTitle,
+            activeSessionSubtitle: "Google Antigravity Agent",
+            activeSessionDate: geminiDate,
+            isSessionActive: isGeminiActive
         )
     }
 }

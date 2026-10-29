@@ -1,31 +1,19 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **Codenotch-Style Minimal AI Usage & Accurate Reset Tracker (Claude Code, OpenAI Codex & Google Gemini) (2026-10-29 v35)**:
-   - Fixed AI usage accuracy and rate-limit calculation across all providers:
-     - **Claude Code**: Replaced legacy `~/.claude/history.jsonl` reader with active project transcript parser scanning `~/.claude/projects/*/*.jsonl` for recent user messages and assistant model tags within the 5-hour rolling window. Earliest message roll-off now precisely determines rate-limit reset.
-     - **Google Gemini**: Fixed incorrect lifetime database step-count aggregation that falsely reported 100% quota exhausted. Now parses recent `USER_INPUT` prompt entries from `~/.gemini/antigravity/brain/*/.system_generated/logs/transcript.jsonl` within the 5-hour rolling window, falling back to SQLite only for historical metadata.
-     - **Zero Utilization Semantics**: When a provider has zero prompts within the 5-hour window, it displays `"한도 전체 사용 가능 (즉시 사용 가능)"` / `"Full Quota Available (Ready)"` instead of counting down from an artificial 5 hours.
-   - Redesigned AI Usage Tracker to follow [vinzdg/codenotch](https://github.com/vinzdg/codenotch) format:
-     - Stripped out cluttered prompt history, long message lists, and bulky token breakdowns from the notch view.
-     - Pure focus on **Real Quota Remaining & Reset Countdown**:
-       - **Remaining Allowance % & Used %** (`78% 남음` / `22% 사용됨`).
-       - **Codenotch Signature Circular Ring Gauge** (72x72) with remaining percentage and animated trim.
-       - **Reset Countdown Pill**: ⏳ `리셋까지 3시간 14분 (오후 11:45 리셋)` / `Resets in 3h 14m (11:45 PM)`.
-       - **Dual-Tier Quota Windows**:
-         1. **5-Hour Rolling Session Window (`5시간 세션 롤링 창`)**: tracks 5-hour rolling session rate limits and earliest prompt expiration.
-         2. **7-Day Weekly Limit / Daily Quota (`주간 쿼터 한도 / 일일 쿼터`)**: tracks 7-day cumulative quota or daily request quota and reset boundaries.
-       - **Health Status Indicator**:
-         - `여유 있음 (Optimal)`: < 70% used (Green/Cyan/Mint)
-         - `사용량 주의 (High Usage)`: 70% ~ 89% used (Yellow/Orange)
-         - `한도 임박 (Limit Reached)`: >= 90% used (Red)
-       - **Provider Switcher**: Three providers supported:
-         - **Claude Code** (`sparkles` / Orange)
-         - **OpenAI Codex** (`terminal` / Green)
-         - **Google Gemini** (`wand.and.stars` / Blue-Cyan gradient): tracks local Antigravity/Gemini agent interactions, rolling 5-hour session quota, daily request quota, and active model.
-       - Added `AIQuotaWindow`, `AIQuotaHealth`, `AIProviderUsageSummary`, and `GeminiSessionEntry` models in `AIUsageData.swift`.
-       - Added `computeClaudeSummary`, `computeCodexSummary`, and `computeGeminiSummary` with async refresh support in `AIUsageService.swift`.
-       - Added comprehensive unit tests in `AIUsageTests.swift` (`testAIQuotaWindowCalculationsAndFormatting`, `testAIUsageServiceComputesQuotaSummaries`, `testAIProviderTypeIncludesGemini`, `testAIUsageServiceFileParsing`), all 309 tests passing.
-   - Installed Release build to `/Applications/DynamicNotch.app` (PID 10604, UUID `E1A02004-556A-3125-888F-82C4A2C74CAB`).
+1. **Side-by-Side Codenotch Cards & Active Session Tracker (Claude Code, OpenAI Codex & Google Gemini) (2026-10-29 v36)**:
+   - Redesigned Notch AI Usage view to match the exact Codenotch side-by-side card UI:
+     - **Side-by-Side Multi-Provider Grid**: Displays active providers (Claude Code, OpenAI Codex, Google Gemini) in sleek parallel cards with horizontal scrolling and fast provider filtering (`All / 전체`, `Claude`, `Codex`, `Gemini`).
+     - **Live Running Session Indicator (`지금 어떤 세션이 돌아가고 있는지`)**:
+       - Each card features a dedicated active session row right below the header:
+         - Vibrant pulsating live dot + `[실행 중] / [Active]` badge when an active task is running.
+         - Displays clean active project / session thread title (e.g. `DynamicNotch`, `Droppy UI/UX 적용`, `App Icon Size Adjustment`).
+         - Displays relative timestamp of last activity (`2 min ago`, `25 min ago`, `방금 전`, `5분 전`).
+     - **Codenotch Quota Bar Rows**:
+       - **5 Hours (`5시간 세션`)**: Progress bar filled to exact % used with clean rounded capsule, followed by `Resets 11:01 AM · in 1 hr 29 min` (or `11:01 AM 리셋 · 1시간 29분 후`, or `한도 전체 사용 가능 · 즉시 사용 가능`).
+       - **This week (`이번 주`)**: Progress bar filled to exact % used with `Resets Thu 2:31 PM` (or `목 오후 2:31 리셋`).
+       - **Tier / Plan Badges**: `Max 5x`, `Plus`, `Advanced` in subtle pill tags matching observed Codenotch design.
+     - Accurate local ingestion from `~/.claude/projects/*/*.jsonl`, `~/.codex/session_index.jsonl`, and `~/.gemini/antigravity/conversation_summaries.db` / `transcript.jsonl`.
+     - 309 unit tests passed; Release build installed and running at `/Applications/DynamicNotch.app` (PID 13221, UUID `E2AC71A6-F335-3ED9-A7F1-5C2CE35275BC`).
 
 2. **Fluid Dynamic Island Motion & Apple Spring Physics (2026-10-29 v33)**:
    - Added `.fluid` animation preset to `NotchAnimationPreset` and `NotchAnimations`:

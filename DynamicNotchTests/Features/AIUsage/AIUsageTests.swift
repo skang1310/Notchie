@@ -266,7 +266,7 @@ final class AIUsageTests: XCTestCase {
 
     func testAIUsageServiceComputesQuotaSummaries() {
         let now = Date()
-        let recent1 = ClaudeHistoryEntry(display: "query 1", timestamp: now.addingTimeInterval(-1800), project: "P1", sessionId: "s1")
+        let recent1 = ClaudeHistoryEntry(display: "query 1", timestamp: now.addingTimeInterval(-600), project: "P1", sessionId: "s1")
         let recent2 = ClaudeHistoryEntry(display: "query 2", timestamp: now.addingTimeInterval(-3600), project: "P2", sessionId: "s2")
 
         let stats = ClaudeStatsData(
@@ -275,12 +275,16 @@ final class AIUsageTests: XCTestCase {
             dailyActivity: [ClaudeDailyActivity(date: "2026-10-29", messageCount: 25, sessionCount: 2)]
         )
 
-        let claudeSummary = AIUsageService.computeClaudeSummary(stats: stats, history: [recent1, recent2], now: now)
+        let claudeSummary = AIUsageService.computeClaudeSummary(stats: stats, history: [recent1, recent2], activeModel: "claude-opus-5-5", now: now)
         XCTAssertEqual(claudeSummary.provider, .claudeCode)
         XCTAssertTrue(claudeSummary.primaryWindow.remainingPercentage > 0)
         XCTAssertEqual(claudeSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
         XCTAssertNotNil(claudeSummary.secondaryWindow)
         XCTAssertEqual(claudeSummary.secondaryWindow?.titleKo, "주간 쿼터 한도")
+        XCTAssertEqual(claudeSummary.tierBadge, "Max 5x")
+        XCTAssertEqual(claudeSummary.activeSessionTitle, "P1")
+        XCTAssertTrue(claudeSummary.isSessionActive)
+        XCTAssertFalse(claudeSummary.primaryWindow.formattedResetDetail(isKorean: false).isEmpty)
 
         let codexSession = CodexSessionEntry(id: "c1", threadName: "Codex thread", updatedAt: now.addingTimeInterval(-1200))
         let codexConfig = CodexConfigData(model: "gpt-6.1-sol", reasoningEffort: "low", sandboxMode: "danger-full-access", clientVersion: "0.165.0")
@@ -288,15 +292,21 @@ final class AIUsageTests: XCTestCase {
         let codexSummary = AIUsageService.computeCodexSummary(sessions: [codexSession], config: codexConfig, now: now)
         XCTAssertEqual(codexSummary.provider, .codex)
         XCTAssertEqual(codexSummary.activeModel, "gpt-6.1-sol")
-        XCTAssertEqual(codexSummary.primaryWindow.titleKo, "코덱스 세션 창")
-        XCTAssertEqual(codexSummary.secondaryWindow?.titleKo, "일일 쿼터 한도")
+        XCTAssertEqual(codexSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
+        XCTAssertEqual(codexSummary.secondaryWindow?.titleKo, "이번 주 한도")
+        XCTAssertEqual(codexSummary.tierBadge, "Plus")
+        XCTAssertEqual(codexSummary.activeSessionTitle, "Codex thread")
+        XCTAssertTrue(codexSummary.isSessionActive)
 
         let geminiSession = GeminiSessionEntry(id: "g1", title: "Gemini agent", stepCount: 15, lastModified: now.addingTimeInterval(-900))
         let geminiSummary = AIUsageService.computeGeminiSummary(sessions: [geminiSession], modelName: "gemini-2.5-pro", now: now)
         XCTAssertEqual(geminiSummary.provider, .gemini)
         XCTAssertEqual(geminiSummary.activeModel, "gemini-2.5-pro")
         XCTAssertEqual(geminiSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
-        XCTAssertEqual(geminiSummary.secondaryWindow?.titleKo, "일일 쿼터 한도")
+        XCTAssertEqual(geminiSummary.secondaryWindow?.titleKo, "이번 주 한도")
+        XCTAssertEqual(geminiSummary.tierBadge, "Advanced")
+        XCTAssertEqual(geminiSummary.activeSessionTitle, "Gemini agent")
+        XCTAssertTrue(geminiSummary.isSessionActive)
         XCTAssertTrue(geminiSummary.primaryWindow.remainingPercentage > 0)
     }
 
