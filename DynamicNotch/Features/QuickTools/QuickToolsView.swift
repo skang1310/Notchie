@@ -243,9 +243,7 @@ struct NotchiePanoramicHubView: View {
     var applicationSettings: ApplicationSettingsStore?
     var onOpenPlaybackSource: @MainActor @Sendable () -> Void = {}
 
-    @ObservedObject private var iconController = AppIconController.shared
     @State private var showingTabCustomizer = false
-    @State private var showingIconPicker = false
     @State private var selectedDayOffset: Int = 0
     @State private var showingToolLibrary = false
 
@@ -349,59 +347,18 @@ struct NotchiePanoramicHubView: View {
                     store.hubMode = .tools
                 }
 
-                // Unified Apple Glass Utility Pill (Icon Theme · Pin · Settings)
-                HStack(spacing: 2) {
-                    Button {
-                        showingIconPicker.toggle()
-                    } label: {
-                        Image(iconController.activeVariant == .light ? "NotchieIconLight" : "NotchieIconDark")
-                            .resizable()
-                            .interpolation(.high)
-                            .scaledToFit()
-                            .frame(width: 15, height: 15)
-                            .frame(width: 24, height: 22)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help(text("Switch App Icon (Light / Dark / Auto)", "앱 아이콘 선택 (라이트 / 다크 / 자동)"))
-                    .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
-                        NotchieAppIconPopoverView(accentColor: accentColor)
-                    }
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.12))
-                        .frame(width: 0.8, height: 12)
-
-                    Button {
-                        withAnimation(.snappy(duration: 0.18)) {
-                            store.isNotchHubPinned.toggle()
-                        }
-                    } label: {
-                        Image(systemName: store.isNotchHubPinned ? "pin.fill" : "pin")
-                            .font(.system(size: 10.5, weight: .semibold))
-                            .foregroundStyle(store.isNotchHubPinned ? accentColor : .white.opacity(0.72))
-                            .frame(width: 24, height: 22)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help(store.isNotchHubPinned ? text("Pinned open", "노치 고정됨") : text("Pin notch open", "노치 열어두기 고정"))
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.12))
-                        .frame(width: 0.8, height: 12)
-
-                    Button {
-                        SettingsWindowController.shared.showWindow()
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.75))
-                            .frame(width: 24, height: 22)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help(text("Open Notchie Settings", "Notchie 설정 열기"))
+                // Apple Glass Settings Button
+                Button {
+                    SettingsWindowController.shared.showWindow()
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .frame(width: 24, height: 22)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .help(text("Open Notchie Settings", "Notchie 설정 열기"))
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .background(
@@ -2024,121 +1981,6 @@ struct FocusCompactView: View {
             .monospacedDigit()
             .font(.caption)
             .foregroundStyle(ApplicationSettingsStore.currentCustomAccentColor())
-    }
-}
-
-// MARK: - In-Notch Visual App Icon Selector Popover (Dark / Light / Auto)
-
-struct NotchieAppIconPopoverView: View {
-    let accentColor: Color
-    @AppStorage(GeneralSettingsStorage.Keys.appIconAppearanceStyle) private var appIconStyleRaw: String = AppIconAppearanceStyle.auto.rawValue
-    @ObservedObject private var iconController = AppIconController.shared
-
-    private var currentStyle: AppIconAppearanceStyle {
-        AppIconAppearanceStyle.resolved(appIconStyleRaw)
-    }
-
-    private func text(_ en: String, _ ko: String) -> String {
-        privacyText(en, ko)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(text("Notchie App Icon", "앱 아이콘 스타일 선택"))
-                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                Spacer()
-                Text(
-                    iconController.activeVariant == .light
-                        ? text("Active: Light", "현재: 라이트")
-                        : text("Active: Dark", "현재: 다크")
-                )
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 8) {
-                iconOptionButton(
-                    style: .auto,
-                    title: text("Auto", "자동 전환"),
-                    subtitle: text("Dark / Light", "다크·라이트 연동")
-                )
-                iconOptionButton(
-                    style: .light,
-                    title: text("Light", "라이트"),
-                    subtitle: text("Silver Glass", "실버 아이콘")
-                )
-                iconOptionButton(
-                    style: .dark,
-                    title: text("Dark", "다크"),
-                    subtitle: text("Obsidian", "다크 아이콘")
-                )
-            }
-        }
-        .padding(12)
-        .frame(width: 286)
-    }
-
-    private func iconOptionButton(
-        style: AppIconAppearanceStyle,
-        title: String,
-        subtitle: String
-    ) -> some View {
-        let isSelected = currentStyle == style
-        return Button {
-            AppIconController.shared.selectStyle(style)
-        } label: {
-            VStack(spacing: 6) {
-                if style == .auto {
-                    HStack(spacing: -10) {
-                        Image("NotchieIconLight")
-                            .resizable()
-                            .interpolation(.high)
-                            .scaledToFit()
-                            .frame(width: 34, height: 34)
-                        Image("NotchieIconDark")
-                            .resizable()
-                            .interpolation(.high)
-                            .scaledToFit()
-                            .frame(width: 34, height: 34)
-                    }
-                    .frame(height: 38)
-                } else {
-                    Image(style == .light ? "NotchieIconLight" : "NotchieIconDark")
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .frame(width: 38, height: 38)
-                }
-
-                VStack(spacing: 1) {
-                    HStack(spacing: 3) {
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isSelected ? accentColor : .secondary)
-                        Text(title)
-                            .font(.system(size: 11, weight: .semibold))
-                            .lineLimit(1)
-                    }
-                    Text(subtitle)
-                        .font(.system(size: 9.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 6)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(isSelected ? accentColor.opacity(0.16) : Color.primary.opacity(0.05))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(isSelected ? accentColor.opacity(0.8) : Color.primary.opacity(0.1), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 
