@@ -1458,6 +1458,14 @@ private struct NotchieNowPlayingStudioColumn: View {
                     .padding(.vertical, 10)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onToggleLyrics?()
+        }
+        .help(privacyText(
+            isLyricsActive ? "Click anywhere to return to calendar" : "Click anywhere to view real-time lyrics in calendar slot",
+            isLyricsActive ? "클릭하여 캘린더로 돌아가기" : "클릭하여 캘린더 자리에 실시간 가사 보기"
+        ))
     }
 
     private var placeholderStudioCard: some View {
@@ -2435,6 +2443,9 @@ private struct NotchieNotchLyricsColumn: View {
             .padding(.vertical, 9)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            nowPlayingViewModel?.setLyricsPresentationActive(true)
+        }
     }
 
     @ViewBuilder

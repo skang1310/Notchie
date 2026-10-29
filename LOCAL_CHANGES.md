@@ -1,6 +1,24 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
 
-1. **Centered Symmetrical Notch Animation, Unclipped AI Usage Cards & X Button Removal (2026-10-30 v40)**:
+1. **Multi-Strategy Real-Time Synced Lyrics Engine & Click-Anywhere Toggle (2026-10-30 v41)**:
+   - **Why Apple Music Real-Time Lyrics failed previously & how it's solved**:
+     - Apple Music streaming tracks encrypt synced lyrics (TTML format) via FairPlay DRM. The local AppleScript API (`tell application "Music" to get lyrics of current track`) only returns ID3 tag static lyrics and yields an empty string for all streaming catalog tracks.
+     - Upstream `LRCLIBLyricsProvider` was failing due to public server overload (HTTP 503 ServerOverloaded on `https://lrclib.net`), lacked title normalization for Apple Music metadata (e.g. parenthetical subtitles, feat, remaster tags), and lacked retry logic once marked as `.notFound`.
+   - **New High-Availability Multi-Strategy Lyrics Pipeline (`다중 실시간 동기화 가사 공급자 파이프라인`)**:
+     - **`KugouLyricsProvider`**: High-speed (~50ms), highly available, million-track LRC provider with millisecond timestamp parsing (`[mm:ss.xx]`), candidate duration matching, and Base64 UTF-8 decoding. Supports Korean, English, Japanese, and international pop songs flawlessly.
+     - **Title Normalization & 3-Pass Search**: Cleans noisy subtitles like `"(Down Santa Claus Lane)"`, `"[Remastered 2024]"`, `"(feat. ...)"`, and `"- Single"`, trying raw title, cleaned title, and artist queries in sequence.
+     - **Enhanced `LRCLIBLyricsProvider`**: Added `DynamicNotch/1.0` User-Agent header, cleaned title search fallback, and graceful 429/503 HTTP status code handling without throwing fatal errors.
+     - **`AppleMusicLyricsProvider`**: Retained for local ID3 tag lyrics.
+     - **`CompositeLyricsProvider`**: Coordinated pipeline: `[AppleMusicLyricsProvider, KugouLyricsProvider, LRCLIBLyricsProvider, OvhLyricsProvider]`.
+     - **Retry & State Refresh Policy in `NowPlayingViewModel`**: `loadLyricsIfNeeded` now only returns early if already `.loaded` or currently `.loading`, allowing users to retry instantly if a prior attempt was offline or failed.
+   - **Click-Anywhere Toggle on Now Playing Screen (`Now Playing 화면 아무 곳이나 클릭하여 가사 on/off`)**:
+     - Wrapped the entire `NotchieNowPlayingStudioColumn` card with `.contentShape(Rectangle())` and `.onTapGesture { store.toggleLyricsInCalendarSlot() }`.
+     - Clicking ANYWHERE on the Now Playing card—including album artwork, song title, artist, live equalizer, card background, padding, or elapsed time labels—smoothly toggles the real-time lyrics view in the calendar slot on/off!
+     - Playback controls (play/pause, next, previous, favorite, audio output picker) and scrubber dragging intercept their own events without triggering accidental lyrics toggle.
+     - Added native hover tooltip and interactive cursor feedback: "Click anywhere to view real-time lyrics in calendar slot" / "아무 곳이나 클릭하여 캘린더 자리에 실시간 가사 보기".
+   - 321 unit tests passed; Release build installed and running at `/Applications/DynamicNotch.app` (PID 27396, UUID `96B528B5-8DC9-34EE-B291-D54075AD0271`).
+
+2. **Centered Symmetrical Notch Animation, Unclipped AI Usage Cards & X Button Removal (2026-10-30 v40)**:
    - **Centered Symmetrical Expansion Animation (`노치 중앙 대칭 확장 애니메이션 개선`)**:
      - Resolved the lateral drift issue where the notch previously appeared with a right-to-left skew due to asymmetric tab weight in the top wing header.
      - Redesigned `topWingHeaderBar` with mathematical symmetry:

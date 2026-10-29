@@ -36,7 +36,7 @@ final class NowPlayingViewModel: ObservableObject {
     private var artworkFlipTrackKey: String?
     private var artworkFlipStartedAt: Date?
     private var activeDetailedPresentationSources = Set<String>()
-    private var isLyricsPresentationActive = false
+    private(set) var isLyricsPresentationActive = false
     private var recentSeekTargetTime: TimeInterval?
     private var recentSeekDate: Date?
     private let seekGracePeriodDuration: TimeInterval = 1.5
@@ -78,6 +78,8 @@ final class NowPlayingViewModel: ObservableObject {
         self.service = service
         self.audioOutputRouting = audioOutputRouting ?? InactiveAudioOutputRoutingService()
         self.lyricsProvider = lyricsProvider ?? CompositeLyricsProvider(providers: [
+            AppleMusicLyricsProvider(),
+            KugouLyricsProvider(),
             LRCLIBLyricsProvider(),
             OvhLyricsProvider()
         ])
@@ -556,7 +558,14 @@ private extension NowPlayingViewModel {
             return
         }
 
-        guard lyricsState.trackKey != trackKey else { return }
+        switch lyricsState {
+        case .loaded(let lyrics) where lyrics.trackKey == trackKey:
+            return
+        case .loading(let currentTrackKey) where currentTrackKey == trackKey:
+            return
+        default:
+            break
+        }
 
         cancelLyricsLookup()
         lyricsState = .loading(trackKey: trackKey)

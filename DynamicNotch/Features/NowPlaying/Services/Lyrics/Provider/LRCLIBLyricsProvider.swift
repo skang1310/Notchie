@@ -75,7 +75,8 @@ final class LRCLIBLyricsProvider: LyricsProviding {
     }
 
     private func searchLyrics(for snapshot: NowPlayingSnapshot, trackKey: String) async throws -> TrackLyrics? {
-        let searchAttempts = [
+        let cleanTitle = KugouLyricsProvider.cleanTitle(snapshot.title.trimmed)
+        var searchAttempts = [
             queryItems(for: snapshot, includeAlbum: false, includeDuration: true),
             queryItems(for: snapshot, includeAlbum: false, includeDuration: false),
             [
@@ -88,12 +89,23 @@ final class LRCLIBLyricsProvider: LyricsProviding {
             ]
         ]
 
+        if cleanTitle != snapshot.title.trimmed && !cleanTitle.isEmpty {
+            searchAttempts.append([
+                URLQueryItem(
+                    name: "q",
+                    value: [snapshot.artist.trimmed, cleanTitle]
+                        .filter { $0.isEmpty == false }
+                        .joined(separator: " ")
+                )
+            ])
+        }
+
         for queryItems in searchAttempts {
             guard let url = makeURL(endpoint: "search", queryItems: queryItems) else {
                 continue
             }
 
-            guard let data = try await data(from: url, allowsNotFound: false) else {
+            guard let data = try await data(from: url, allowsNotFound: true) else {
                 continue
             }
 
@@ -148,7 +160,7 @@ final class LRCLIBLyricsProvider: LyricsProviding {
         switch httpResponse.statusCode {
         case 200..<300:
             return data
-        case 404 where allowsNotFound:
+        case 404 where allowsNotFound, 429, 500...599:
             return nil
         default:
             throw URLError(.badServerResponse)

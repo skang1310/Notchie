@@ -92,8 +92,10 @@ final class AppContainer {
             lyricsProvider: isRunningTests ?
                 InactiveLyricsProvider() :
                 CompositeLyricsProvider(providers: [
+                    AppleMusicLyricsProvider(),
+                    KugouLyricsProvider(),
                     LRCLIBLyricsProvider(),
-                    AppleMusicLyricsProvider()
+                    OvhLyricsProvider()
                 ]),
             sourceFilter: settingsViewModel.mediaAndFiles.nowPlayingSourceFilter
         )
