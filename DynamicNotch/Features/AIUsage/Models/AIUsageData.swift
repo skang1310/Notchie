@@ -371,11 +371,33 @@ public struct CodexConfigData: Equatable, Sendable {
     }
 }
 
+// MARK: - Gemini Models
+
+public struct GeminiSessionEntry: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+    public let stepCount: Int
+    public let lastModified: Date
+
+    public init(
+        id: String = UUID().uuidString,
+        title: String,
+        stepCount: Int = 0,
+        lastModified: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.stepCount = stepCount
+        self.lastModified = lastModified
+    }
+}
+
 // MARK: - AI Provider
 
 public enum AIProviderType: String, CaseIterable, Identifiable {
     case claudeCode = "claude"
     case codex = "codex"
+    case gemini = "gemini"
 
     public var id: String { rawValue }
 
@@ -383,6 +405,15 @@ public enum AIProviderType: String, CaseIterable, Identifiable {
         switch self {
         case .claudeCode: return "Claude Code"
         case .codex: return "OpenAI Codex"
+        case .gemini: return "Google Gemini"
+        }
+    }
+
+    public var shortDisplayName: String {
+        switch self {
+        case .claudeCode: return "Claude"
+        case .codex: return "Codex"
+        case .gemini: return "Gemini"
         }
     }
 
@@ -390,6 +421,7 @@ public enum AIProviderType: String, CaseIterable, Identifiable {
         switch self {
         case .claudeCode: return "sparkles"
         case .codex: return "terminal.fill"
+        case .gemini: return "wand.and.stars"
         }
     }
 }

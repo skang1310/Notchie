@@ -49,8 +49,8 @@ public struct AIUsageNotchView: View {
 
     private var headerBar: some View {
         HStack(spacing: 8) {
-            // Provider Segmented Switcher (Claude Code / Codex)
-            HStack(spacing: 3) {
+            // Provider Segmented Switcher (Claude Code / Codex / Gemini)
+            HStack(spacing: 2.5) {
                 ForEach(AIProviderType.allCases) { provider in
                     let isSelected = selectedProvider == provider
                     Button {
@@ -58,20 +58,20 @@ public struct AIUsageNotchView: View {
                             selectedProvider = provider
                         }
                     } label: {
-                        HStack(spacing: 5) {
+                        HStack(spacing: 4) {
                             Image(systemName: provider.iconName)
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: 9.5, weight: .semibold))
                                 .foregroundStyle(
                                     isSelected
-                                        ? (provider == .claudeCode ? Color.orange : Color.green)
+                                        ? providerAccentColor(provider)
                                         : Color.white.opacity(0.6)
                                 )
-                            Text(provider.displayName)
-                                .font(.system(size: 11, weight: isSelected ? .semibold : .medium, design: .rounded))
+                            Text(provider.shortDisplayName)
+                                .font(.system(size: 10.5, weight: isSelected ? .semibold : .medium, design: .rounded))
                                 .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.7))
                         }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
                         .background(
                             Capsule(style: .continuous)
                                 .fill(isSelected ? Color.white.opacity(0.14) : Color.clear)
@@ -140,14 +140,22 @@ public struct AIUsageNotchView: View {
             return service.isClaudeInstalled
         case .codex:
             return service.isCodexInstalled
+        case .gemini:
+            return service.isGeminiInstalled
         }
     }
 
     private func openCurrentDirectory() {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let target = selectedProvider == .claudeCode
-            ? home.appendingPathComponent(".claude")
-            : home.appendingPathComponent(".codex")
+        let target: URL
+        switch selectedProvider {
+        case .claudeCode:
+            target = home.appendingPathComponent(".claude")
+        case .codex:
+            target = home.appendingPathComponent(".codex")
+        case .gemini:
+            target = home.appendingPathComponent(".gemini")
+        }
         NSWorkspace.shared.open(target)
     }
 
@@ -274,14 +282,22 @@ public struct AIUsageNotchView: View {
         )
     }
 
-    // MARK: - Dual Tier Breakdown (5-Hour Session & 7-Day Weekly Limit)
+    // MARK: - Dual Tier Breakdown (5-Hour Session & 7-Day Weekly / Daily Limit)
 
     private func breakdownTiers(summary: AIProviderUsageSummary) -> some View {
         VStack(spacing: 6) {
-            tierRow(window: summary.primaryWindow, icon: "clock.arrow.circlepath", accent: selectedProvider == .claudeCode ? .orange : .green)
+            tierRow(
+                window: summary.primaryWindow,
+                icon: "clock.arrow.circlepath",
+                accent: providerAccentColor(selectedProvider)
+            )
 
             if let secondary = summary.secondaryWindow {
-                tierRow(window: secondary, icon: "calendar.badge.clock", accent: selectedProvider == .claudeCode ? .yellow : .mint)
+                tierRow(
+                    window: secondary,
+                    icon: "calendar.badge.clock",
+                    accent: providerSecondaryAccentColor(selectedProvider)
+                )
             }
         }
     }
@@ -396,15 +412,15 @@ public struct AIUsageNotchView: View {
 
     private var loadingOrEmptyCard: some View {
         VStack(spacing: 8) {
-            Image(systemName: selectedProvider == .claudeCode ? "sparkles" : "terminal")
+            Image(systemName: selectedProvider.iconName)
                 .font(.system(size: 22))
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(providerAccentColor(selectedProvider).opacity(0.7))
 
             Text(text("Reading local AI usage...", "로컬 AI 사용량을 읽는 중..."))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.75))
 
-            Text(text("Run `claude` or `codex` in Terminal to start tracking quota", "터미널에서 `claude` 또는 `codex`를 실행하면 사용량이 기록됩니다"))
+            Text(text("Run `claude`, `codex`, or `gemini` to start tracking quota", "터미널에서 `claude`, `codex`, 또는 `gemini`를 실행하면 사용량이 기록됩니다"))
                 .font(.system(size: 9, weight: .regular))
                 .foregroundStyle(.white.opacity(0.45))
                 .multilineTextAlignment(.center)
@@ -424,12 +440,33 @@ public struct AIUsageNotchView: View {
 
     // MARK: - Helpers
 
+    private func providerAccentColor(_ provider: AIProviderType) -> Color {
+        switch provider {
+        case .claudeCode: return Color.orange
+        case .codex: return Color.green
+        case .gemini: return Color.cyan
+        }
+    }
+
+    private func providerSecondaryAccentColor(_ provider: AIProviderType) -> Color {
+        switch provider {
+        case .claudeCode: return Color.yellow
+        case .codex: return Color.mint
+        case .gemini: return Color.blue
+        }
+    }
+
     private func ringGradientColors(for provider: AIProviderType, health: AIQuotaHealth) -> [Color] {
         switch health {
         case .optimal:
-            return provider == .claudeCode
-                ? [Color.orange, Color.yellow, Color.orange]
-                : [Color.green, Color.mint, Color.green]
+            switch provider {
+            case .claudeCode:
+                return [Color.orange, Color.yellow, Color.orange]
+            case .codex:
+                return [Color.green, Color.mint, Color.green]
+            case .gemini:
+                return [Color.blue, Color.cyan, Color.blue]
+            }
         case .warning:
             return [Color.yellow, Color.orange, Color.yellow]
         case .critical:

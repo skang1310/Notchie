@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import SQLite3
 
 @MainActor
 public final class AIUsageService: ObservableObject {
@@ -14,21 +15,26 @@ public final class AIUsageService: ObservableObject {
     @Published public private(set) var claudeHistory: [ClaudeHistoryEntry] = []
     @Published public private(set) var codexSessions: [CodexSessionEntry] = []
     @Published public private(set) var codexConfig: CodexConfigData = CodexConfigData()
+    @Published public private(set) var geminiSessions: [GeminiSessionEntry] = []
     @Published public private(set) var claudeSummary: AIProviderUsageSummary?
     @Published public private(set) var codexSummary: AIProviderUsageSummary?
+    @Published public private(set) var geminiSummary: AIProviderUsageSummary?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var lastRefreshed: Date?
 
     private let claudeDirectory: URL
     private let codexDirectory: URL
+    private let geminiDirectory: URL
     private var refreshTask: Task<Void, Never>?
 
     public init(
         claudeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude"),
-        codexDirectory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
+        codexDirectory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex"),
+        geminiDirectory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini")
     ) {
         self.claudeDirectory = claudeDirectory
         self.codexDirectory = codexDirectory
+        self.geminiDirectory = geminiDirectory
     }
 
     public var isClaudeInstalled: Bool {
@@ -39,12 +45,18 @@ public final class AIUsageService: ObservableObject {
         FileManager.default.fileExists(atPath: codexDirectory.path)
     }
 
+    public var isGeminiInstalled: Bool {
+        FileManager.default.fileExists(atPath: geminiDirectory.path)
+    }
+
     public func summary(for provider: AIProviderType) -> AIProviderUsageSummary? {
         switch provider {
         case .claudeCode:
             return claudeSummary
         case .codex:
             return codexSummary
+        case .gemini:
+            return geminiSummary
         }
     }
 
@@ -54,14 +66,17 @@ public final class AIUsageService: ObservableObject {
 
         let claudeDir = claudeDirectory
         let codexDir = codexDirectory
+        let geminiDir = geminiDirectory
 
         refreshTask = Task.detached(priority: .userInitiated) {
             let (stats, history) = Self.loadClaudeData(from: claudeDir)
             let (sessions, config) = Self.loadCodexData(from: codexDir)
+            let (geminiSess, geminiModel) = Self.loadGeminiData(from: geminiDir)
 
             let now = Date()
             let claudeSumm = Self.computeClaudeSummary(stats: stats, history: history, now: now)
             let codexSumm = Self.computeCodexSummary(sessions: sessions, config: config, now: now)
+            let geminiSumm = Self.computeGeminiSummary(sessions: geminiSess, modelName: geminiModel, now: now)
 
             await MainActor.run { [weak self] in
                 guard let self else { return }
@@ -69,8 +84,10 @@ public final class AIUsageService: ObservableObject {
                 self.claudeHistory = history
                 self.codexSessions = sessions
                 self.codexConfig = config
+                self.geminiSessions = geminiSess
                 self.claudeSummary = claudeSumm
                 self.codexSummary = codexSumm
+                self.geminiSummary = geminiSumm
                 self.isLoading = false
                 self.lastRefreshed = now
             }
@@ -315,6 +332,159 @@ public final class AIUsageService: ObservableObject {
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
             activeModel: config.model,
+            isLiveAPI: false,
+            lastUpdated: now
+        )
+    }
+
+    // MARK: - Gemini Data Parsing
+
+    private nonisolated static func loadGeminiData(from directory: URL) -> ([GeminiSessionEntry], String) {
+        var sessions: [GeminiSessionEntry] = []
+        var modelName = "gemini-2.5-pro"
+
+        // 1. Try reading model from antigravity_state.pbtxt
+        let stateURL = directory.appendingPathComponent("antigravity").appendingPathComponent("antigravity_state.pbtxt")
+        if let stateContent = try? String(contentsOf: stateURL, encoding: .utf8) {
+            for rawLine in stateContent.components(separatedBy: .newlines) {
+                let line = rawLine.trimmingCharacters(in: .whitespaces)
+                if line.hasPrefix("last_selected_agent_model:") {
+                    let parts = line.components(separatedBy: ":")
+                    if parts.count >= 2 {
+                        let rawModel = parts[1].trimmingCharacters(in: CharacterSet(charactersIn: " \"'"))
+                        if !rawModel.isEmpty {
+                            modelName = formatGeminiModel(rawModel)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Query conversation_summaries.db with SQLite
+        let dbURL = directory.appendingPathComponent("antigravity").appendingPathComponent("conversation_summaries.db")
+        if FileManager.default.fileExists(atPath: dbURL.path) {
+            var db: OpaquePointer?
+            if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
+                defer { sqlite3_close(db) }
+                let query = "SELECT conversation_id, title, step_count, last_modified_time FROM conversation_summaries ORDER BY last_modified_time DESC LIMIT 40;"
+                var stmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
+                    defer { sqlite3_finalize(stmt) }
+                    let isoFormatter = ISO8601DateFormatter()
+                    isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        let id = sqlite3_column_text(stmt, 0).map { String(cString: $0) } ?? UUID().uuidString
+                        let title = sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? "Conversation"
+                        let steps = Int(sqlite3_column_int(stmt, 2))
+                        let dateText = sqlite3_column_text(stmt, 3).map { String(cString: $0) } ?? ""
+
+                        // Format in sqlite: "2026-10-29 13:56:01.687015+00:00"
+                        let normalizedDateText = dateText.replacingOccurrences(of: " ", with: "T")
+                        let date = isoFormatter.date(from: normalizedDateText) ?? Date()
+
+                        sessions.append(GeminiSessionEntry(
+                            id: id,
+                            title: title,
+                            stepCount: steps,
+                            lastModified: date
+                        ))
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: if sessions empty, inspect brain directories for timestamps
+        if sessions.isEmpty {
+            let brainURL = directory.appendingPathComponent("antigravity").appendingPathComponent("brain")
+            if let entries = try? FileManager.default.contentsOfDirectory(at: brainURL, includingPropertiesForKeys: [.contentModificationDateKey]) {
+                for entryURL in entries.prefix(25) {
+                    if let values = try? entryURL.resourceValues(forKeys: [.contentModificationDateKey]),
+                       let date = values.contentModificationDate {
+                        sessions.append(GeminiSessionEntry(
+                            id: entryURL.lastPathComponent,
+                            title: entryURL.lastPathComponent,
+                            stepCount: 1,
+                            lastModified: date
+                        ))
+                    }
+                }
+            }
+        }
+
+        return (sessions, modelName)
+    }
+
+    private nonisolated static func formatGeminiModel(_ raw: String) -> String {
+        if raw.contains("M318") || raw.contains("pro") {
+            return "gemini-2.5-pro"
+        } else if raw.contains("flash") {
+            return "gemini-2.5-flash"
+        }
+        return raw.lowercased()
+    }
+
+    internal nonisolated static func computeGeminiSummary(
+        sessions: [GeminiSessionEntry],
+        modelName: String,
+        now: Date = Date()
+    ) -> AIProviderUsageSummary {
+        let fiveHoursAgo = now.addingTimeInterval(-5 * 3600)
+        let recentSessions = sessions.filter { $0.lastModified >= fiveHoursAgo }
+
+        let sessionUtilization: Double
+        let sessionResetsAt: Date
+
+        if !recentSessions.isEmpty {
+            let earliestTimestamp = recentSessions.map(\.lastModified).min() ?? now
+            sessionResetsAt = earliestTimestamp.addingTimeInterval(5 * 3600)
+            let totalSteps = recentSessions.reduce(0) { $0 + max(1, $1.stepCount) }
+            // Benchmark: ~60 steps in 5-hour rolling session window
+            sessionUtilization = min(100.0, max(4.0, (Double(totalSteps) / 60.0) * 100.0))
+        } else {
+            sessionResetsAt = now.addingTimeInterval(5 * 3600)
+            sessionUtilization = 0.0
+        }
+
+        let primaryWindow = AIQuotaWindow(
+            id: "gemini-5h",
+            title: "5-Hour Session Window",
+            titleKo: "5시간 세션 롤링 창",
+            subtitle: "Rolling rate limit",
+            subtitleKo: "5시간 단위 롤링 한도",
+            utilization: sessionUtilization,
+            resetsAt: sessionResetsAt,
+            totalLimitDesc: modelName
+        )
+
+        let calendar = Calendar.current
+        let nextMidnight = calendar.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0),
+            matchingPolicy: .nextTime
+        ) ?? now.addingTimeInterval(86400)
+
+        let todaySessions = sessions.filter { calendar.isDateInToday($0.lastModified) }
+        let todaySteps = todaySessions.reduce(0) { $0 + max(1, $1.stepCount) }
+        let dailyUtilization = min(100.0, max(2.0, (Double(todaySteps) / 250.0) * 100.0))
+
+        let secondaryWindow = AIQuotaWindow(
+            id: "gemini-daily",
+            title: "Daily Request Quota",
+            titleKo: "일일 쿼터 한도",
+            subtitle: "24-hour limit",
+            subtitleKo: "24시간 요청 쿼터 한도",
+            utilization: dailyUtilization,
+            resetsAt: nextMidnight,
+            totalLimitDesc: "Google AI"
+        )
+
+        return AIProviderUsageSummary(
+            id: "gemini-summary",
+            provider: .gemini,
+            primaryWindow: primaryWindow,
+            secondaryWindow: secondaryWindow,
+            activeModel: modelName,
             isLiveAPI: false,
             lastUpdated: now
         )

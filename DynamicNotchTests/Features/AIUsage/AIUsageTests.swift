@@ -277,6 +277,26 @@ final class AIUsageTests: XCTestCase {
         XCTAssertEqual(codexSummary.activeModel, "gpt-6.1-sol")
         XCTAssertEqual(codexSummary.primaryWindow.titleKo, "코덱스 세션 창")
         XCTAssertEqual(codexSummary.secondaryWindow?.titleKo, "일일 쿼터 한도")
+
+        let geminiSession = GeminiSessionEntry(id: "g1", title: "Gemini agent", stepCount: 15, lastModified: now.addingTimeInterval(-900))
+        let geminiSummary = AIUsageService.computeGeminiSummary(sessions: [geminiSession], modelName: "gemini-2.5-pro", now: now)
+        XCTAssertEqual(geminiSummary.provider, .gemini)
+        XCTAssertEqual(geminiSummary.activeModel, "gemini-2.5-pro")
+        XCTAssertEqual(geminiSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
+        XCTAssertEqual(geminiSummary.secondaryWindow?.titleKo, "일일 쿼터 한도")
+        XCTAssertTrue(geminiSummary.primaryWindow.remainingPercentage > 0)
+    }
+
+    func testAIProviderTypeIncludesGemini() {
+        XCTAssertEqual(AIProviderType.allCases.count, 3)
+        XCTAssertTrue(AIProviderType.allCases.contains(.claudeCode))
+        XCTAssertTrue(AIProviderType.allCases.contains(.codex))
+        XCTAssertTrue(AIProviderType.allCases.contains(.gemini))
+
+        let gemini = AIProviderType.gemini
+        XCTAssertEqual(gemini.displayName, "Google Gemini")
+        XCTAssertEqual(gemini.shortDisplayName, "Gemini")
+        XCTAssertEqual(gemini.iconName, "wand.and.stars")
     }
 
     // MARK: - Fluid Dynamic Island Animation Preset Tests

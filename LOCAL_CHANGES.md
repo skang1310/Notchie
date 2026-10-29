@@ -1,6 +1,6 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **Codenotch-Style Minimal AI Usage & Reset Tracker (2026-10-29 v34)**:
+1. **Codenotch-Style Minimal AI Usage & Reset Tracker (Claude Code, OpenAI Codex & Google Gemini) (2026-10-29 v34)**:
    - Redesigned AI Usage Tracker to follow [vinzdg/codenotch](https://github.com/vinzdg/codenotch) format:
      - Stripped out cluttered prompt history, long message lists, and bulky token breakdowns from the notch view.
      - Pure focus on **Real Quota Remaining & Reset Countdown**:
@@ -9,16 +9,19 @@
        - **Reset Countdown Pill**: ⏳ `리셋까지 3시간 14분 (오후 11:45 리셋)` / `Resets in 3h 14m (11:45 PM)`.
        - **Dual-Tier Quota Windows**:
          1. **5-Hour Rolling Session Window (`5시간 세션 롤링 창`)**: tracks 5-hour rolling session rate limits and earliest prompt expiration.
-         2. **7-Day Weekly Limit (`주간 쿼터 한도`)**: tracks 7-day cumulative quota and weekly cycle boundary reset date.
+         2. **7-Day Weekly Limit / Daily Quota (`주간 쿼터 한도 / 일일 쿼터`)**: tracks 7-day cumulative quota or daily request quota and reset boundaries.
        - **Health Status Indicator**:
-         - `여유 있음 (Optimal)`: < 70% used (Green/Mint)
+         - `여유 있음 (Optimal)`: < 70% used (Green/Cyan/Mint)
          - `사용량 주의 (High Usage)`: 70% ~ 89% used (Yellow/Orange)
          - `한도 임박 (Limit Reached)`: >= 90% used (Red)
-       - **Provider Switcher**: Claude Code and OpenAI Codex.
-       - Added `AIQuotaWindow`, `AIQuotaHealth`, and `AIProviderUsageSummary` models in `AIUsageData.swift`.
-       - Added `computeClaudeSummary` and `computeCodexSummary` in `AIUsageService.swift`.
-       - Added comprehensive unit tests in `AIUsageTests.swift` (`testAIQuotaWindowCalculationsAndFormatting`, `testAIUsageServiceComputesQuotaSummaries`), bringing test count to 308 passed tests.
-   - Installed Release build to `/Applications/DynamicNotch.app` (PID 5436, UUID `75A846FA-49F3-34EF-93F6-1A016485A1C5`).
+       - **Provider Switcher**: Three providers supported:
+         - **Claude Code** (`sparkles` / Orange)
+         - **OpenAI Codex** (`terminal` / Green)
+         - **Google Gemini** (`wand.and.stars` / Blue-Cyan gradient): tracks local Antigravity/Gemini agent interactions from `~/.gemini/antigravity/conversation_summaries.db`, rolling 5-hour session quota, daily request quota, and active model.
+       - Added `AIQuotaWindow`, `AIQuotaHealth`, `AIProviderUsageSummary`, and `GeminiSessionEntry` models in `AIUsageData.swift`.
+       - Added `computeClaudeSummary`, `computeCodexSummary`, and `computeGeminiSummary` with SQLite queries and directory fallbacks in `AIUsageService.swift`.
+       - Added comprehensive unit tests in `AIUsageTests.swift` (`testAIQuotaWindowCalculationsAndFormatting`, `testAIUsageServiceComputesQuotaSummaries`, `testAIProviderTypeIncludesGemini`), bringing test count to 309 passed tests.
+   - Installed Release build to `/Applications/DynamicNotch.app` (PID 7995, UUID `312A0EEF-971E-33FB-99B4-71041238CD01`).
 
 2. **Fluid Dynamic Island Motion & Apple Spring Physics (2026-10-29 v33)**:
    - Added `.fluid` animation preset to `NotchAnimationPreset` and `NotchAnimations`:
