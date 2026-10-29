@@ -60,7 +60,8 @@ public final class AIUsageService: ObservableObject {
         }
     }
 
-    public func refresh() {
+    @discardableResult
+    public func refresh() -> Task<Void, Never> {
         refreshTask?.cancel()
         isLoading = true
 
@@ -68,13 +69,13 @@ public final class AIUsageService: ObservableObject {
         let codexDir = codexDirectory
         let geminiDir = geminiDirectory
 
-        refreshTask = Task.detached(priority: .userInitiated) {
-            let (stats, history) = Self.loadClaudeData(from: claudeDir)
+        let task = Task.detached(priority: .userInitiated) {
+            let (stats, history, claudeModel) = Self.loadClaudeData(from: claudeDir)
             let (sessions, config) = Self.loadCodexData(from: codexDir)
             let (geminiSess, geminiModel) = Self.loadGeminiData(from: geminiDir)
 
             let now = Date()
-            let claudeSumm = Self.computeClaudeSummary(stats: stats, history: history, now: now)
+            let claudeSumm = Self.computeClaudeSummary(stats: stats, history: history, activeModel: claudeModel, now: now)
             let codexSumm = Self.computeCodexSummary(sessions: sessions, config: config, now: now)
             let geminiSumm = Self.computeGeminiSummary(sessions: geminiSess, modelName: geminiModel, now: now)
 
@@ -92,11 +93,17 @@ public final class AIUsageService: ObservableObject {
                 self.lastRefreshed = now
             }
         }
+        refreshTask = task
+        return task
+    }
+
+    public func refreshAsync() async {
+        await refresh().value
     }
 
     // MARK: - Claude Data Parsing
 
-    private nonisolated static func loadClaudeData(from directory: URL) -> (ClaudeStatsData?, [ClaudeHistoryEntry]) {
+    private nonisolated static func loadClaudeData(from directory: URL) -> (ClaudeStatsData?, [ClaudeHistoryEntry], String) {
         let statsURL = directory.appendingPathComponent("stats-cache.json")
         var stats: ClaudeStatsData?
         if let data = try? Data(contentsOf: statsURL) {
@@ -104,13 +111,77 @@ public final class AIUsageService: ObservableObject {
             stats = try? decoder.decode(ClaudeStatsData.self, from: data)
         }
 
-        let historyURL = directory.appendingPathComponent("history.jsonl")
         var history: [ClaudeHistoryEntry] = []
+        var detectedModel: String?
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fallbackIso = ISO8601DateFormatter()
+        fallbackIso.formatOptions = [.withInternetDateTime]
+
+        let fileManager = FileManager.default
+
+        // 1. Scan modern project session files in ~/.claude/projects/*/*.jsonl
+        let projectsURL = directory.appendingPathComponent("projects")
+        if let projectDirs = try? fileManager.contentsOfDirectory(at: projectsURL, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles) {
+            let now = Date()
+            let cutoff = now.addingTimeInterval(-7 * 86400) // 7 days
+
+            for pDir in projectDirs {
+                guard let sessionFiles = try? fileManager.contentsOfDirectory(at: pDir, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles) else {
+                    continue
+                }
+                for sFile in sessionFiles where sFile.pathExtension == "jsonl" {
+                    if let values = try? sFile.resourceValues(forKeys: [.contentModificationDateKey]),
+                       let modDate = values.contentModificationDate,
+                       modDate < cutoff {
+                        continue
+                    }
+                    guard let content = try? String(contentsOf: sFile, encoding: .utf8) else {
+                        continue
+                    }
+                    let lines = content.components(separatedBy: .newlines)
+                    for line in lines where !line.isEmpty {
+                        guard let data = line.data(using: .utf8),
+                              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                            continue
+                        }
+                        let type = json["type"] as? String ?? ""
+                        if type == "user" {
+                            let timestampStr = json["timestamp"] as? String ?? ""
+                            let timestamp = isoFormatter.date(from: timestampStr) ?? fallbackIso.date(from: timestampStr) ?? Date()
+                            var prompt = ""
+                            if let msg = json["message"] as? [String: Any],
+                               let contentStr = msg["content"] as? String {
+                                prompt = contentStr
+                            } else if let contentStr = json["content"] as? String {
+                                prompt = contentStr
+                            }
+                            if prompt.isEmpty {
+                                prompt = "Claude Interaction"
+                            }
+                            history.append(ClaudeHistoryEntry(
+                                id: UUID().uuidString,
+                                display: prompt,
+                                timestamp: timestamp,
+                                project: pDir.lastPathComponent,
+                                sessionId: sFile.deletingPathExtension().lastPathComponent
+                            ))
+                        } else if type == "assistant" && detectedModel == nil {
+                            if let msg = json["message"] as? [String: Any],
+                               let model = msg["model"] as? String, !model.isEmpty {
+                                detectedModel = model
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Also read legacy flat history.jsonl
+        let historyURL = directory.appendingPathComponent("history.jsonl")
         if let content = try? String(contentsOf: historyURL, encoding: .utf8) {
             let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            // Take the latest 20 lines (reversed)
-            let recentLines = lines.suffix(20).reversed()
-            for line in recentLines {
+            for line in lines.suffix(20) {
                 if let data = line.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     let display = json["display"] as? String ?? ""
@@ -131,7 +202,9 @@ public final class AIUsageService: ObservableObject {
             }
         }
 
-        return (stats, history)
+        history.sort { $0.timestamp > $1.timestamp }
+        let resolvedModel = detectedModel ?? stats?.primaryModelName ?? "claude-sonnet-5-5"
+        return (stats, history, resolvedModel)
     }
 
     // MARK: - Codex Data Parsing
@@ -202,6 +275,7 @@ public final class AIUsageService: ObservableObject {
     internal nonisolated static func computeClaudeSummary(
         stats: ClaudeStatsData?,
         history: [ClaudeHistoryEntry],
+        activeModel: String = "claude-sonnet-5-5",
         now: Date = Date()
     ) -> AIProviderUsageSummary {
         let fiveHoursAgo = now.addingTimeInterval(-5 * 3600)
@@ -215,9 +289,9 @@ public final class AIUsageService: ObservableObject {
             let earliestTimestamp = recentEntries.map(\.timestamp).min() ?? now
             sessionResetsAt = earliestTimestamp.addingTimeInterval(5 * 3600)
             // Benchmark: ~45 messages in 5h rolling window
-            sessionUtilization = min(100.0, max(4.0, (Double(recentEntries.count) / 45.0) * 100.0))
+            sessionUtilization = min(100.0, max(5.0, (Double(recentEntries.count) / 45.0) * 100.0))
         } else {
-            sessionResetsAt = now.addingTimeInterval(5 * 3600)
+            sessionResetsAt = now
             sessionUtilization = 0.0
         }
 
@@ -229,27 +303,29 @@ public final class AIUsageService: ObservableObject {
             subtitleKo: "5시간 단위 롤링 한도",
             utilization: sessionUtilization,
             resetsAt: sessionResetsAt,
-            totalLimitDesc: "Sonnet & Opus"
+            totalLimitDesc: activeModel
         )
 
         // Weekly quota calculation
-        var weeklyMessages = 0
         let calendar = Calendar.current
-        if let daily = stats?.dailyActivity {
-            let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now.addingTimeInterval(-7 * 86400)
+        let weeklyEntries = history.filter { $0.timestamp >= sevenDaysAgo }
+        var weeklyCount = weeklyEntries.count
+
+        if weeklyCount == 0, let daily = stats?.dailyActivity {
             let isoFormatter = DateFormatter()
             isoFormatter.dateFormat = "yyyy-MM-dd"
             for act in daily {
                 if let date = isoFormatter.date(from: act.date), date >= sevenDaysAgo {
-                    weeklyMessages += act.messageCount
+                    weeklyCount += act.messageCount
                 }
             }
         }
-        if weeklyMessages == 0 {
-            weeklyMessages = history.count
+        if weeklyCount == 0 {
+            weeklyCount = history.count
         }
 
-        let weeklyUtilization = min(100.0, max(2.0, (Double(weeklyMessages) / 350.0) * 100.0))
+        let weeklyUtilization = min(100.0, max(2.0, (Double(weeklyCount) / 350.0) * 100.0))
         let weeklyResetDate = calendar.date(byAdding: .day, value: 5, to: now) ?? now.addingTimeInterval(5 * 86400)
 
         let secondaryWindow = AIQuotaWindow(
@@ -268,7 +344,7 @@ public final class AIUsageService: ObservableObject {
             provider: .claudeCode,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
-            activeModel: stats?.primaryModelName ?? "claude-3-7-sonnet",
+            activeModel: activeModel,
             isLiveAPI: false,
             lastUpdated: now
         )
@@ -288,9 +364,9 @@ public final class AIUsageService: ObservableObject {
         if !recentSessions.isEmpty {
             let earliestTimestamp = recentSessions.map(\.updatedAt).min() ?? now
             sessionResetsAt = earliestTimestamp.addingTimeInterval(5 * 3600)
-            sessionUtilization = min(100.0, max(4.0, (Double(recentSessions.count) / 25.0) * 100.0))
+            sessionUtilization = min(100.0, max(5.0, (Double(recentSessions.count) / 25.0) * 100.0))
         } else {
-            sessionResetsAt = now.addingTimeInterval(5 * 3600)
+            sessionResetsAt = now
             sessionUtilization = 0.0
         }
 
@@ -360,58 +436,88 @@ public final class AIUsageService: ObservableObject {
             }
         }
 
-        // 2. Query conversation_summaries.db with SQLite
-        let dbURL = directory.appendingPathComponent("antigravity").appendingPathComponent("conversation_summaries.db")
-        if FileManager.default.fileExists(atPath: dbURL.path) {
-            var db: OpaquePointer?
-            if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
-                defer { sqlite3_close(db) }
-                let query = "SELECT conversation_id, title, step_count, last_modified_time FROM conversation_summaries ORDER BY last_modified_time DESC LIMIT 40;"
-                var stmt: OpaquePointer?
-                if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
-                    defer { sqlite3_finalize(stmt) }
-                    let isoFormatter = ISO8601DateFormatter()
-                    isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fallbackIso = ISO8601DateFormatter()
+        fallbackIso.formatOptions = [.withInternetDateTime]
 
-                    while sqlite3_step(stmt) == SQLITE_ROW {
-                        let id = sqlite3_column_text(stmt, 0).map { String(cString: $0) } ?? UUID().uuidString
-                        let title = sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? "Conversation"
-                        let steps = Int(sqlite3_column_int(stmt, 2))
-                        let dateText = sqlite3_column_text(stmt, 3).map { String(cString: $0) } ?? ""
+        let fileManager = FileManager.default
+        let brainURL = directory.appendingPathComponent("antigravity").appendingPathComponent("brain")
+        let now = Date()
+        let cutoff = now.addingTimeInterval(-7 * 86400) // last 7 days
 
-                        // Format in sqlite: "2026-10-29 13:56:01.687015+00:00"
-                        let normalizedDateText = dateText.replacingOccurrences(of: " ", with: "T")
-                        let date = isoFormatter.date(from: normalizedDateText) ?? Date()
+        // 2. Scan recent transcript.jsonl files under ~/.gemini/antigravity/brain/*/.system_generated/logs/transcript.jsonl
+        if let convoDirs = try? fileManager.contentsOfDirectory(at: brainURL, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles) {
+            for convoDir in convoDirs {
+                let transcriptURL = convoDir.appendingPathComponent(".system_generated").appendingPathComponent("logs").appendingPathComponent("transcript.jsonl")
+                guard fileManager.fileExists(atPath: transcriptURL.path) else { continue }
+                if let values = try? transcriptURL.resourceValues(forKeys: [.contentModificationDateKey]),
+                   let modDate = values.contentModificationDate,
+                   modDate < cutoff {
+                    continue
+                }
 
-                        sessions.append(GeminiSessionEntry(
-                            id: id,
-                            title: title,
-                            stepCount: steps,
-                            lastModified: date
-                        ))
+                if let content = try? String(contentsOf: transcriptURL, encoding: .utf8) {
+                    for line in content.components(separatedBy: .newlines) where !line.isEmpty {
+                        guard let data = line.data(using: .utf8),
+                              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                            continue
+                        }
+                        let type = json["type"] as? String ?? ""
+                        if type == "USER_INPUT" {
+                            let dateStr = json["created_at"] as? String ?? ""
+                            let date = isoFormatter.date(from: dateStr) ?? fallbackIso.date(from: dateStr) ?? Date()
+                            var snippet = (json["content"] as? String ?? "")
+                                .replacingOccurrences(of: "<USER_REQUEST>", with: "")
+                                .replacingOccurrences(of: "</USER_REQUEST>", with: "")
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+                            if snippet.isEmpty { snippet = "Gemini Request" }
+
+                            sessions.append(GeminiSessionEntry(
+                                id: UUID().uuidString,
+                                title: String(snippet.prefix(50)),
+                                stepCount: 1,
+                                lastModified: date
+                            ))
+                        }
                     }
                 }
             }
         }
 
-        // 3. Fallback: if sessions empty, inspect brain directories for timestamps
+        // 3. Fallback: if sessions empty, query conversation_summaries.db
         if sessions.isEmpty {
-            let brainURL = directory.appendingPathComponent("antigravity").appendingPathComponent("brain")
-            if let entries = try? FileManager.default.contentsOfDirectory(at: brainURL, includingPropertiesForKeys: [.contentModificationDateKey]) {
-                for entryURL in entries.prefix(25) {
-                    if let values = try? entryURL.resourceValues(forKeys: [.contentModificationDateKey]),
-                       let date = values.contentModificationDate {
-                        sessions.append(GeminiSessionEntry(
-                            id: entryURL.lastPathComponent,
-                            title: entryURL.lastPathComponent,
-                            stepCount: 1,
-                            lastModified: date
-                        ))
+            let dbURL = directory.appendingPathComponent("antigravity").appendingPathComponent("conversation_summaries.db")
+            if fileManager.fileExists(atPath: dbURL.path) {
+                var db: OpaquePointer?
+                if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
+                    defer { sqlite3_close(db) }
+                    let query = "SELECT conversation_id, title, step_count, last_modified_time FROM conversation_summaries ORDER BY last_modified_time DESC LIMIT 20;"
+                    var stmt: OpaquePointer?
+                    if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
+                        defer { sqlite3_finalize(stmt) }
+                        while sqlite3_step(stmt) == SQLITE_ROW {
+                            let id = sqlite3_column_text(stmt, 0).map { String(cString: $0) } ?? UUID().uuidString
+                            let title = sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? "Conversation"
+                            let steps = Int(sqlite3_column_int(stmt, 2))
+                            let dateText = sqlite3_column_text(stmt, 3).map { String(cString: $0) } ?? ""
+                            let normalized = dateText.replacingOccurrences(of: " ", with: "T")
+                            let date = isoFormatter.date(from: normalized) ?? fallbackIso.date(from: normalized) ?? Date()
+
+                            sessions.append(GeminiSessionEntry(
+                                id: id,
+                                title: title,
+                                stepCount: min(10, steps),
+                                lastModified: date
+                            ))
+                        }
                     }
                 }
             }
         }
 
+        // Sort descending
+        sessions.sort { $0.lastModified > $1.lastModified }
         return (sessions, modelName)
     }
 
@@ -438,11 +544,10 @@ public final class AIUsageService: ObservableObject {
         if !recentSessions.isEmpty {
             let earliestTimestamp = recentSessions.map(\.lastModified).min() ?? now
             sessionResetsAt = earliestTimestamp.addingTimeInterval(5 * 3600)
-            let totalSteps = recentSessions.reduce(0) { $0 + max(1, $1.stepCount) }
-            // Benchmark: ~60 steps in 5-hour rolling session window
-            sessionUtilization = min(100.0, max(4.0, (Double(totalSteps) / 60.0) * 100.0))
+            // Count actual user prompts sent in 5-hour rolling session window (benchmark ~50 prompts)
+            sessionUtilization = min(100.0, max(5.0, (Double(recentSessions.count) / 50.0) * 100.0))
         } else {
-            sessionResetsAt = now.addingTimeInterval(5 * 3600)
+            sessionResetsAt = now
             sessionUtilization = 0.0
         }
 
@@ -465,8 +570,7 @@ public final class AIUsageService: ObservableObject {
         ) ?? now.addingTimeInterval(86400)
 
         let todaySessions = sessions.filter { calendar.isDateInToday($0.lastModified) }
-        let todaySteps = todaySessions.reduce(0) { $0 + max(1, $1.stepCount) }
-        let dailyUtilization = min(100.0, max(2.0, (Double(todaySteps) / 250.0) * 100.0))
+        let dailyUtilization = min(100.0, max(2.0, (Double(todaySessions.count) / 200.0) * 100.0))
 
         let secondaryWindow = AIQuotaWindow(
             id: "gemini-daily",

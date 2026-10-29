@@ -109,8 +109,10 @@ final class AIUsageTests: XCTestCase {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let claudeDir = tempDir.appendingPathComponent(".claude")
         let codexDir = tempDir.appendingPathComponent(".codex")
+        let geminiDir = tempDir.appendingPathComponent(".gemini")
         try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: codexDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: geminiDir, withIntermediateDirectories: true)
 
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -164,14 +166,11 @@ final class AIUsageTests: XCTestCase {
         """
         try versionJson.write(to: codexDir.appendingPathComponent("version.json"), atomically: true, encoding: .utf8)
 
-        let service = AIUsageService(claudeDirectory: claudeDir, codexDirectory: codexDir)
+        let service = AIUsageService(claudeDirectory: claudeDir, codexDirectory: codexDir, geminiDirectory: geminiDir)
         XCTAssertTrue(service.isClaudeInstalled)
         XCTAssertTrue(service.isCodexInstalled)
 
-        service.refresh()
-
-        // Give async task a brief moment to finish
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await service.refreshAsync()
 
         XCTAssertNotNil(service.claudeStats)
         XCTAssertEqual(service.claudeStats?.totalSessions, 5)
@@ -220,15 +219,29 @@ final class AIUsageTests: XCTestCase {
         let countdownEn = window.formattedCountdown(isKorean: false, now: now)
         XCTAssertTrue(countdownEn.contains("Resets in 2h 15m"))
 
-        // Test past date
+        // Test zero utilization (ready / full quota available)
+        let zeroWindow = AIQuotaWindow(
+            title: "Zero",
+            titleKo: "미사용",
+            utilization: 0.0,
+            resetsAt: now
+        )
+        XCTAssertEqual(zeroWindow.formattedCountdown(isKorean: true, now: now), "한도 전체 사용 가능")
+        XCTAssertEqual(zeroWindow.formattedCountdown(isKorean: false, now: now), "Full Quota Available")
+        XCTAssertEqual(zeroWindow.formattedExactTime(isKorean: true, now: now), "즉시 사용 가능")
+        XCTAssertEqual(zeroWindow.formattedExactTime(isKorean: false, now: now), "Ready")
+
+        // Test past date with usage (just reset)
         let pastWindow = AIQuotaWindow(
             title: "Past",
             titleKo: "과거",
-            utilization: 0.0,
+            utilization: 20.0,
             resetsAt: now.addingTimeInterval(-10)
         )
         XCTAssertEqual(pastWindow.formattedCountdown(isKorean: true, now: now), "방금 리셋됨")
         XCTAssertEqual(pastWindow.formattedCountdown(isKorean: false, now: now), "Just reset")
+        XCTAssertEqual(pastWindow.formattedExactTime(isKorean: true, now: now), "방금")
+        XCTAssertEqual(pastWindow.formattedExactTime(isKorean: false, now: now), "Just now")
 
         // Test high usage (warning)
         let warningWindow = AIQuotaWindow(

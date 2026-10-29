@@ -45,7 +45,7 @@ public struct AIQuotaWindow: Identifiable, Codable, Equatable, Sendable {
     public let resetsAt: Date
     public let totalLimitDesc: String?
 
-    public init(
+    public nonisolated init(
         id: String = UUID().uuidString,
         title: String,
         titleKo: String,
@@ -88,6 +88,9 @@ public struct AIQuotaWindow: Identifiable, Codable, Equatable, Sendable {
     }
 
     public func formattedCountdown(isKorean: Bool, now: Date = Date()) -> String {
+        if utilization <= 0.0 {
+            return isKorean ? "한도 전체 사용 가능" : "Full Quota Available"
+        }
         let diff = resetsAt.timeIntervalSince(now)
         if diff <= 0 {
             return isKorean ? "방금 리셋됨" : "Just reset"
@@ -116,7 +119,13 @@ public struct AIQuotaWindow: Identifiable, Codable, Equatable, Sendable {
         }
     }
 
-    public func formattedExactTime(isKorean: Bool) -> String {
+    public func formattedExactTime(isKorean: Bool, now: Date = Date()) -> String {
+        if utilization <= 0.0 {
+            return isKorean ? "즉시 사용 가능" : "Ready"
+        }
+        if resetsAt <= now {
+            return isKorean ? "방금" : "Just now"
+        }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: isKorean ? "ko_KR" : "en_US")
         let isToday = Calendar.current.isDateInToday(resetsAt)
@@ -148,7 +157,7 @@ public struct AIProviderUsageSummary: Identifiable, Equatable, Sendable {
     public let isLiveAPI: Bool                  // True if fetched from OAuth /usage API
     public let lastUpdated: Date
 
-    public init(
+    public nonisolated init(
         id: String = UUID().uuidString,
         provider: AIProviderType,
         primaryWindow: AIQuotaWindow,
