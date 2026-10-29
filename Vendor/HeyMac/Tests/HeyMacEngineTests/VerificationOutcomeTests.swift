@@ -13,5 +13,5 @@ import Testing
     outcome.framesEvaluated = 2
     outcome.bestSimilarity = 0.9
     outcome.bestLiveness = 0.99
-    #expect(outcome.summary == "OK frames=2 noFace=0 bestSimilarity=0.900 bestLiveness=0.990")
+    #expect(outcome.summary == "OK frames=2 noFace=0 bestSimilarity=0.900 bestLiveness=0.990 cameraStart=0.000s firstFrame=-1.000s inference=0.000s")
 }

@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import HeyMacCore
 
 /// Owns the loaded models, the camera and the encrypted store, and hands out the
@@ -42,6 +43,15 @@ public final class HeyMacRuntime: @unchecked Sendable {
         embedder = try FaceEmbedder()
         classifier = try AntiSpoofClassifier()
         camera = CameraCapture()
+    }
+
+    /// No camera stream or enrolled identity is used during preparation.
+    public func prepareForVerification() throws {
+        try camera.prepare()
+        let frame = RGBAImage(width: 112, height: 112, bytes: [UInt8](repeating: 127, count: 112 * 112 * 4))
+        let face = DetectedFace(boundingBox: CGRect(x: 0, y: 0, width: 112, height: 112), landmarks: FaceGeometry.arcFaceTemplate)
+        _ = try embedder.embedding(for: face, in: frame)
+        _ = try classifier.classify(patch: RGBAImage(width: 80, height: 80, bytes: [UInt8](repeating: 127, count: 80 * 80 * 4)))
     }
 
     public func pipeline(interactive: Bool, strictness: MatchStrictness) -> VerificationPipeline {

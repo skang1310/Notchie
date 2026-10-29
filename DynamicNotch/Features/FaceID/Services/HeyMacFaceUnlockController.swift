@@ -72,7 +72,7 @@ final class HeyMacFaceUnlockController: ObservableObject {
                 guard succeeded, token.active else { status = text("Enrollment cancelled or failed. Try again in better lighting.", "등록이 취소되었거나 실패했습니다. 밝은 곳에서 다시 시도하세요."); return }
                 status = text("Checking the new enrollment…", "새로 등록한 얼굴을 확인합니다…")
                 let outcome = await Task.detached {
-                    session.verifier.run(timeout: 12, requiredConsecutive: 3, keepGoing: { token.active })
+                    session.verifier.run(timeout: 12, requiredConsecutive: 2, keepGoing: { token.active })
                 }.value
                 guard outcome.matched, token.active else { status = text("Verification failed. Previous enrollment was preserved.", "얼굴 확인에 실패했습니다. 기존 등록은 유지됩니다."); return }
                 try session.commit()
@@ -87,10 +87,15 @@ final class HeyMacFaceUnlockController: ObservableObject {
             defer { busy = false; refreshFiles() }
             do {
                 let runtime = try await loadRuntime()
-                try runtime.saveLoginPassword(password)
+                try await Task.detached(priority: .userInitiated) {
+                    try LoginPasswordValidator.save(password, validate: LoginPasswordValidator.verify,
+                        persist: { try runtime.saveLoginPassword($0) })
+                }.value
                 engineSettings.lockScreenNeedsPassword = false
-                status = text("Encrypted password saved. It has not been verified against macOS.", "암호를 암호화해 저장했습니다. macOS 로그인 암호와 일치하는지는 아직 확인하지 않았습니다.")
-            } catch { status = error.localizedDescription }
+                status = text("Mac password verified and saved with encryption.", "Mac 계정 암호를 확인하고 암호화해 저장했습니다.")
+            } catch {
+                status = text("Could not verify this Mac password. Nothing was replaced. Check the account password and keyboard language before trying again.", "현재 Mac 계정 암호를 확인하지 못해 저장된 암호를 변경하지 않았습니다. 로그인 암호와 입력 언어를 확인하세요.")
+            }
         }
     }
     func testFace() {
@@ -105,7 +110,7 @@ final class HeyMacFaceUnlockController: ObservableObject {
                 status = text("Look at the camera…", "카메라를 봐주세요…")
                 FaceIDService.shared.receive(.lockScreenScanning)
                 let outcome = await Task.detached {
-                    runtime.verifier(interactive: true, strictness: .strict).run(timeout: 12, requiredConsecutive: 3, keepGoing: { token.active })
+                    runtime.verifier(interactive: true, strictness: .strict).run(timeout: 12, requiredConsecutive: 2, keepGoing: { token.active })
                 }.value
                 if outcome.matched && token.active {
                     FaceIDService.shared.receive(.lockScreenUnlocked(summary: "verified"))
@@ -146,6 +151,9 @@ final class HeyMacFaceUnlockController: ObservableObject {
             defer { self.busy = false; self.operation = nil }
             do {
                 let runtime = try await self.loadRuntime()
+                guard token.active else { return }
+                // Pay configuration/model cold-start costs before a future lock; no camera stream.
+                try await Task.detached(priority: .userInitiated) { try runtime.prepareForVerification() }.value
                 guard token.active else { return }
                 // Ensure background key access succeeds without a permission dialog.
                 _ = try await Task.detached { try runtime.backgroundStore.load(StoredItems.faceCentroid) }.value

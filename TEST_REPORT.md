@@ -158,3 +158,60 @@ Evidence: /Users/davidkang/DynamicNotch/build/CalendarEvidence-20261029/{release
 - [x] Final Release build succeeded: `build/DynamicNotch-release/Build/Products/Release/DynamicNotch.app`. Built `AppIcon.icns` verified: body 823×822 pt, ratio 0.804.
 - [x] Installed to `/Applications/DynamicNotch.app` via `scripts/install-local.sh`; strict ad-hoc signature verification passed. Release and installed UUID **9E237F2C-9102-3812-97D7-0DBB666362C5** match.
 - [x] Canonical runtime verification: `/Applications/DynamicNotch.app` running (PID 37458); `NSWorkspace.runningApplications` runtime `applicationIconImage` measured at body 824×824 pt (ratio 0.805), perfectly matching macOS Dock standards and other running apps (Safari, Notes, Calendar, Slack, ChatGPT).
+
+### Settings cleanup and lock authentication repair — 2026-10-29 v23
+- [x] Visible sidebar groups; common card spacing/borders simplified; duplicate General haptic/media controls removed (canonical controls retained). Permissions integrated under Privacy; lock-screen appearance integrated into Lock & Authentication beside face/app privacy, legacy saved/deep-link routes retained.
+- [x] Persisted password-rejection state now appears after relaunch. Setup/recovery shown before collapsed animation preview. Installed screenshot and AX verified General, Face authentication recovery, Lock Screen tab and Privacy > Permissions navigation; no grants/enrollment/credential replacement/feature enablement performed.
+- [x] Retired always-failing lock-screen scanner path replaced with real opt-in engine retry. Wake scanning remains engine-owned. Explicit retry never rearms an already attempted password submission.
+- [x] Unknown lock state preserves attempt budget; unknown confirmation distinguished from rejection; camera contention does not consume face retries; cancellation rechecked after inference; synthetic events clear inherited shortcut modifiers. Polling/cooldowns shortened, frame cadence 15 fps, strict thresholds/liveness/consecutive-frame checks/camera warmup retained.
+- [x] Final app tests 291/291; engine tests 56/56 and core tests 42/42 (98 total) passed. Final Release/install and strict post-launch signature pass. Revision Notchie-SettingsAuth-20261029-v23, installed/Release UUID D63AD786-5216-315F-A3FE-DED0790D82C9, canonical process PID 20652.
+- [ ] User confirmed affected flow is Mac lock-screen face unlock. Prior saved events show successful matches/unlocks then password rejection and engine stop. Current persisted rejection requires the user to re-save their password and explicitly enable, then manually lock/unlock. No actual lock/unlock round trip or Face ID-equivalent latency claimed. User handoff requested; awaiting completion.
+Evidence: /Users/davidkang/DynamicNotch/build/SettingsAuthEvidence-20261029/{ARCHITECTURE.md,app-tests-final2.log,engine-tests-verified.log,release-final.log,install.log}. An initial shared build-directory lock was resolved by isolated derived-data directories; a stale expected test result was updated for the safer unknown-state behavior and re-run successfully.
+
+### Lock verification follow-up — 2026-10-29
+- Read-only persisted-state refresh: lockScreenNeedsPassword=false, enabled.v1=false. Password recovery has already cleared; do not ask the user to replace it again. User only needs to enable and manually lock for the remaining verification.
+- Additional events.log evidence: engine start 14:06:51; scanning 14:07:10 -> unlocked 14:07:12 (5 face frames, strict matching, liveness passed); engine stop 14:09:06. Log does not record executable revision, so do not attribute that success or coarse ~2-second interval to v23. Current app remains signed v23; process has since restarted (PID 60480).
+- Hardware confirmation and latency for the installed revision remain pending user action. This supersedes the preceding current-password-rejection status, not its historical diagnosis.
+
+### Physical failure follow-up and v24 delivery repair — 2026-10-29
+- [!] User explicitly tested v23 Mac lock and reported failure. Engine events show scanning at 20:16:35 and password rejection/engine stop at 20:16:43. OS loginwindow confirms password field first responder, submission at 20:16:37.710, and INCORRECT password at 20:16:40.555. Previous hardware verification remains failed, not complete.
+- [x] v24 explicit password Save verifies current Mac account via OpenDirectory before encrypted persistence. Validation failure preserves prior saved credential and rejection state. No user password was read/typed/stored by automation.
+- [x] Keyboard event plan supplies current ASCII-capable layout's real key codes and required modifiers alongside Unicode; no arbitrary US layout assumption, automatic input-source changes or inherited Command/Control. Added local phase/revision logs without password contents or length.
+- [x] 297/297 app tests and 58 engine + 42 core tests passed. Release/install and post-launch strict signature pass. Installed revision Notchie-PasswordDelivery-20261029-v24; UUID 69D56F0E-090F-3A2A-90C8-C164B6ED1486; PID 74529.
+- [ ] v24 physical lock test pending. Installed settings opened on face authentication; user asked to explicitly Save/verify their password, enable and manually lock once. Neither a correct saved password nor actual unlock success inferred from test/build/install.
+Evidence: build/SettingsAuthEvidence-20261029/{v24-app-tests.log,v24-engine-final.log,v24-release.log,v24-install.log,ARCHITECTURE.md}.
+
+### v24 physical failure isolated; v25 thread fix in progress — 2026-10-29
+- User confirmed explicit password Save succeeded but manual Mac lock did not unlock. v24 revision-stamped log: face matched in 2.258 s (strict, 2 accepted frames), password submission started, then no completion.
+- Fresh diagnostic report DynamicNotch-2026-10-29-202609.ips identifies SIGTRAP / _dispatch_assert_queue_fail inside TSMCurrentAsciiCapableKeyboardLayoutInputSourceRefCreate, called by KeystrokeInjector.keyboardLayout on verification worker. This is a v24 regression, not a wrong-password result. No matching loginwindow incorrect-password entry during this attempt.
+- Main checkout now routes only the read-only Carbon keyboard-layout snapshot to DispatchQueue.main.sync; typing remains on the worker. Added production-path regression from Task.detached; it passes (59 engine + 42 core tests).
+- Current password-rejection flag false, explicit enabled preference true. Do not require password re-save or reset credentials for this thread fix.
+- Combined calendar worktree/app builds must include this auth fix in Vendor/HeyMac/Sources/HeyMacEngine/KeystrokeInjector.swift. Main checkout v25 build/tests in progress; avoid replacing the final installed artifact with older v24 auth code.
+
+### v25 installed, physical retry pending — 2026-10-29
+- [x] Production keyboard-layout lookup regression from a detached verification worker passes; all 59 engine + 42 core and 297 app tests pass. Release/install/post-launch strict signature pass.
+- Installed revision Notchie-AuthThreadFix-20261029-v25, UUID 69F05CCC-5E81-3DF4-8A32-6F6CAF01DEC5, PID 76657. Revision-stamped engine-start log at 20:30:03 confirms resumed existing explicit opt-in. No credentials replaced or permission/enrollment changes.
+- [ ] Awaiting user's manual lock test on v25; do not request password re-save for this fix. v24 physical attempt remains failed (crash), not fixed by build results alone.
+- Concurrent calendar chat (Droppy 기능과 UI/UX 적용 (2)) installed DayCalendar-v33 at 20:27:12; this auth chat subsequently installed v25. Cross-chat coordination authorization requested from user to avoid alternating app replacements and to carry this main-thread fix into combined calendar build. No message sent without authorization.
+Evidence: /Users/davidkang/DynamicNotch/build/AuthThreadEvidence-20261029/{engine-tests.log,app-tests.log,release.log,install.log}; system crash report DynamicNotch-2026-10-29-202609.ips.
+
+### v25 physical Mac unlock verified — 2026-10-29 20:31 KST
+- [x] User explicitly reports manual lock -> face unlock SUCCESS on v25. Same revision's engine log: scanning 20:30:58; live strict match at 20:31:02 in 3.187s (2 accepted frames, liveness 1.000); password submission completed in 0.221s; macOS unlocked confirmed at 20:31:03. No crash/second submission occurred.
+- Physical functionality is now verified for this one Mac/session. End-to-end coarse interval about 4–5 seconds from second-resolution event timestamps; measured face + typing phases 3.408s plus confirmation. Do not claim Face ID-equivalent speed, broader lighting/device reliability, or a performance distribution from one trial.
+- Password was already user-verified/saved; no re-save was needed for the thread fix. Final functional revision remains Notchie-AuthThreadFix-20261029-v25.
+- Cross-chat coordination question still pending; do not send messages without explicit user authorization. Calendar combined build must carry the TIS main-thread fix before replacing the verified app.
+
+### v35 face-unlock speed work — 2026-10-29 (in progress)
+- User requests Face ID-like response and supplies Notchy passive-liveness reference. Verified vendor help says matched frames + passive evidence, and acknowledges video replay limitations; current strict ArcFace + MiniFASNet frame acceptance retained rather than replacing it with eye openness alone.
+- Release fixture profiling: cold detect/live/embed total 0.2319s, warm totals 0.0109–0.0137s. This is model-fixture inference, not camera/unlock latency. Prior actual v25 face check was 3.187s, so isolate camera/session costs.
+- Prepare AVCapture session and dummy model inference before enabled engine starts, without starting camera stream or using enrolled identity. Maintain resolution, 400ms warmup, thresholds, anti-spoof and consecutive frames.
+- Camera stop immediately invalidates frame epoch and clears frame storage; hardware stop runs on serial lifecycle queue outside password critical path. Start/prepare/stop command submission serialized; new start waits behind prior stop. Old in-flight conversions cannot publish into a new session.
+- Face verification logs now split camera start, first frame and inference time for physical comparison.
+- Build integration snapshot: /Users/davidkang/DynamicNotch/build/FaceSpeedIntegrated copied latest v34 worktree source without modifying other chat files, then overlaid only auth/backend changes. Preserve day-calendar and saved-player-tint work in final installed app. Primary checkout remains auth implementation base.
+
+### Face-speed backend validated; combined install delegated by authorized coordination — 2026-10-29
+- [x] Final auth speed sources: engine/core 61+43 tests passed; v34 integration snapshot app tests 303 passed; final Release passed. Fixture inference baseline cold 0.2319s, warm 0.0109–0.0137s; no hardware speed claim from fixture measurements.
+- [x] Verified other worktree's CameraCapture, FaceVerifier, HeyMacRuntime, KeystrokeInjector and adapter controller byte-match final primary auth changes (including lifecycle command lock and main-thread keyboard lookup).
+- [x] Read direct human approval in Droppy 기능과 UI/UX 적용 (2): “Yes, coordinate the install.” Sent narrow install coordination message: this auth chat holds all /Applications installs; AI/fluid-motion chat owns one combined final install and sends revision/UUID/signature handoff. Do not roll back current calendar/progress/AI changes with older snapshot.
+- [ ] Await combined install handoff, then user manual lock test to compare measured cameraStart/firstFrame/inference and total face time against prior v25 3.187s. No password replacement, enrollment, permission grants or opt-in changes needed.
+Evidence: build/FaceSpeedEvidence-20261029/{baseline.log,engine-verified.log,app-tests-final.log,release-final.log}; integration source snapshot build/FaceSpeedIntegrated (not installed).

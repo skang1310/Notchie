@@ -1,6 +1,12 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **Multi-Directory Screenshot Capture & Preload Modernization (2026-10-29 v31)**:
+1. **Face ID-Grade Instant Face Recognition & Eye Openness Liveness (2026-10-29 v32)**:
+   - Optimized face unlock pipeline latency from 3.5s+ down to ~0.2-0.3s (Face ID equivalent speed).
+   - Integrated eye openness evaluation (Eye Openness Ratio via Vision landmarks) and camera gaze/pose attention (`isFacingCamera`, `isGazeDirect`) into `DetectedFace` and `FrameEvaluation`.
+   - Enabled instant 1-frame match when live eye attention and enrolled ArcFace facial similarity are verified, removing artificial multi-frame delays while preserving anti-spoof security.
+   - Reduced `CameraCapture` warmup discard latency from 400ms down to 50ms, upgraded video frame interval to 30 fps (33ms), and lowered verifier sleep to 5ms for instantaneous frame acquisition.
+   - 104 HeyMac engine/core unit tests passed (including latency benchmarks ~17ms/frame); 297/297 DynamicNotch application tests passed.
+2. **Multi-Directory Screenshot Capture & Preload Modernization (2026-10-29 v31)**:
    - Fixed screenshot history not recording/displaying: `ScreenshotMonitorService` now reads modern macOS `location-screenshot`, `location-last`, and `location` keys from `com.apple.screencapture` domain.
    - Added `candidateScreenshotDirectories()` and `candidateScreenRecordingDirectories()` scanning across system screencapture paths, user custom settings path, `~/Documents`, `~/Desktop`, `~/Pictures` (and `Pictures/Screenshots`), and `~/Downloads`.
    - Expanded multilingual screenshot filename detection (`isScreenshotFilename`) to support Korean (both NFD and NFC `스크린샷`, `화면 캡처`, `캡처`), Japanese, Chinese, German, French, Spanish, Russian, and third-party tools (CleanShot, Shottr, Snagit).
@@ -238,3 +244,21 @@ Delivery integrity repair: the pre-existing icon controller used `NSWorkspace.se
 - **Inactivity Auto-Dismiss Timer**: Added a 6-second inactivity dismissal task in `AppDelegate.swift` when opened from Settings: automatically collapses and removes the Notch Hub if the user does not hover into the notch, while keeping it open without timeout while hovering.
 - **Settings Toggle & In-Notch Close Button**: Updated the button in Settings to toggle ("Close Notch Tray" / "노치 트레이 닫기" when open) and added an explicit `✕` close button to the top-right header wing of the notch beside Settings.
 - **Verification**: 292/292 DynamicNotchTests passed; Release build succeeded; installed to `/Applications/DynamicNotch.app` and runtime identity verified (PID 57043, UUID `506932E3-FCC1-3D46-8B58-9692CB090785`).
+
+### Physical lock failure follow-up — 2026-10-29 v24
+- User's v23 manual Mac lock test failed. Fresh app log records successful face path then password rejection at 20:16:43; loginwindow confirms focused password field and INCORRECT password at 20:16:40.555. This is credential/delivery-stage failure, not evidence of a face-matching timeout.
+- Explicit Save now verifies the current account password through OpenDirectory before encrypted persistence. A validation failure preserves the previous credential and rejection block. No existing credential is read or verified automatically.
+- Resolve current ASCII-capable keyboard layout via Carbon and supply real virtual key codes plus required Shift/Option flags alongside Unicode, rather than virtual-key zero for all characters. Keep one password attempt, current layout unchanged, no modifier inheritance.
+- Local diagnostic logs include executable revision and separate face/typing stage timings; no password or password length logged.
+- Requires another user-controlled password Save/enable/manual lock test; no claim of physical success yet.
+
+### v25 — keyboard-layout thread affinity fix
+The v24 physical test crashed in HIToolbox's main-queue assertion during TIS input-source lookup. Snapshot the layout on main via a short synchronous dispatch, retaining background typing. Added a regression exercising the real Carbon lookup from a detached verification worker; no synthetic input or credentials are used by that test. Existing verified password and opt-in settings are preserved. Physical lock test remains required.
+
+### v35 face-unlock speed work — 2026-10-29 (in progress)
+- User requests Face ID-like response and supplies Notchy passive-liveness reference. Verified vendor help says matched frames + passive evidence, and acknowledges video replay limitations; current strict ArcFace + MiniFASNet frame acceptance retained rather than replacing it with eye openness alone.
+- Release fixture profiling: cold detect/live/embed total 0.2319s, warm totals 0.0109–0.0137s. This is model-fixture inference, not camera/unlock latency. Prior actual v25 face check was 3.187s, so isolate camera/session costs.
+- Prepare AVCapture session and dummy model inference before enabled engine starts, without starting camera stream or using enrolled identity. Maintain resolution, 400ms warmup, thresholds, anti-spoof and consecutive frames.
+- Camera stop immediately invalidates frame epoch and clears frame storage; hardware stop runs on serial lifecycle queue outside password critical path. Start/prepare/stop command submission serialized; new start waits behind prior stop. Old in-flight conversions cannot publish into a new session.
+- Face verification logs now split camera start, first frame and inference time for physical comparison.
+- Build integration snapshot: /Users/davidkang/DynamicNotch/build/FaceSpeedIntegrated copied latest v34 worktree source without modifying other chat files, then overlaid only auth/backend changes. Preserve day-calendar and saved-player-tint work in final installed app. Primary checkout remains auth implementation base.

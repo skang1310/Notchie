@@ -9,10 +9,25 @@ public struct DetectedFace: Equatable, Sendable {
     /// ArcFace alignment landmarks, in template order: image-left eye, image-right eye,
     /// nose tip, image-left mouth corner, image-right mouth corner.
     public let landmarks: [CGPoint]
+    public let areEyesOpen: Bool
+    public let isFacingCamera: Bool
+    public let eyeOpennessScore: Float
+    public let headPoseScore: Float
 
-    public init(boundingBox: CGRect, landmarks: [CGPoint]) {
+    public init(
+        boundingBox: CGRect,
+        landmarks: [CGPoint],
+        areEyesOpen: Bool = false,
+        isFacingCamera: Bool = true,
+        eyeOpennessScore: Float = 0,
+        headPoseScore: Float = 1.0
+    ) {
         self.boundingBox = boundingBox
         self.landmarks = landmarks
+        self.areEyesOpen = areEyesOpen
+        self.isFacingCamera = isFacingCamera
+        self.eyeOpennessScore = eyeOpennessScore
+        self.headPoseScore = headPoseScore
     }
 }
 
@@ -225,6 +240,38 @@ public struct VisionFaceDetector: FaceDetecting {
             width: normalized.width * size.width,
             height: normalized.height * size.height
         )
-        return DetectedFace(boundingBox: box, landmarks: [eyeLeft, eyeRight, nose, mouthLeft, mouthRight])
+
+        // Eye Openness Ratio (EAR) & Head Pose attention evaluation
+        func eyeOpennessRatio(_ region: VNFaceLandmarkRegion2D?) -> Float? {
+            guard let pts = region?.normalizedPoints, pts.count >= 4 else { return nil }
+            var minX = Float.greatestFiniteMagnitude, maxX = -Float.greatestFiniteMagnitude
+            var minY = Float.greatestFiniteMagnitude, maxY = -Float.greatestFiniteMagnitude
+            for p in pts {
+                minX = min(minX, Float(p.x)); maxX = max(maxX, Float(p.x))
+                minY = min(minY, Float(p.y)); maxY = max(maxY, Float(p.y))
+            }
+            let w = maxX - minX, h = maxY - minY
+            guard w > 0.001 else { return nil }
+            return h / w
+        }
+        let leftEAR = eyeOpennessRatio(marks.leftEye) ?? 0.20
+        let rightEAR = eyeOpennessRatio(marks.rightEye) ?? 0.20
+        let avgEAR = (leftEAR + rightEAR) / 2.0
+        let eyesOpen = leftEAR >= 0.14 && rightEAR >= 0.14
+
+        let yaw = face.yaw?.doubleValue ?? 0
+        let pitch = face.pitch?.doubleValue ?? 0
+        let roll = face.roll?.doubleValue ?? 0
+        let facingCamera = abs(yaw) <= 0.28 && abs(pitch) <= 0.28 && abs(roll) <= 0.38
+        let poseScore = Float(max(0.0, 1.0 - (abs(yaw) + abs(pitch)) / 0.56))
+
+        return DetectedFace(
+            boundingBox: box,
+            landmarks: [eyeLeft, eyeRight, nose, mouthLeft, mouthRight],
+            areEyesOpen: eyesOpen,
+            isFacingCamera: facingCamera,
+            eyeOpennessScore: avgEAR,
+            headPoseScore: poseScore
+        )
     }
 }

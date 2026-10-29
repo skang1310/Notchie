@@ -77,6 +77,7 @@ public final class LockScreenUnlocker: @unchecked Sendable {
     private let settings: EngineSettings
     private let environment: LockScreenEnvironment
     private let onEvent: (EngineEvent) -> Void
+    private let diagnostic: (String) -> Void
     private let stateLock = NSLock()
     private var running = false
     private var stopRequested = false
@@ -87,13 +88,15 @@ public final class LockScreenUnlocker: @unchecked Sendable {
 
     public init(
         matcher: FaceMatching, typist: PasswordTyping, settings: EngineSettings,
-        environment: LockScreenEnvironment, onEvent: @escaping (EngineEvent) -> Void
+        environment: LockScreenEnvironment, onEvent: @escaping (EngineEvent) -> Void,
+        diagnostic: @escaping (String) -> Void = { _ in }
     ) {
         self.matcher = matcher
         self.typist = typist
         self.settings = settings
         self.environment = environment
         self.onEvent = onEvent
+        self.diagnostic = diagnostic
     }
 
     public func start() {
@@ -170,10 +173,13 @@ public final class LockScreenUnlocker: @unchecked Sendable {
 
         stateLock.withLock { scansThisEpisode += 1 }
         onEvent(.lockScreenScanning)
+        let scanStarted = ProcessInfo.processInfo.systemUptime
         let outcome = matcher.run(
             timeout: Self.scanWindow, requiredConsecutive: 2, waitForTurn: 0,
             keepGoing: { self.shouldKeepScanning }
         )
+        diagnostic(String(format: "face scan completed in %.3fs (%@)",
+                          ProcessInfo.processInfo.systemUptime - scanStarted, outcome.summary))
         guard outcome.matched else {
             if let failure = outcome.failure {
                 // A foreground face test owning the camera is not a failed face scan.
@@ -206,7 +212,10 @@ public final class LockScreenUnlocker: @unchecked Sendable {
             lockChecker: ClosureLockChecker(check: environment.isLocked), typist: typist, wakeDisplay: environment.wakeDisplay
         )
         do {
+            let submissionStarted = ProcessInfo.processInfo.systemUptime
+            diagnostic("password submission started")
             try watcher.attemptUnlock(password: password)
+            diagnostic(String(format: "password submission completed in %.3fs", ProcessInfo.processInfo.systemUptime - submissionStarted))
         } catch {
             onEvent(.lockScreenScanEnded)
             return .typingFailed("\(error)")

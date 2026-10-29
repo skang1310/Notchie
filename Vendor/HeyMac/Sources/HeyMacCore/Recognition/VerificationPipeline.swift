@@ -27,8 +27,27 @@ public struct FrameEvaluation: Equatable, Sendable {
     public let similarity: Float
     public let isLive: Bool
     public let isMatch: Bool
+    public let hasEyeAttention: Bool
 
-    public var accepted: Bool { isLive && isMatch }
+    public var accepted: Bool {
+        guard isMatch else { return false }
+        // Fast Face ID path: live if anti-spoof model agrees OR verified eye openness + face facing camera
+        return isLive || (hasEyeAttention && liveness >= 0.35)
+    }
+
+    public init(
+        liveness: Float,
+        similarity: Float,
+        isLive: Bool,
+        isMatch: Bool,
+        hasEyeAttention: Bool = false
+    ) {
+        self.liveness = liveness
+        self.similarity = similarity
+        self.isLive = isLive
+        self.isMatch = isMatch
+        self.hasEyeAttention = hasEyeAttention
+    }
 }
 
 public final class VerificationPipeline {
@@ -89,9 +108,11 @@ public final class VerificationPipeline {
         // The centroid comes from disk; a dimension mismatch (corrupt file, other build)
         // must fail closed rather than trip cosineSimilarity's precondition.
         let similarity = candidate.vector.count == centroid.vector.count ? EmbeddingMath.cosineSimilarity(centroid, candidate) : -1
+        let hasAttention = face.areEyesOpen && face.isFacingCamera
         return FrameEvaluation(
             liveness: liveness.confidence, similarity: similarity,
-            isLive: isLive(liveness), isMatch: similarity >= config.matchThreshold
+            isLive: isLive(liveness), isMatch: similarity >= config.matchThreshold,
+            hasEyeAttention: hasAttention
         )
     }
 

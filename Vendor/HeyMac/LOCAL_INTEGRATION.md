@@ -29,3 +29,12 @@ This is an application-level privacy aid, not a macOS access-control or encrypti
 - Preserve retry budget on unknown lock state, distinguish unconfirmed unlock from password rejection, ignore camera contention for face retry counting, recheck cancellation after inference, clear inherited shortcut modifiers in synthetic key events.
 - Reduce polling/cooldown delays and raise frame cadence to 15 fps; retain strict thresholds, anti-spoof pipeline, two consecutive accepted frames, camera warmup and one password attempt per lock episode.
 - No camera permission, enrollment, password replacement, login launch or authentication enablement performed automatically. Physical Mac unlock timing requires the user's saved-password recovery and manual lock test.
+
+### v24 password delivery follow-up
+KeystrokeInjector now resolves the ASCII-capable layout and supplies actual key codes/modifiers with Unicode overrides. Engine logging adds revision and stage durations without credential data. Physical validation is pending; private lock detection and synthetic-input platform caveats still apply.
+
+### v25 — keyboard-layout thread affinity fix
+The v24 physical test crashed in HIToolbox's main-queue assertion during TIS input-source lookup. Snapshot the layout on main via a short synchronous dispatch, retaining background typing. Added a regression exercising the real Carbon lookup from a detached verification worker; no synthetic input or credentials are used by that test. Existing verified password and opt-in settings are preserved. Physical lock test remains required.
+
+### v35 capture lifecycle optimization
+Preconfigure without starting stream at explicit engine enable; prime inference with anonymous synthetic pixels. Invalidate stopped frame epochs immediately; serialize lifecycle commands and perform hardware stop off the password-delivery critical path. Keep camera off outside verification/cleanup, identical models/security thresholds, and fresh consecutive frame checks. Hardware latency is measured separately from fixture inference.

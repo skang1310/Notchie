@@ -48,11 +48,13 @@ public final class EngineController: @unchecked Sendable {
         let matcher = try makeMatcher()
         let unlocker = LockScreenUnlocker(
             matcher: matcher, typist: typist, settings: settings,
-            environment: lockScreenEnvironment, onEvent: { [weak self] event in self?.record(event) }
+            environment: lockScreenEnvironment, onEvent: { [weak self] event in self?.record(event) },
+            diagnostic: { [weak self] message in self?.log.write(message) }
         )
         unlocker.start()
         stateLock.withLock { self.unlocker = unlocker }
-        log.write("engine started (strictness \(settings.strictness.rawValue))")
+        let revision = Bundle.main.object(forInfoDictionaryKey: "DynamicNotchLocalRevision") as? String ?? "standalone"
+        log.write("engine started (strictness \(settings.strictness.rawValue), revision \(revision))")
     }
 
     public func stop() {

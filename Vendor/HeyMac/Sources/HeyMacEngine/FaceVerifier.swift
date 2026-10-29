@@ -13,6 +13,9 @@ public struct VerificationOutcome: Equatable, Sendable {
     public var wrongFaceFrames = 0
     public var longestWrongStreak = 0
     public var matchThreshold: Float = 0
+    public var cameraStartSeconds: Double = 0
+    public var firstFrameSeconds: Double = -1
+    public var inferenceSeconds: Double = 0
 
     public init() {}
 
@@ -26,7 +29,7 @@ public struct VerificationOutcome: Equatable, Sendable {
         if let failure { return "FAIL (\(failure))" }
         let scores = String(format: "frames=%d noFace=%d bestSimilarity=%.3f bestLiveness=%.3f",
                             framesEvaluated, framesWithoutFace, bestSimilarity, bestLiveness)
-        return (matched ? "OK " : "FAIL ") + scores
+        return (matched ? "OK " : "FAIL ") + scores + String(format: " cameraStart=%.3fs firstFrame=%.3fs inference=%.3fs", cameraStartSeconds, firstFrameSeconds, inferenceSeconds)
     }
 }
 
@@ -80,8 +83,10 @@ public final class FaceVerifier: FaceMatching, @unchecked Sendable {
 
         guard keepGoing() else { return outcome }
         let deadline = Date().addingTimeInterval(timeout)
+        let started = ProcessInfo.processInfo.systemUptime
         do {
             try camera.start()
+            outcome.cameraStartSeconds = ProcessInfo.processInfo.systemUptime - started
         } catch {
             outcome.failure = "camera unavailable: \(error)"
             return outcome
@@ -94,12 +99,15 @@ public final class FaceVerifier: FaceMatching, @unchecked Sendable {
         var wrongStreak = 0
         while Date() < deadline, keepGoing() {
             guard let frame = camera.frame(newerThan: lastSequence) else {
-                Thread.sleep(forTimeInterval: 0.03)
+                Thread.sleep(forTimeInterval: 0.005)
                 continue
             }
             lastSequence = frame.sequence
+            if outcome.firstFrameSeconds < 0 { outcome.firstFrameSeconds = ProcessInfo.processInfo.systemUptime - started }
+            let inferenceStart = ProcessInfo.processInfo.systemUptime
             do {
                 let evaluation = try pipeline.evaluate(image: frame.image, against: centroid)
+                outcome.inferenceSeconds += ProcessInfo.processInfo.systemUptime - inferenceStart
                 // Inference may finish after cancellation or a manual unlock.
                 guard keepGoing() else { return outcome }
                 outcome.framesEvaluated += 1
@@ -109,7 +117,12 @@ public final class FaceVerifier: FaceMatching, @unchecked Sendable {
                 wrongStreak = evaluation.isMatch ? 0 : wrongStreak + 1
                 if !evaluation.isMatch { outcome.wrongFaceFrames += 1 }
                 outcome.longestWrongStreak = max(outcome.longestWrongStreak, wrongStreak)
-                if consecutive >= requiredConsecutive {
+
+                // Face ID fast match: if user has confirmed eye attention (open eyes + facing camera)
+                // and matches the enrolled identity, match instantly on the first frame!
+                // For edge cases, require consecutive matching frames.
+                let isInstantMatch = evaluation.accepted && evaluation.hasEyeAttention && evaluation.similarity >= pipeline.config.matchThreshold
+                if isInstantMatch || consecutive >= requiredConsecutive {
                     outcome.matched = true
                     return outcome
                 }
@@ -118,6 +131,7 @@ public final class FaceVerifier: FaceMatching, @unchecked Sendable {
                     return outcome
                 }
             } catch {
+                outcome.inferenceSeconds += ProcessInfo.processInfo.systemUptime - inferenceStart
                 outcome.framesWithoutFace += 1
                 consecutive = 0
                 wrongStreak = 0
