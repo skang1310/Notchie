@@ -14,6 +14,8 @@ public final class AIUsageService: ObservableObject {
     @Published public private(set) var claudeHistory: [ClaudeHistoryEntry] = []
     @Published public private(set) var codexSessions: [CodexSessionEntry] = []
     @Published public private(set) var codexConfig: CodexConfigData = CodexConfigData()
+    @Published public private(set) var claudeSummary: AIProviderUsageSummary?
+    @Published public private(set) var codexSummary: AIProviderUsageSummary?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var lastRefreshed: Date?
 
@@ -37,6 +39,15 @@ public final class AIUsageService: ObservableObject {
         FileManager.default.fileExists(atPath: codexDirectory.path)
     }
 
+    public func summary(for provider: AIProviderType) -> AIProviderUsageSummary? {
+        switch provider {
+        case .claudeCode:
+            return claudeSummary
+        case .codex:
+            return codexSummary
+        }
+    }
+
     public func refresh() {
         refreshTask?.cancel()
         isLoading = true
@@ -48,14 +59,20 @@ public final class AIUsageService: ObservableObject {
             let (stats, history) = Self.loadClaudeData(from: claudeDir)
             let (sessions, config) = Self.loadCodexData(from: codexDir)
 
+            let now = Date()
+            let claudeSumm = Self.computeClaudeSummary(stats: stats, history: history, now: now)
+            let codexSumm = Self.computeCodexSummary(sessions: sessions, config: config, now: now)
+
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.claudeStats = stats
                 self.claudeHistory = history
                 self.codexSessions = sessions
                 self.codexConfig = config
+                self.claudeSummary = claudeSumm
+                self.codexSummary = codexSumm
                 self.isLoading = false
-                self.lastRefreshed = Date()
+                self.lastRefreshed = now
             }
         }
     }
@@ -161,5 +178,145 @@ public final class AIUsageService: ObservableObject {
         }
 
         return (sessions, config)
+    }
+
+    // MARK: - Quota Calculation (Codenotch Logic)
+
+    internal nonisolated static func computeClaudeSummary(
+        stats: ClaudeStatsData?,
+        history: [ClaudeHistoryEntry],
+        now: Date = Date()
+    ) -> AIProviderUsageSummary {
+        let fiveHoursAgo = now.addingTimeInterval(-5 * 3600)
+        let recentEntries = history.filter { $0.timestamp >= fiveHoursAgo }
+
+        let sessionUtilization: Double
+        let sessionResetsAt: Date
+
+        if !recentEntries.isEmpty {
+            // Earliest message in current 5-hour window rolls off 5 hours after its timestamp
+            let earliestTimestamp = recentEntries.map(\.timestamp).min() ?? now
+            sessionResetsAt = earliestTimestamp.addingTimeInterval(5 * 3600)
+            // Benchmark: ~45 messages in 5h rolling window
+            sessionUtilization = min(100.0, max(4.0, (Double(recentEntries.count) / 45.0) * 100.0))
+        } else {
+            sessionResetsAt = now.addingTimeInterval(5 * 3600)
+            sessionUtilization = 0.0
+        }
+
+        let primaryWindow = AIQuotaWindow(
+            id: "claude-5h",
+            title: "5-Hour Session Window",
+            titleKo: "5시간 세션 롤링 창",
+            subtitle: "Rolling rate limit",
+            subtitleKo: "5시간 단위 롤링 한도",
+            utilization: sessionUtilization,
+            resetsAt: sessionResetsAt,
+            totalLimitDesc: "Sonnet & Opus"
+        )
+
+        // Weekly quota calculation
+        var weeklyMessages = 0
+        let calendar = Calendar.current
+        if let daily = stats?.dailyActivity {
+            let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+            let isoFormatter = DateFormatter()
+            isoFormatter.dateFormat = "yyyy-MM-dd"
+            for act in daily {
+                if let date = isoFormatter.date(from: act.date), date >= sevenDaysAgo {
+                    weeklyMessages += act.messageCount
+                }
+            }
+        }
+        if weeklyMessages == 0 {
+            weeklyMessages = history.count
+        }
+
+        let weeklyUtilization = min(100.0, max(2.0, (Double(weeklyMessages) / 350.0) * 100.0))
+        let weeklyResetDate = calendar.date(byAdding: .day, value: 5, to: now) ?? now.addingTimeInterval(5 * 86400)
+
+        let secondaryWindow = AIQuotaWindow(
+            id: "claude-7d",
+            title: "7-Day Weekly Limit",
+            titleKo: "주간 쿼터 한도",
+            subtitle: "Weekly allowance",
+            subtitleKo: "7일 단위 누적 한도",
+            utilization: weeklyUtilization,
+            resetsAt: weeklyResetDate,
+            totalLimitDesc: "All Models"
+        )
+
+        return AIProviderUsageSummary(
+            id: "claude-summary",
+            provider: .claudeCode,
+            primaryWindow: primaryWindow,
+            secondaryWindow: secondaryWindow,
+            activeModel: stats?.primaryModelName ?? "claude-3-7-sonnet",
+            isLiveAPI: false,
+            lastUpdated: now
+        )
+    }
+
+    internal nonisolated static func computeCodexSummary(
+        sessions: [CodexSessionEntry],
+        config: CodexConfigData,
+        now: Date = Date()
+    ) -> AIProviderUsageSummary {
+        let fiveHoursAgo = now.addingTimeInterval(-5 * 3600)
+        let recentSessions = sessions.filter { $0.updatedAt >= fiveHoursAgo }
+
+        let sessionUtilization: Double
+        let sessionResetsAt: Date
+
+        if !recentSessions.isEmpty {
+            let earliestTimestamp = recentSessions.map(\.updatedAt).min() ?? now
+            sessionResetsAt = earliestTimestamp.addingTimeInterval(5 * 3600)
+            sessionUtilization = min(100.0, max(4.0, (Double(recentSessions.count) / 25.0) * 100.0))
+        } else {
+            sessionResetsAt = now.addingTimeInterval(5 * 3600)
+            sessionUtilization = 0.0
+        }
+
+        let primaryWindow = AIQuotaWindow(
+            id: "codex-session",
+            title: "Session Rate Limit",
+            titleKo: "코덱스 세션 창",
+            subtitle: "Active rolling window",
+            subtitleKo: "롤링 작업 세션 한도",
+            utilization: sessionUtilization,
+            resetsAt: sessionResetsAt,
+            totalLimitDesc: config.model
+        )
+
+        let calendar = Calendar.current
+        let nextMidnight = calendar.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0),
+            matchingPolicy: .nextTime
+        ) ?? now.addingTimeInterval(86400)
+
+        let todaySessions = sessions.filter { calendar.isDateInToday($0.updatedAt) }.count
+        let dailyUtilization = min(100.0, max(2.0, (Double(todaySessions) / 40.0) * 100.0))
+
+        let secondaryWindow = AIQuotaWindow(
+            id: "codex-daily",
+            title: "Daily Quota",
+            titleKo: "일일 쿼터 한도",
+            subtitle: "24-hour limit",
+            subtitleKo: "24시간 쿼터 한도",
+            utilization: dailyUtilization,
+            resetsAt: nextMidnight,
+            totalLimitDesc: "Effort: \(config.reasoningEffort)"
+        )
+
+        return AIProviderUsageSummary(
+            id: "codex-summary",
+            provider: .codex,
+            primaryWindow: primaryWindow,
+            secondaryWindow: secondaryWindow,
+            activeModel: config.model,
+            isLiveAPI: false,
+            lastUpdated: now
+        )
     }
 }

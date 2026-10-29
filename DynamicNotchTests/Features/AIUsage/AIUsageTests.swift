@@ -185,6 +185,98 @@ final class AIUsageTests: XCTestCase {
         XCTAssertEqual(service.codexConfig.reasoningEffort, "medium")
         XCTAssertEqual(service.codexConfig.sandboxMode, "danger-full-access")
         XCTAssertEqual(service.codexConfig.clientVersion, "0.165.0")
+
+        XCTAssertNotNil(service.claudeSummary)
+        XCTAssertEqual(service.claudeSummary?.provider, .claudeCode)
+        XCTAssertNotNil(service.codexSummary)
+        XCTAssertEqual(service.codexSummary?.provider, .codex)
+    }
+
+    // MARK: - Codenotch Quota & Reset Window Tests
+
+    func testAIQuotaWindowCalculationsAndFormatting() {
+        let now = Date()
+        let inTwoHours = now.addingTimeInterval(2 * 3600 + 15 * 60) // 2h 15m
+
+        let window = AIQuotaWindow(
+            id: "test-5h",
+            title: "5-Hour Session Window",
+            titleKo: "5시간 세션 롤링 창",
+            subtitle: "Rolling rate limit",
+            subtitleKo: "5시간 롤링 한도",
+            utilization: 35.0,
+            resetsAt: inTwoHours,
+            totalLimitDesc: "Sonnet & Opus"
+        )
+
+        XCTAssertEqual(window.remainingPercentage, 65.0, accuracy: 0.001)
+        XCTAssertEqual(window.health, .optimal)
+        XCTAssertEqual(window.health.title(isKorean: true), "여유 있음")
+        XCTAssertEqual(window.health.title(isKorean: false), "Optimal")
+
+        let countdownKo = window.formattedCountdown(isKorean: true, now: now)
+        XCTAssertTrue(countdownKo.contains("2시간 15분 후 리셋"))
+
+        let countdownEn = window.formattedCountdown(isKorean: false, now: now)
+        XCTAssertTrue(countdownEn.contains("Resets in 2h 15m"))
+
+        // Test past date
+        let pastWindow = AIQuotaWindow(
+            title: "Past",
+            titleKo: "과거",
+            utilization: 0.0,
+            resetsAt: now.addingTimeInterval(-10)
+        )
+        XCTAssertEqual(pastWindow.formattedCountdown(isKorean: true, now: now), "방금 리셋됨")
+        XCTAssertEqual(pastWindow.formattedCountdown(isKorean: false, now: now), "Just reset")
+
+        // Test high usage (warning)
+        let warningWindow = AIQuotaWindow(
+            title: "Warning Window",
+            titleKo: "경고 창",
+            utilization: 75.0,
+            resetsAt: inTwoHours
+        )
+        XCTAssertEqual(warningWindow.health, .warning)
+        XCTAssertEqual(warningWindow.health.title(isKorean: true), "사용량 주의")
+
+        // Test critical usage (>= 90%)
+        let criticalWindow = AIQuotaWindow(
+            title: "Critical Window",
+            titleKo: "위험 창",
+            utilization: 94.0,
+            resetsAt: inTwoHours
+        )
+        XCTAssertEqual(criticalWindow.health, .critical)
+        XCTAssertEqual(criticalWindow.health.title(isKorean: true), "한도 임박")
+    }
+
+    func testAIUsageServiceComputesQuotaSummaries() {
+        let now = Date()
+        let recent1 = ClaudeHistoryEntry(display: "query 1", timestamp: now.addingTimeInterval(-1800), project: "P1", sessionId: "s1")
+        let recent2 = ClaudeHistoryEntry(display: "query 2", timestamp: now.addingTimeInterval(-3600), project: "P2", sessionId: "s2")
+
+        let stats = ClaudeStatsData(
+            totalSessions: 12,
+            totalMessages: 50,
+            dailyActivity: [ClaudeDailyActivity(date: "2026-10-29", messageCount: 25, sessionCount: 2)]
+        )
+
+        let claudeSummary = AIUsageService.computeClaudeSummary(stats: stats, history: [recent1, recent2], now: now)
+        XCTAssertEqual(claudeSummary.provider, .claudeCode)
+        XCTAssertTrue(claudeSummary.primaryWindow.remainingPercentage > 0)
+        XCTAssertEqual(claudeSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
+        XCTAssertNotNil(claudeSummary.secondaryWindow)
+        XCTAssertEqual(claudeSummary.secondaryWindow?.titleKo, "주간 쿼터 한도")
+
+        let codexSession = CodexSessionEntry(id: "c1", threadName: "Codex thread", updatedAt: now.addingTimeInterval(-1200))
+        let codexConfig = CodexConfigData(model: "gpt-6.1-sol", reasoningEffort: "low", sandboxMode: "danger-full-access", clientVersion: "0.165.0")
+
+        let codexSummary = AIUsageService.computeCodexSummary(sessions: [codexSession], config: codexConfig, now: now)
+        XCTAssertEqual(codexSummary.provider, .codex)
+        XCTAssertEqual(codexSummary.activeModel, "gpt-6.1-sol")
+        XCTAssertEqual(codexSummary.primaryWindow.titleKo, "코덱스 세션 창")
+        XCTAssertEqual(codexSummary.secondaryWindow?.titleKo, "일일 쿼터 한도")
     }
 
     // MARK: - Fluid Dynamic Island Animation Preset Tests

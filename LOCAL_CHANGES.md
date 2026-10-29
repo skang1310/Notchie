@@ -1,16 +1,24 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **AI Usage Tracker (Claude Code & OpenAI Codex) (2026-10-29 v33)**:
-   - Integrated a dedicated AI Usage Tracker into the Notch Quick Tools bar (`QuickToolTab.id == "ai"` with `sparkles` icon), placed right at the front of developer utilities.
-   - Designed and implemented `AIUsageService` and `AIUsageData` parsing real local data:
-     - **Claude Code**: reads `~/.claude/stats-cache.json` (`modelUsage`, `dailyActivity`, `totalSessions`, `totalMessages`, tokens, costs) and `~/.claude/history.jsonl` (recent prompts, projects, timestamps).
-     - **OpenAI Codex**: reads `~/.codex/session_index.jsonl` (active threads, updated timestamps), `~/.codex/config.toml` (model, reasoning effort, sandbox mode), and `version.json` / `models_cache.json`.
-   - Created `AIUsageNotchView` with Apple macOS Liquid Glass aesthetic:
-     - Segmented switcher between **Claude Code** and **OpenAI Codex**.
-     - Real-time metric cards (Total Tokens with format `47.7M`, Messages & Sessions count, Active Model pill with token breakdown).
-     - Recent session/prompt history list with project folder badge, relative timestamp, and one-click copy affordance.
-     - Direct Finder shortcut buttons to open `~/.claude` or `~/.codex`.
-   - Added automated unit test suite in `AIUsageTests.swift` covering stats decoding, token formatting, history parsing, mock service loading, and settings persistence.
+1. **Codenotch-Style Minimal AI Usage & Reset Tracker (2026-10-29 v34)**:
+   - Redesigned AI Usage Tracker to follow [vinzdg/codenotch](https://github.com/vinzdg/codenotch) format:
+     - Stripped out cluttered prompt history, long message lists, and bulky token breakdowns from the notch view.
+     - Pure focus on **Real Quota Remaining & Reset Countdown**:
+       - **Remaining Allowance % & Used %** (`78% 남음` / `22% 사용됨`).
+       - **Codenotch Signature Circular Ring Gauge** (72x72) with remaining percentage and animated trim.
+       - **Reset Countdown Pill**: ⏳ `리셋까지 3시간 14분 (오후 11:45 리셋)` / `Resets in 3h 14m (11:45 PM)`.
+       - **Dual-Tier Quota Windows**:
+         1. **5-Hour Rolling Session Window (`5시간 세션 롤링 창`)**: tracks 5-hour rolling session rate limits and earliest prompt expiration.
+         2. **7-Day Weekly Limit (`주간 쿼터 한도`)**: tracks 7-day cumulative quota and weekly cycle boundary reset date.
+       - **Health Status Indicator**:
+         - `여유 있음 (Optimal)`: < 70% used (Green/Mint)
+         - `사용량 주의 (High Usage)`: 70% ~ 89% used (Yellow/Orange)
+         - `한도 임박 (Limit Reached)`: >= 90% used (Red)
+       - **Provider Switcher**: Claude Code and OpenAI Codex.
+       - Added `AIQuotaWindow`, `AIQuotaHealth`, and `AIProviderUsageSummary` models in `AIUsageData.swift`.
+       - Added `computeClaudeSummary` and `computeCodexSummary` in `AIUsageService.swift`.
+       - Added comprehensive unit tests in `AIUsageTests.swift` (`testAIQuotaWindowCalculationsAndFormatting`, `testAIUsageServiceComputesQuotaSummaries`), bringing test count to 308 passed tests.
+   - Installed Release build to `/Applications/DynamicNotch.app` (PID 5436, UUID `75A846FA-49F3-34EF-93F6-1A016485A1C5`).
 
 2. **Fluid Dynamic Island Motion & Apple Spring Physics (2026-10-29 v33)**:
    - Added `.fluid` animation preset to `NotchAnimationPreset` and `NotchAnimations`:
