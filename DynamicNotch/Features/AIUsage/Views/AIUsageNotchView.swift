@@ -152,27 +152,27 @@ public struct AIUsageNotchView: View {
         Group {
             switch selectedFilter {
             case .all:
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        if let claude = service.claudeSummary {
-                            codenotchCard(summary: claude)
-                                .frame(width: 236)
-                        }
-                        if let codex = service.codexSummary {
-                            codenotchCard(summary: codex)
-                                .frame(width: 236)
-                        }
-                        if let gemini = service.geminiSummary {
-                            codenotchCard(summary: gemini)
-                                .frame(width: 236)
-                        }
+                HStack(spacing: 8) {
+                    if let claude = service.claudeSummary {
+                        codenotchCard(summary: claude)
+                            .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 2)
+                    if let codex = service.codexSummary {
+                        codenotchCard(summary: codex)
+                            .frame(maxWidth: .infinity)
+                    }
+                    if let gemini = service.geminiSummary {
+                        codenotchCard(summary: gemini)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
+                .frame(maxWidth: .infinity)
 
             case .claude:
                 if let claude = service.claudeSummary {
                     codenotchCard(summary: claude)
+                        .frame(maxWidth: 360)
+                        .frame(maxWidth: .infinity)
                 } else {
                     emptyProviderView(for: .claudeCode)
                 }
@@ -180,6 +180,8 @@ public struct AIUsageNotchView: View {
             case .codex:
                 if let codex = service.codexSummary {
                     codenotchCard(summary: codex)
+                        .frame(maxWidth: 360)
+                        .frame(maxWidth: .infinity)
                 } else {
                     emptyProviderView(for: .codex)
                 }
@@ -187,6 +189,8 @@ public struct AIUsageNotchView: View {
             case .gemini:
                 if let gemini = service.geminiSummary {
                     codenotchCard(summary: gemini)
+                        .frame(maxWidth: 360)
+                        .frame(maxWidth: .infinity)
                 } else {
                     emptyProviderView(for: .gemini)
                 }
@@ -359,6 +363,7 @@ public struct AIUsageNotchView: View {
                 .font(.system(size: 8.5, weight: .regular))
                 .foregroundStyle(isLimitReached ? Color.yellow.opacity(0.8) : Color.white.opacity(0.48))
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .truncationMode(.tail)
         }
     }

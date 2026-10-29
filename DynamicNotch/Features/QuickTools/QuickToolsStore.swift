@@ -221,7 +221,7 @@ final class QuickToolsStore: ObservableObject {
         if hubMode == .clips || (hubMode == .tools && selectedTool == "snippets") { return isIsland ? 384 : 394 }
         if hubMode == .messages || (hubMode == .tools && selectedTool == "messages") { return isIsland ? 280 : 290 }
         if hubMode == .meeting || (hubMode == .tools && selectedTool == "meeting") { return isIsland ? 220 : 230 }
-        if hubMode == .ai || (hubMode == .tools && selectedTool == "ai") { return isIsland ? 240 : 250 }
+        if hubMode == .ai || (hubMode == .tools && selectedTool == "ai") { return isIsland ? 260 : 270 }
         if hubMode == .transform || (hubMode == .tools && selectedTool == "transform") { return isIsland ? 220 : 230 }
         return hubMode.requiresExtendedHeight ? (isIsland ? 200 : 210) : (isIsland ? 164 : 172)
     }

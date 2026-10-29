@@ -402,6 +402,6 @@ final class AIUsageTests: XCTestCase {
         store.selectedTool = "ai"
         store.hubMode = .ai
         let extraHeight = store.shelfExtraHeight(isIsland: false)
-        XCTAssertEqual(extraHeight, 250)
+        XCTAssertEqual(extraHeight, 270)
     }
 }

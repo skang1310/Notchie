@@ -680,11 +680,11 @@ struct NotchiePanoramicHubView: View {
         }
     }
 
-    // MARK: - Top Header Bar (4 Balanced Primary Tabs Flanking the Camera Cutout)
+    // MARK: - Top Header Bar (Balanced Primary Tabs Flanking the Camera Cutout)
 
     private var topWingHeaderBar: some View {
         HStack(spacing: 0) {
-            // Left Wing: Primary Tabs (Nook | Tray | AI Usage | Meeting | Messages)
+            // Left Wing: Primary Productivity Tabs (Nook | Tray | AI)
             HStack(spacing: 5) {
                 primaryWingTabButton(
                     title: "Nook",
@@ -710,33 +710,13 @@ struct NotchiePanoramicHubView: View {
                 }
 
                 primaryWingTabButton(
-                    title: text("AI", "AI"),
+                    title: text("AI", "AI 사용량"),
                     systemImage: "brain.head.profile",
                     isSelected: store.hubMode == .ai,
                     badgeCount: 0,
                     badgeIsAlert: false
                 ) {
                     store.hubMode = .ai
-                }
-
-                primaryWingTabButton(
-                    title: text("Meeting", "미팅"),
-                    systemImage: "video.fill",
-                    isSelected: store.hubMode == .meeting,
-                    badgeCount: 0,
-                    badgeIsAlert: false
-                ) {
-                    store.hubMode = .meeting
-                }
-
-                primaryWingTabButton(
-                    title: text("Messages", "메시지"),
-                    systemImage: "bubble.left.and.bubble.right.fill",
-                    isSelected: store.hubMode == .messages,
-                    badgeCount: 0,
-                    badgeIsAlert: false
-                ) {
-                    store.hubMode = .messages
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -745,10 +725,8 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: Mini Now Playing Pill (if in other tabs) + Active Meeting Pill + Close Notch & Settings Buttons
+            // Right Wing: Communication, Live Controls & Settings (Meeting | Messages | Settings)
             HStack(spacing: 5) {
-                Spacer(minLength: 0)
-
                 if MeetingControlService.shared.session.isActive, store.hubMode != .meeting {
                     Button {
                         store.hubMode = .meeting
@@ -767,7 +745,7 @@ struct NotchiePanoramicHubView: View {
                                 .foregroundStyle(.white)
                         }
                         .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
+                        .padding(.vertical, 3.5)
                         .background(
                             Capsule()
                                 .fill(MeetingControlService.shared.session.isMuted ? Color.red.opacity(0.2) : Color.green.opacity(0.18))
@@ -792,28 +770,25 @@ struct NotchiePanoramicHubView: View {
                     .transition(.opacity)
                 }
 
-                // Close Notch Button
-                Button {
-                    NotificationCenter.default.post(name: .closeQuickToolsInNotch, object: nil)
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9.5, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .frame(width: 22, height: 22)
-                        .contentShape(Rectangle())
+                primaryWingTabButton(
+                    title: text("Meeting", "미팅"),
+                    systemImage: "video.fill",
+                    isSelected: store.hubMode == .meeting,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    store.hubMode = .meeting
                 }
-                .buttonStyle(.plain)
-                .help(text("Close Notch", "노치 닫기"))
-                .padding(.horizontal, 3)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.07))
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
-                        )
-                )
+
+                primaryWingTabButton(
+                    title: text("Messages", "메시지"),
+                    systemImage: "bubble.left.and.bubble.right.fill",
+                    isSelected: store.hubMode == .messages,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    store.hubMode = .messages
+                }
 
                 // Apple Glass Settings Button
                 Button {
@@ -821,7 +796,7 @@ struct NotchiePanoramicHubView: View {
                 } label: {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(.white.opacity(0.85))
                         .frame(width: 24, height: 22)
                         .contentShape(Rectangle())
                 }
@@ -831,10 +806,10 @@ struct NotchiePanoramicHubView: View {
                 .padding(.vertical, 2)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.07))
+                        .fill(Color.white.opacity(0.08))
                         .overlay(
                             Capsule(style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+                                .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8)
                         )
                 )
             }
@@ -2842,12 +2817,24 @@ struct QuickToolsNotchContent: NotchContentProtocol {
 
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
         let extraHeight: CGFloat = store.shelfExtraHeight(isIsland: false)
-        return CGSize(width: max(712, baseWidth + 512), height: baseHeight + extraHeight)
+        let customWidth: CGFloat
+        if store.hubMode == .ai || (store.hubMode == .tools && store.selectedTool == "ai") {
+            customWidth = max(780, baseWidth + 580)
+        } else {
+            customWidth = max(720, baseWidth + 520)
+        }
+        return CGSize(width: customWidth, height: baseHeight + extraHeight)
     }
 
     func expandedDynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
         let extraHeight: CGFloat = store.shelfExtraHeight(isIsland: true)
-        return CGSize(width: max(692, baseWidth + 492), height: baseHeight + extraHeight)
+        let customWidth: CGFloat
+        if store.hubMode == .ai || (store.hubMode == .tools && store.selectedTool == "ai") {
+            customWidth = max(760, baseWidth + 560)
+        } else {
+            customWidth = max(700, baseWidth + 500)
+        }
+        return CGSize(width: customWidth, height: baseHeight + extraHeight)
     }
 
     func expandedCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {

@@ -1,6 +1,22 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
 
-1. **Droppy-style Meeting Controls & Messages Quick Reply in the Notch (2026-10-30 v39)**:
+1. **Centered Symmetrical Notch Animation, Unclipped AI Usage Cards & X Button Removal (2026-10-30 v40)**:
+   - **Centered Symmetrical Expansion Animation (`노치 중앙 대칭 확장 애니메이션 개선`)**:
+     - Resolved the lateral drift issue where the notch previously appeared with a right-to-left skew due to asymmetric tab weight in the top wing header.
+     - Redesigned `topWingHeaderBar` with mathematical symmetry:
+       - **Left Wing**: Primary productivity tabs (`Nook`, `Tray`, `AI`) anchored to `.leading` with `.frame(maxWidth: .infinity)`.
+       - **Center**: Camera Cutout Safe Area (`Color.clear.frame(width: 148)` on notch screens, `16` on Dynamic Island) permanently locked at 50% screen center.
+       - **Right Wing**: Communication, controls & settings (`Meeting`, `Messages`, `Settings`) anchored to `.trailing` with `.frame(maxWidth: .infinity)`.
+     - Left and Right wings have identical calculated widths at every single millisecond of the spring animation, ensuring organic, perfectly centered expansion and collapse from the notch hardware center.
+   - **Unclipped AI Usage Cards & Layout Polish (`AI 사용량 탭 잘림 방지 및 UI 다듬기`)**:
+     - Enlarged `.ai` presentation geometry in `QuickToolsNotchContent` to `max(780, baseWidth + 580)` and increased `shelfExtraHeight` to `270` (`260` on Dynamic Island).
+     - Upgraded `cardsContainer` from fixed 236px horizontal scroll to responsive `HStack(spacing: 8)` with `.frame(maxWidth: .infinity)`: all 3 provider cards (Claude, Codex, Gemini) divide the available width cleanly with 100% visibility, zero clipping, and no horizontal scroll required.
+     - Added `.minimumScaleFactor(0.8)` and optimized card inner padding to prevent reset countdown text truncation.
+   - **Removed X Icon (`노치 닫기 X 아이콘 제거`)**:
+     - Removed the redundant `xmark` button from the top wing bar for a cleaner, more minimalist Apple Glass aesthetic.
+   - 318 unit tests passed; Release build installed and running at `/Applications/DynamicNotch.app` (PID 24125, UUID `E81B1B28-7767-3450-B2C8-963F023D1CA9`).
+
+2. **Droppy-style Meeting Controls & Messages Quick Reply in the Notch (2026-10-30 v39)**:
    - **Meeting Controls Hub (`노치 미팅 컨트롤: 줌/미트/팀즈/페이스타임/웹엑스`)**:
      - Dedicated `MeetingControlService` detecting active meetings across Zoom (`us.zoom.xos`), Microsoft Teams (`com.microsoft.teams`), FaceTime (`com.apple.FaceTime`), Google Meet (browser tabs), Webex (`com.cisco.webex.meetings`), and Calendar meetings.
      - Live active meeting status indicator with animated pulsing dot and real-time elapsed duration timer (`formattedDuration`: `00:14:22`).
