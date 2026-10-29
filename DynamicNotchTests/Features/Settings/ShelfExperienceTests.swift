@@ -19,9 +19,9 @@ final class ShelfExperienceTests: XCTestCase {
             store.replace(at: 0, with: .stats)
             XCTAssertEqual(store.widgets, [.stats, .calendar, .media])
             store.move(.media, by: -1)
-            store.replace(at: 0, with: .weather)
-            XCTAssertEqual(ShelfPreferences(defaults: defaults).widgets, [.weather, .media, .calendar])
-            store.move(.weather, by: -1); store.replace(at: -1, with: .focus)
+            store.replace(at: 0, with: .notes)
+            XCTAssertEqual(ShelfPreferences(defaults: defaults).widgets, [.notes, .media, .calendar])
+            store.move(.notes, by: -1); store.replace(at: -1, with: .focus)
             XCTAssertEqual(store.widgets.count, 3)
         }
     }

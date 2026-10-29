@@ -1,5 +1,6 @@
 import Foundation
 internal import AppKit
+import SwiftUI
 import Combine
 
 enum NotchHubMode: String, CaseIterable, Identifiable {
@@ -113,7 +114,8 @@ final class QuickToolsStore: ObservableObject {
         self.defaults = defaults
         let validIDs = Set(QuickToolTab.allTabs.map(\.id))
         if let saved = defaults.stringArray(forKey: Self.enabledTabsKey) {
-            let filtered = saved.filter { validIDs.contains($0) }
+            var seen = Set<String>()
+            let filtered = saved.filter { validIDs.contains($0) && seen.insert($0).inserted }
             self.enabledTabIDs = filtered.isEmpty ? QuickToolTab.defaultEnabledIDs : filtered
         } else {
             self.enabledTabIDs = QuickToolTab.defaultEnabledIDs
@@ -135,9 +137,9 @@ final class QuickToolsStore: ObservableObject {
     }
 
     var visibleTabs: [QuickToolTab] {
-        let enabledSet = Set(enabledTabIDs)
-        let matching = QuickToolTab.allTabs.filter { enabledSet.contains($0.id) }
-        return matching.isEmpty ? QuickToolTab.allTabs : matching
+        let tabMap = Dictionary(uniqueKeysWithValues: QuickToolTab.allTabs.map { ($0.id, $0) })
+        let ordered = enabledTabIDs.compactMap { tabMap[$0] }
+        return ordered.isEmpty ? QuickToolTab.allTabs : ordered
     }
 
     func isTabEnabled(_ id: String) -> Bool {
@@ -145,22 +147,41 @@ final class QuickToolsStore: ObservableObject {
     }
 
     func setTabEnabled(_ id: String, enabled: Bool) {
-        let validIDs = QuickToolTab.allTabs.map(\.id)
+        let validIDs = Set(QuickToolTab.allTabs.map(\.id))
         guard validIDs.contains(id) else { return }
 
-        var current = Set(enabledTabIDs)
+        var updated = enabledTabIDs
         if enabled {
-            current.insert(id)
-        } else if current.count > 1 {
-            current.remove(id)
+            if !updated.contains(id) {
+                updated.append(id)
+            }
+        } else if updated.count > 1 {
+            updated.removeAll { $0 == id }
         }
 
-        enabledTabIDs = validIDs.filter { current.contains($0) }
+        enabledTabIDs = updated
         defaults.set(enabledTabIDs, forKey: Self.enabledTabsKey)
 
         if !enabledTabIDs.contains(selectedTool), let first = enabledTabIDs.first {
             selectedTool = first
         }
+    }
+
+    func moveTab(_ id: String, by offset: Int) {
+        guard let index = enabledTabIDs.firstIndex(of: id) else { return }
+        let targetIndex = index + offset
+        guard enabledTabIDs.indices.contains(targetIndex) else { return }
+        var updated = enabledTabIDs
+        updated.swapAt(index, targetIndex)
+        enabledTabIDs = updated
+        defaults.set(enabledTabIDs, forKey: Self.enabledTabsKey)
+    }
+
+    func moveTab(fromOffsets source: IndexSet, toOffset destination: Int) {
+        var updated = enabledTabIDs
+        updated.move(fromOffsets: source, toOffset: destination)
+        enabledTabIDs = updated
+        defaults.set(enabledTabIDs, forKey: Self.enabledTabsKey)
     }
 
     func resetEnabledTabs() {

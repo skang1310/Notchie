@@ -2,13 +2,12 @@ import Foundation
 import Combine
 
 enum ShelfWidget: String, CaseIterable, Identifiable {
-    case media, calendar, weather, focus, stats, notes
+    case media, calendar, focus, stats, notes
     var id: String { rawValue }
     var title: String {
         switch self {
         case .media: privacyText("Now Playing", "지금 재생 중")
         case .calendar: privacyText("Calendar", "캘린더")
-        case .weather: privacyText("Weather", "날씨")
         case .focus: privacyText("Focus", "집중")
         case .stats: privacyText("System Stats", "시스템 상태")
         case .notes: privacyText("Notes", "메모")
@@ -18,7 +17,6 @@ enum ShelfWidget: String, CaseIterable, Identifiable {
         switch self {
         case .media: "music.note"
         case .calendar: "calendar"
-        case .weather: "cloud.sun.fill"
         case .focus: "timer"
         case .stats: "waveform.path.ecg"
         case .notes: "note.text"

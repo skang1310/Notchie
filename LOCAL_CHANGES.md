@@ -1,6 +1,11 @@
-# Notchie custom edition features — 2026-10-28
+# Notchie custom edition features — 2026-10-28 / 2026-10-29
 
-1. **About page & removal of Support / Software Update pages**:
+1. **Weather & Golden Hour removal and Notch Hover Menu tab reordering (2026-10-29 v27)**:
+   - Completely removed legacy weather and golden hour code: deleted `NotchieWeather.swift`, removed `.weather` widget from `ShelfPreferences.swift`, and cleaned up test fixtures.
+   - Added user-customizable tab ordering and positioning in the Notch Hover Menu: `QuickToolsStore.enabledTabIDs` now preserves user sequence order; `QuickToolsStore.moveTab(_:by:)` and `moveTab(fromOffsets:toOffset:)` enable shifting tab positions left/right.
+   - Redesigned `customizableTabsCard` and `QuickToolTabCustomizerPopover` in `QuickToolsView.swift` with interactive ◀ / ▶ movement buttons and dynamic tab addition/hiding.
+   - Added automated regression tests in `AlcoveSettingsExtensionTests.swift` (`testQuickToolsCustomizableTabsReorderingAndPersistence`).
+2. **About page & removal of Support / Software Update pages**:
    - Removed the Support (`후원`) and Software Update (`소프트웨어 업데이트`) navigation rows from `GeneralSettingsView`, removed `Check for Updates` from `MenuBarMenu`, and removed the update badge from `SettingsRootView`.
    - Redesigned `AboutAppSettingsView` (`일반 - 정보`) as **Notchie Custom Edition**, showcasing the user's added features, local build revision (`Notchie-20261028-v2`), and open-source attributions (`DynamicNotch` GPL-3.0 and `HeyMac` MIT) without the upstream author's personal Telegram, email, or donation links.
 2. **NotchNook-style Idle Notch Hover Menu & Customizable Tabs**:

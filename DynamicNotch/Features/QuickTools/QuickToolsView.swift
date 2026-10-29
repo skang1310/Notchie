@@ -108,40 +108,130 @@ struct QuickToolsView: View {
     }
 
     private var customizableTabsCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(text("Notch Hover Menu Tabs (Click to toggle)", "노치 호버 메뉴 탭 선택 (클릭하여 켜기/끄기)"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text("Notch Hover Menu Tabs & Order", "노치 호버 메뉴 탭 선택 및 순서 변경"))
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.primary)
+                    Text(text("Use ◀ / ▶ to move tab position, or ✕ to hide.", "◀ / ▶ 버튼으로 노치 표시 순서를 이동하고, ✕로 숨깁니다."))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
-                Button(text("Reset Default Tabs", "기본 탭으로 초기화")) {
-                    store.resetEnabledTabs()
+                Button(text("Reset Default Order", "기본 순서로 초기화")) {
+                    withAnimation(.snappy) {
+                        store.resetEnabledTabs()
+                    }
                 }
                 .font(.caption2)
                 .buttonStyle(.link)
             }
+
+            // Row 1: Active tabs in current order with move left/right and close buttons
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    ForEach(QuickToolTab.allTabs) { tab in
-                        let enabled = store.isTabEnabled(tab.id)
-                        Button {
-                            store.setTabEnabled(tab.id, enabled: !enabled)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: enabled ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(enabled ? accentColor : .secondary)
-                                Text(L10n.app(tab.titleKey))
-                                    .font(.caption)
+                    ForEach(Array(store.visibleTabs.enumerated()), id: \.element.id) { index, tab in
+                        HStack(spacing: 4) {
+                            Button {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    store.moveTab(tab.id, by: -1)
+                                }
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(index > 0 ? accentColor : Color.secondary.opacity(0.3))
+                                    .frame(width: 14, height: 18)
+                                    .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(enabled ? accentColor.opacity(0.14) : Color.primary.opacity(0.04))
-                            )
+                            .buttonStyle(.plain)
+                            .disabled(index == 0)
+                            .help(text("Move left in notch", "노치에서 왼쪽으로 이동"))
+
+                            Image(systemName: tab.systemImage)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(accentColor)
+
+                            Text(L10n.app(tab.titleKey))
+                                .font(.caption.weight(.medium))
+                                .lineLimit(1)
+
+                            Button {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    store.moveTab(tab.id, by: 1)
+                                }
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(index < store.visibleTabs.count - 1 ? accentColor : Color.secondary.opacity(0.3))
+                                    .frame(width: 14, height: 18)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index >= store.visibleTabs.count - 1)
+                            .help(text("Move right in notch", "노치에서 오른쪽으로 이동"))
+
+                            Button {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    store.setTabEnabled(tab.id, enabled: false)
+                                }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 8.5, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 14, height: 18)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(store.visibleTabs.count <= 1)
+                            .help(text("Hide tab from notch", "노치에서 탭 숨기기"))
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4.5)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(accentColor.opacity(0.12))
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(accentColor.opacity(0.35), lineWidth: 0.8)
+                        )
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+
+            // Row 2: Inactive tabs available to add
+            let inactiveTabs = QuickToolTab.allTabs.filter { !store.isTabEnabled($0.id) }
+            if !inactiveTabs.isEmpty {
+                HStack(spacing: 6) {
+                    Text(text("Add to notch:", "추가 가능한 탭:"))
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 5) {
+                            ForEach(inactiveTabs) { tab in
+                                Button {
+                                    withAnimation(.snappy(duration: 0.2)) {
+                                        store.setTabEnabled(tab.id, enabled: true)
+                                    }
+                                } label: {
+                                    HStack(spacing: 3.5) {
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 8.5, weight: .bold))
+                                        Text(L10n.app(tab.titleKey))
+                                            .font(.system(size: 10.5))
+                                    }
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3.5)
+                                    .background(Color.primary.opacity(0.04), in: Capsule())
+                                    .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help(text("Add tab to notch", "노치 메뉴에 추가"))
+                            }
+                        }
                     }
                 }
             }
@@ -194,6 +284,10 @@ struct QuickToolDetailSwitcherView: View {
 struct QuickToolTabCustomizerPopover: View {
     @ObservedObject var store: QuickToolsStore
 
+    private var accentColor: Color {
+        ApplicationSettingsStore.currentCustomAccentColor()
+    }
+
     private func text(_ en: String, _ ko: String) -> String {
         privacyText(en, ko)
     }
@@ -201,33 +295,99 @@ struct QuickToolTabCustomizerPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(text("Visible Notch Tabs", "노치 메뉴 표시 탭"))
+                Text(text("Notch Tabs & Order", "노치 탭 선택 및 순서"))
                     .font(.callout.weight(.semibold))
                 Spacer()
                 Button(text("Reset", "초기화")) {
-                    store.resetEnabledTabs()
+                    withAnimation(.snappy) {
+                        store.resetEnabledTabs()
+                    }
                 }
                 .font(.caption)
             }
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(QuickToolTab.allTabs) { tab in
-                        Toggle(isOn: Binding(
-                            get: { store.isTabEnabled(tab.id) },
-                            set: { store.setTabEnabled(tab.id, enabled: $0) }
-                        )) {
+                    Text(text("Active Tabs (In Notch Order):", "활성 탭 (노치 표시 순서):"))
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    ForEach(Array(store.visibleTabs.enumerated()), id: \.element.id) { index, tab in
+                        HStack(spacing: 6) {
+                            Button {
+                                withAnimation(.snappy) { store.moveTab(tab.id, by: -1) }
+                            } label: {
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(index > 0 ? accentColor : Color.secondary.opacity(0.3))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index == 0)
+
+                            Button {
+                                withAnimation(.snappy) { store.moveTab(tab.id, by: 1) }
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(index < store.visibleTabs.count - 1 ? accentColor : Color.secondary.opacity(0.3))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index >= store.visibleTabs.count - 1)
+
                             Label(L10n.app(tab.titleKey), systemImage: tab.systemImage)
                                 .font(.caption)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Button {
+                                withAnimation(.snappy) { store.setTabEnabled(tab.id, enabled: false) }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(store.visibleTabs.count <= 1)
                         }
-                        .toggleStyle(.checkbox)
+                        .padding(.vertical, 3)
+                        .padding(.horizontal, 6)
+                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+                    }
+
+                    let inactive = QuickToolTab.allTabs.filter { !store.isTabEnabled($0.id) }
+                    if !inactive.isEmpty {
+                        Divider().padding(.vertical, 2)
+                        Text(text("Inactive Tabs (Click + to add):", "비활성 탭 (+ 클릭하여 추가):"))
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+
+                        ForEach(inactive) { tab in
+                            HStack(spacing: 6) {
+                                Label(L10n.app(tab.titleKey), systemImage: tab.systemImage)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Button {
+                                    withAnimation(.snappy) { store.setTabEnabled(tab.id, enabled: true) }
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(accentColor)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 2)
+                            .padding(.horizontal, 6)
+                        }
                     }
                 }
             }
-            .frame(maxHeight: 240)
+            .frame(maxHeight: 280)
         }
         .padding(12)
-        .frame(width: 230)
+        .frame(width: 250)
     }
 }
 
