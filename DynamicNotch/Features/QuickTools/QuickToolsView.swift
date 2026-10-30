@@ -1836,12 +1836,11 @@ private struct NotchieCalendarScheduleColumn: View {
     var compactHome = false
 
     @State private var isShowingFullSchedule = false
-    @State private var isHoveringDates = false
+    @State private var isHoveringColumn = false
     @State private var scrollMonitor: Any?
-    @State private var accumulatedDelta: CGFloat = 0
-    @State private var isHoveringSchedule = false
-    @State private var scheduleScrollMonitor: Any?
-    @State private var accumulatedScheduleDelta: CGFloat = 0
+    @State private var accumulatedVerticalDelta: CGFloat = 0
+    @State private var accumulatedHorizontalDelta: CGFloat = 0
+    @State private var hoverDebounceTask: DispatchWorkItem?
 
     private func text(_ en: String, _ ko: String) -> String {
         privacyText(en, ko)
@@ -1874,100 +1873,110 @@ private struct NotchieCalendarScheduleColumn: View {
         }
     }
 
-    private func handleDateHover(_ hovering: Bool) {
-        isHoveringDates = hovering
+    private func openFullSchedule() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+            isShowingFullSchedule = true
+            QuickToolsStore.shared.isCalendarFullScheduleVisible = true
+        }
+    }
+
+    private func closeFullSchedule() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+            isShowingFullSchedule = false
+            QuickToolsStore.shared.isCalendarFullScheduleVisible = false
+        }
+    }
+
+    private func handleColumnHover(_ hovering: Bool) {
+        hoverDebounceTask?.cancel()
         if hovering {
-            accumulatedDelta = 0
-            if scrollMonitor == nil {
-                scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-                    let delta = abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) ? event.scrollingDeltaX : event.scrollingDeltaY
-                    accumulatedDelta += delta
-                    if abs(accumulatedDelta) >= 4.5 {
-                        let step = accumulatedDelta < 0 ? 1 : -1
-                        withAnimation(.snappy(duration: 0.16)) {
-                            selectedDayOffset += step
-                        }
-                        accumulatedDelta = 0
-                    }
-                    return nil
-                }
-            }
+            isHoveringColumn = true
+            installScrollMonitorIfNeeded()
         } else {
-            if let monitor = scrollMonitor {
-                NSEvent.removeMonitor(monitor)
-                scrollMonitor = nil
+            let task = DispatchWorkItem { [self] in
+                self.isHoveringColumn = false
+                self.removeScrollMonitor()
             }
+            hoverDebounceTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: task)
         }
     }
 
     private func physicalVerticalDelta(from event: NSEvent) -> CGFloat {
-        let deltaY = CGFloat(event.scrollingDeltaY)
-        return event.isDirectionInvertedFromDevice ? -deltaY : deltaY
+        let raw = event.scrollingDeltaY != 0 ? CGFloat(event.scrollingDeltaY) : CGFloat(event.deltaY * 8.0)
+        return event.isDirectionInvertedFromDevice ? -raw : raw
     }
 
-    private func handleScheduleHover(_ hovering: Bool) {
-        isHoveringSchedule = hovering
-        if hovering {
-            accumulatedScheduleDelta = 0
-            if scheduleScrollMonitor == nil {
-                scheduleScrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-                    // If predominantly horizontal, ignore for calendar open/close (allow date navigation)
-                    if abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) * 1.5 {
-                        return event
-                    }
+    private func installScrollMonitorIfNeeded() {
+        guard scrollMonitor == nil else { return }
+        accumulatedVerticalDelta = 0
+        accumulatedHorizontalDelta = 0
 
-                    let physicalDelta = self.physicalVerticalDelta(from: event)
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+            let deltaX = event.scrollingDeltaX
+            let rawDeltaY = event.scrollingDeltaY != 0 ? CGFloat(event.scrollingDeltaY) : CGFloat(event.deltaY * 8.0)
+            let physicalDeltaY = self.physicalVerticalDelta(from: event)
 
-                    if !self.isShowingFullSchedule {
-                        // Closed: downward scroll ("밑으로") opens full schedule
-                        if physicalDelta < -0.25 {
-                            self.accumulatedScheduleDelta += physicalDelta
-                            if self.accumulatedScheduleDelta <= -0.9 || abs(event.scrollingDeltaY) >= 0.8 {
-                                self.accumulatedScheduleDelta = 0
-                                DispatchQueue.main.async {
-                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                                        self.isShowingFullSchedule = true
-                                        QuickToolsStore.shared.isCalendarFullScheduleVisible = true
-                                    }
-                                }
-                                return nil
-                            }
-                        } else if physicalDelta > 0.25 {
-                            self.accumulatedScheduleDelta = 0
-                        }
-                        return event
-                    } else {
-                        // Open: upward scroll ("위로") closes full schedule
-                        if physicalDelta > 0.25 {
-                            self.accumulatedScheduleDelta += physicalDelta
-                            if self.accumulatedScheduleDelta >= 0.9 || abs(event.scrollingDeltaY) >= 0.8 {
-                                self.accumulatedScheduleDelta = 0
-                                DispatchQueue.main.async {
-                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                                        self.isShowingFullSchedule = false
-                                        QuickToolsStore.shared.isCalendarFullScheduleVisible = false
-                                    }
-                                }
-                                return nil
-                            }
-                        } else if physicalDelta < -0.25 {
-                            self.accumulatedScheduleDelta = 0
-                        }
-                        return event
+            // If predominantly horizontal, navigate 7-day strip when full schedule is closed
+            if !self.isShowingFullSchedule && abs(deltaX) > abs(rawDeltaY) * 1.3 && abs(deltaX) > 0.4 {
+                self.accumulatedHorizontalDelta += deltaX
+                if abs(self.accumulatedHorizontalDelta) >= 4.0 {
+                    let step = self.accumulatedHorizontalDelta < 0 ? 1 : -1
+                    withAnimation(.snappy(duration: 0.16)) {
+                        self.selectedDayOffset += step
                     }
+                    self.accumulatedHorizontalDelta = 0
                 }
+                return nil
             }
-        } else {
-            removeScheduleScrollMonitor()
+
+            // Vertical scroll:
+            // Downward ("밑으로"): physicalDeltaY < -0.2
+            // Upward ("위로"): physicalDeltaY > 0.2
+
+            if !self.isShowingFullSchedule {
+                // Closed: Downward scroll opens full schedule
+                if physicalDeltaY < -0.2 {
+                    self.accumulatedVerticalDelta += physicalDeltaY
+                    if self.accumulatedVerticalDelta <= -0.8 || abs(rawDeltaY) >= 0.8 {
+                        self.accumulatedVerticalDelta = 0
+                        self.accumulatedHorizontalDelta = 0
+                        DispatchQueue.main.async {
+                            self.openFullSchedule()
+                        }
+                        return nil
+                    }
+                } else if physicalDeltaY > 0.2 {
+                    self.accumulatedVerticalDelta = 0
+                }
+                return event
+            } else {
+                // Open: Upward scroll closes full schedule
+                if physicalDeltaY > 0.2 {
+                    self.accumulatedVerticalDelta += physicalDeltaY
+                    if self.accumulatedVerticalDelta >= 0.8 || abs(rawDeltaY) >= 0.8 {
+                        self.accumulatedVerticalDelta = 0
+                        self.accumulatedHorizontalDelta = 0
+                        DispatchQueue.main.async {
+                            self.closeFullSchedule()
+                        }
+                        return nil
+                    }
+                } else if physicalDeltaY < -0.2 {
+                    self.accumulatedVerticalDelta = 0
+                }
+                return event
+            }
         }
     }
 
-    private func removeScheduleScrollMonitor() {
-        if let monitor = scheduleScrollMonitor {
+    private func removeScrollMonitor() {
+        if let monitor = scrollMonitor {
             NSEvent.removeMonitor(monitor)
-            scheduleScrollMonitor = nil
+            scrollMonitor = nil
         }
-        accumulatedScheduleDelta = 0
+        accumulatedVerticalDelta = 0
+        accumulatedHorizontalDelta = 0
     }
 
     private func events(on date: Date) -> [EKEvent] {
@@ -2001,21 +2010,19 @@ private struct NotchieCalendarScheduleColumn: View {
                     ))
             }
         }
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            handleColumnHover(hovering)
+        }
         .onDisappear {
-            isHoveringDates = false
-            if let monitor = scrollMonitor {
-                NSEvent.removeMonitor(monitor)
-                scrollMonitor = nil
-            }
-            isHoveringSchedule = false
-            removeScheduleScrollMonitor()
+            hoverDebounceTask?.cancel()
+            isHoveringColumn = false
+            removeScrollMonitor()
             QuickToolsStore.shared.isCalendarFullScheduleVisible = false
         }
         .onReceive(QuickToolsStore.shared.$isCalendarFullScheduleVisible) { isVisible in
             if !isVisible && isShowingFullSchedule {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                    isShowingFullSchedule = false
-                }
+                closeFullSchedule()
             }
         }
     }
@@ -2139,11 +2146,8 @@ private struct NotchieCalendarScheduleColumn: View {
                 .padding(.vertical, 2)
                 .background(
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(isHoveringDates ? Color.white.opacity(0.04) : Color.clear)
+                        .fill(isHoveringColumn ? Color.white.opacity(0.04) : Color.clear)
                 )
-                .onHover { hovering in
-                    handleDateHover(hovering)
-                }
 
                 Spacer(minLength: 0)
 
@@ -2158,7 +2162,13 @@ private struct NotchieCalendarScheduleColumn: View {
                              ? text("Nothing for today", "선택한 날짜에 일정 없음")
                              : text("Calendar access is off", "캘린더 접근이 꺼져 있어요"))
                             .font(.system(size: 11, weight: .medium)).lineLimit(1)
-                    }.foregroundStyle(.white.opacity(0.5)).frame(maxWidth: .infinity, minHeight: 36)
+                    }
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        openFullSchedule()
+                    }
                 } else {
                     quickProductivityActionRow
                 }
@@ -2215,15 +2225,12 @@ private struct NotchieCalendarScheduleColumn: View {
                 .padding(.vertical, 2)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(isHoveringDates ? Color.white.opacity(0.045) : Color.clear)
+                        .fill(isHoveringColumn ? Color.white.opacity(0.045) : Color.clear)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(isHoveringDates ? Color.white.opacity(0.09) : Color.clear, lineWidth: 0.7)
+                        .strokeBorder(isHoveringColumn ? Color.white.opacity(0.09) : Color.clear, lineWidth: 0.7)
                 )
-                .onHover { hovering in
-                    handleDateHover(hovering)
-                }
                 .help(text("Hover and scroll to navigate dates", "날짜에 마우스를 올리고 스크롤하여 날짜 이동"))
             }
             Group {
@@ -2241,12 +2248,24 @@ private struct NotchieCalendarScheduleColumn: View {
                     }
                     .foregroundStyle(.white.opacity(0.45))
                     .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        openFullSchedule()
+                    }
+                    .help(text("Click or scroll down to view full schedule", "클릭하거나 밑으로 스크롤하여 전체 일정 보기"))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 5)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            openFullSchedule()
+        }
+        .onHover { hovering in
+            handleColumnHover(hovering)
+        }
     }
 
     private func eventDetailCard(for event: EKEvent) -> some View {
@@ -2287,7 +2306,7 @@ private struct NotchieCalendarScheduleColumn: View {
 
                     Image(systemName: "chevron.down")
                         .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(isHoveringSchedule ? accentColor : .white.opacity(0.35))
+                        .foregroundStyle(isHoveringColumn ? accentColor : .white.opacity(0.35))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -2323,21 +2342,18 @@ private struct NotchieCalendarScheduleColumn: View {
         .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isHoveringSchedule ? Color.white.opacity(0.09) : Color.white.opacity(0.055))
+                .fill(isHoveringColumn ? Color.white.opacity(0.09) : Color.white.opacity(0.055))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(isHoveringSchedule ? accentColor.opacity(0.4) : Color.white.opacity(0.09), lineWidth: 0.8)
+                        .strokeBorder(isHoveringColumn ? accentColor.opacity(0.4) : Color.white.opacity(0.09), lineWidth: 0.8)
                 )
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                isShowingFullSchedule = true
-                QuickToolsStore.shared.isCalendarFullScheduleVisible = true
-            }
+            openFullSchedule()
         }
         .onHover { hovering in
-            handleScheduleHover(hovering)
+            handleColumnHover(hovering)
         }
         .help(text("Click or scroll down to view full schedule", "클릭하거나 밑으로 스크롤하여 전체 일정 보기"))
     }
@@ -2374,10 +2390,7 @@ private struct NotchieCalendarScheduleColumn: View {
                 Spacer()
 
                 Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                        isShowingFullSchedule = false
-                        QuickToolsStore.shared.isCalendarFullScheduleVisible = false
-                    }
+                    closeFullSchedule()
                 } label: {
                     HStack(spacing: 3) {
                         Text(text("Collapse", "접기"))
@@ -2396,10 +2409,10 @@ private struct NotchieCalendarScheduleColumn: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                    isShowingFullSchedule = false
-                    QuickToolsStore.shared.isCalendarFullScheduleVisible = false
-                }
+                closeFullSchedule()
+            }
+            .onHover { hovering in
+                handleColumnHover(hovering)
             }
             .padding(.horizontal, 4)
             .padding(.top, 2)
@@ -2416,10 +2429,10 @@ private struct NotchieCalendarScheduleColumn: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                        isShowingFullSchedule = false
-                        QuickToolsStore.shared.isCalendarFullScheduleVisible = false
-                    }
+                    closeFullSchedule()
+                }
+                .onHover { hovering in
+                    handleColumnHover(hovering)
                 }
             } else {
                 ScrollView(.vertical, showsIndicators: true) {
@@ -2453,13 +2466,10 @@ private struct NotchieCalendarScheduleColumn: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                isShowingFullSchedule = false
-                QuickToolsStore.shared.isCalendarFullScheduleVisible = false
-            }
+            closeFullSchedule()
         }
         .onHover { hovering in
-            handleScheduleHover(hovering)
+            handleColumnHover(hovering)
         }
         .help(text("Click or scroll up to return to next event view", "클릭하거나 위로 스크롤하여 전체 일정 접기"))
     }
@@ -2523,6 +2533,13 @@ private struct NotchieCalendarScheduleColumn: View {
                         .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.6)
                 )
         )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            closeFullSchedule()
+        }
+        .onHover { hovering in
+            handleColumnHover(hovering)
+        }
     }
 
     private var quickProductivityActionRow: some View {

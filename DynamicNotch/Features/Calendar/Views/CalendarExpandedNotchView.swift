@@ -12,6 +12,7 @@ struct CalendarExpandedNotchView: View {
     @State private var isHoveringEvent = false
     @State private var scrollMonitor: Any? = nil
     @State private var accumulatedScrollDelta: CGFloat = 0
+    @State private var hoverDebounceItem: DispatchWorkItem? = nil
     
     var body: some View {
         VStack {
@@ -30,9 +31,7 @@ struct CalendarExpandedNotchView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                            isShowingFullSchedule = true
-                        }
+                        openFullSchedule()
                     }
                     .onHover { hovering in
                         handleEventHover(hovering)
@@ -45,74 +44,104 @@ struct CalendarExpandedNotchView: View {
                 Text(locale.dn("notch.calendar.noEvents", fallback: "No upcoming events"))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.gray.opacity(0.6))
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        openFullSchedule()
+                    }
+                    .onHover { hovering in
+                        handleEventHover(hovering)
+                    }
             }
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            handleEventHover(hovering)
         }
         .padding(.leading, isNotchlessScreen ? 20 : 45)
         .padding(.trailing, isNotchlessScreen ? 15 : 40)
         .padding(.bottom, isNotchlessScreen ? 20 : 18)
         .onDisappear {
+            hoverDebounceItem?.cancel()
             isHoveringEvent = false
             removeScrollMonitor()
             isShowingFullSchedule = false
         }
     }
 
+    private func openFullSchedule() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+            isShowingFullSchedule = true
+        }
+    }
+
+    private func closeFullSchedule() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+            isShowingFullSchedule = false
+        }
+    }
+
     private func physicalVerticalDelta(from event: NSEvent) -> CGFloat {
-        let deltaY = CGFloat(event.scrollingDeltaY)
-        return event.isDirectionInvertedFromDevice ? -deltaY : deltaY
+        let raw = event.scrollingDeltaY != 0 ? CGFloat(event.scrollingDeltaY) : CGFloat(event.deltaY * 8.0)
+        return event.isDirectionInvertedFromDevice ? -raw : raw
     }
 
     private func handleEventHover(_ hovering: Bool) {
-        isHoveringEvent = hovering
+        hoverDebounceItem?.cancel()
         if hovering {
-            accumulatedScrollDelta = 0
-            if scrollMonitor == nil {
-                scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-                    if abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) * 1.5 {
-                        return event
-                    }
-
-                    let physicalDelta = self.physicalVerticalDelta(from: event)
-
-                    if !self.isShowingFullSchedule {
-                        // Closed: downward scroll ("밑으로") opens full schedule
-                        if physicalDelta < -0.25 {
-                            self.accumulatedScrollDelta += physicalDelta
-                            if self.accumulatedScrollDelta <= -0.9 || abs(event.scrollingDeltaY) >= 0.8 {
-                                self.accumulatedScrollDelta = 0
-                                DispatchQueue.main.async {
-                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                                        self.isShowingFullSchedule = true
-                                    }
-                                }
-                                return nil
-                            }
-                        } else if physicalDelta > 0.25 {
-                            self.accumulatedScrollDelta = 0
-                        }
-                        return event
-                    } else {
-                        // Open: upward scroll ("위로") closes full schedule
-                        if physicalDelta > 0.25 {
-                            self.accumulatedScrollDelta += physicalDelta
-                            if self.accumulatedScrollDelta >= 0.9 || abs(event.scrollingDeltaY) >= 0.8 {
-                                self.accumulatedScrollDelta = 0
-                                DispatchQueue.main.async {
-                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                                        self.isShowingFullSchedule = false
-                                    }
-                                }
-                                return nil
-                            }
-                        } else if physicalDelta < -0.25 {
-                            self.accumulatedScrollDelta = 0
-                        }
-                        return event
-                    }
-                }
-            }
+            isHoveringEvent = true
+            installScrollMonitorIfNeeded()
         } else {
-            removeScrollMonitor()
+            let item = DispatchWorkItem { [self] in
+                self.isHoveringEvent = false
+                self.removeScrollMonitor()
+            }
+            hoverDebounceItem = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: item)
+        }
+    }
+
+    private func installScrollMonitorIfNeeded() {
+        guard scrollMonitor == nil else { return }
+        accumulatedScrollDelta = 0
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+            if abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) * 1.5 {
+                return event
+            }
+
+            let rawDeltaY = event.scrollingDeltaY != 0 ? CGFloat(event.scrollingDeltaY) : CGFloat(event.deltaY * 8.0)
+            let physicalDelta = self.physicalVerticalDelta(from: event)
+
+            if !self.isShowingFullSchedule {
+                // Closed: downward scroll ("밑으로") opens full schedule
+                if physicalDelta < -0.2 {
+                    self.accumulatedScrollDelta += physicalDelta
+                    if self.accumulatedScrollDelta <= -0.8 || abs(rawDeltaY) >= 0.8 {
+                        self.accumulatedScrollDelta = 0
+                        DispatchQueue.main.async {
+                            self.openFullSchedule()
+                        }
+                        return nil
+                    }
+                } else if physicalDelta > 0.2 {
+                    self.accumulatedScrollDelta = 0
+                }
+                return event
+            } else {
+                // Open: upward scroll ("위로") closes full schedule
+                if physicalDelta > 0.2 {
+                    self.accumulatedScrollDelta += physicalDelta
+                    if self.accumulatedScrollDelta >= 0.8 || abs(rawDeltaY) >= 0.8 {
+                        self.accumulatedScrollDelta = 0
+                        DispatchQueue.main.async {
+                            self.closeFullSchedule()
+                        }
+                        return nil
+                    }
+                } else if physicalDelta < -0.2 {
+                    self.accumulatedScrollDelta = 0
+                }
+                return event
+            }
         }
     }
 
@@ -139,9 +168,7 @@ struct CalendarExpandedNotchView: View {
                     .background(Color.blue.opacity(0.2), in: Capsule())
                 Spacer()
                 Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                        isShowingFullSchedule = false
-                    }
+                    closeFullSchedule()
                 } label: {
                     Image(systemName: "chevron.up")
                         .font(.system(size: 11, weight: .bold))
@@ -151,9 +178,10 @@ struct CalendarExpandedNotchView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                    isShowingFullSchedule = false
-                }
+                closeFullSchedule()
+            }
+            .onHover { hovering in
+                handleEventHover(hovering)
             }
             
             ScrollView(.vertical, showsIndicators: false) {
@@ -186,6 +214,13 @@ struct CalendarExpandedNotchView: View {
                             }
                         }
                         .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            closeFullSchedule()
+                        }
+                        .onHover { hovering in
+                            handleEventHover(hovering)
+                        }
                     }
                 }
             }
@@ -193,9 +228,7 @@ struct CalendarExpandedNotchView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                isShowingFullSchedule = false
-            }
+            closeFullSchedule()
         }
         .onHover { hovering in
             handleEventHover(hovering)

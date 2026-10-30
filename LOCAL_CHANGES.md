@@ -4,24 +4,18 @@
    - **User Requirements**:
      1. Directional Scroll: Scrolling down ("밑으로") opens the full schedule; scrolling up ("위로") closes it back to the upcoming event.
      2. Click Toggle: Clicking once opens the full schedule; clicking once more closes it.
+   - **Root Cause Analysis & Fix**:
+     1. `ScrollView` Click Absorption: In AppKit / SwiftUI, `NSScrollView` absorbed mouse clicks on schedule items, preventing parent `.onTapGesture` from firing on 2nd click. Fixed by adding `.contentShape(Rectangle()).onTapGesture { closeFullSchedule() }` directly to every `scheduleRow`, the header bar, and empty schedule placeholders.
+     2. Premature Hover Monitor Teardown: Entering `ScrollView` or moving across subviews fired `onHover(false)` on parent views, which immediately removed `scheduleScrollMonitor`. Fixed by adding a 0.35s debounce work item (`hoverDebounceTask`) and attaching hover tracking to all rows and the root container, keeping the scroll monitor continuously active.
+     3. Empty Day Placeholder Support: Days with no events previously did not render `eventDetailCard`, leaving no click or hover triggers. Fixed by adding tap to open and column-level hover monitoring to the empty-day view and calendar container.
+     4. Date Strip Scroll Conflict: Replaced competing date scroll monitor with a unified column monitor that discriminates horizontal swipe for date navigation vs vertical scroll for open/close.
    - **Physical Vertical Scroll Delta Normalization**:
      - Added `physicalVerticalDelta(from: NSEvent)`:
-       `event.isDirectionInvertedFromDevice ? -deltaY : deltaY`.
-       This guarantees consistent physical direction regardless of whether macOS "Natural Scrolling" is enabled or disabled on trackpads and mouse wheels:
-       - Downward gesture / wheel down: `physicalVerticalDelta < 0` (triggers open).
-       - Upward gesture / wheel up: `physicalVerticalDelta > 0` (triggers close).
-     - Accumulated delta tracking with responsive threshold (0.9pt / single wheel click) prevents accidental jitter while ensuring instant response.
-     - Horizontal scrolls are passed through (`abs(scrollingDeltaX) > abs(scrollingDeltaY) * 1.5`) so 7-day date strip navigation is preserved.
-     - Downward scroll in `fullScheduleView` passes through to `ScrollView` so multi-event lists can still be scrolled down.
-   - **Two-Tap Toggle Interaction**:
-     - 1st click on the upcoming event card (`eventDetailCard`): opens full schedule (`isShowingFullSchedule = true; QuickToolsStore.shared.isCalendarFullScheduleVisible = true`).
-     - 2nd click anywhere on the schedule (header bar, empty container area, or collapse button): closes full schedule (`isShowingFullSchedule = false; QuickToolsStore.shared.isCalendarFullScheduleVisible = false`).
-     - Sub-action buttons (e.g. "참여" / Join Meeting) maintain dedicated click handling without closing the view.
-   - **Notch Swipe Dismissal & State Synchronization**:
-     - Added `@Published var isCalendarFullScheduleVisible = false` to `QuickToolsStore.shared` with mutual exclusion against Sound Mixer and Lyrics.
-     - Gated `NotchSwipeDismissModifier`, `NotchMouseSwipeModifier`, and `NotchInteractiveBodyView` so that scrolling up or dragging within the open full schedule never triggers Notch dismissal.
-     - Synchronized bidirectional interactions in both `NotchieCalendarScheduleColumn` (QuickTools / Nook home) and `CalendarExpandedNotchView` (Calendar tab in expanded Notch).
-   - 371 unit tests passed (0 failures); Release build installed and running at `/Applications/Notchie.app` (PID 89011, UUID `4E1ADF41-BD5B-3EE5-8266-0EB7594C03A1`).
+       `event.isDirectionInvertedFromDevice ? -raw : raw`.
+       Guarantees consistent physical direction regardless of whether macOS "Natural Scrolling" is enabled or disabled:
+       - Downward gesture / wheel down: `physicalDelta < -0.2` (triggers open).
+       - Upward gesture / wheel up: `physicalDelta > 0.2` (triggers close).
+   - 371 unit tests passed (0 failures); Release build installed and running at `/Applications/Notchie.app` (PID 79437, UUID `4E1ADF41-BD5B-3EE5-8266-0EB7594C03A1`).
 
 -4. **Sound Mixer Click & Scroll Notch Dismissal Elimination (2026-10-30 v46)**:
    - **Root Cause Analysis**:
