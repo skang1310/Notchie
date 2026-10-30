@@ -1,5 +1,17 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
 
+-6. **Google Meet Controls & Per-App Sound Mixer Direct Visibility (2026-10-30 v48)**:
+   - **Google Meet Always-Accessible Entry**:
+     - Added permanent `[📹 구글밋]` tab to `topWingHeaderBar` on the right wing. When clicked, immediately opens `MeetingNotchView`.
+     - When an active call is detected, seamlessly upgrades to the live duration/mute status badge (`[🟢 Google Meet 04:12]`).
+     - `MeetingNotchView` now gracefully supports both active meeting mode and standby mode: shows Google Meet branding, real-time hardware microphone mute test toggle, camera toggle, and a direct "Google Meet 열기" button (`https://meet.google.com`).
+     - Removed automatic background timer kick-out (`hubMode = .nook`) in `MeetingControlService`, allowing users to freely access and test meeting controls at any time.
+   - **Per-App Sound Mixer Direct Visibility**:
+     - Added dedicated `[🎛️ 사운드 믹서]` button to `topWingHeaderBar` next to Google Meet, allowing 1-click toggling of the sound mixer into the calendar slot from anywhere in Nook home.
+     - Added Sound Mixer button (`slider.horizontal.2.square`) and lyrics button to `placeholderStudioCard`, ensuring full access to per-app volume sliders even when no media is currently playing.
+     - Updated Now Playing studio card mixer button with high-contrast icon and clear Korean/English tooltips.
+   - 371 unit tests passed (0 failures); Release build installed and running at `/Applications/Notchie.app` (PID 81837, UUID `4E1ADF41-BD5B-3EE5-8266-0EB7594C03A1`).
+
 -5. **Calendar Directional Scroll & Click-Toggle Full Schedule (2026-10-30 v47)**:
    - **User Requirements**:
      1. Directional Scroll: Scrolling down ("밑으로") opens the full schedule; scrolling up ("위로") closes it back to the upcoming event.

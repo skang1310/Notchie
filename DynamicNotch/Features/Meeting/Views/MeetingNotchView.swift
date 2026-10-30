@@ -20,18 +20,19 @@ public struct MeetingNotchView: View {
 
     public var body: some View {
         HStack(spacing: 12) {
-            // Left: Platform Logo & Live Duration Pill
+            // Left: Platform Logo & Live Duration Pill / Standby Badge
             HStack(spacing: 6) {
                 Circle()
                     .fill(service.session.isMuted ? Color.red : Color.green)
                     .frame(width: 6, height: 6)
 
-                Image(systemName: service.session.platform.iconName)
+                let platform = service.session.platform == .unknown ? MeetingPlatform.meet : service.session.platform
+                Image(systemName: platform.iconName)
                     .font(.system(size: 11.5, weight: .bold))
-                    .foregroundStyle(service.session.platform.accentColor)
+                    .foregroundStyle(platform.accentColor)
 
-                Text(service.session.formattedDuration)
-                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                Text(service.session.isActive ? service.session.formattedDuration : text("Meet Standby", "구글밋 대기 중"))
+                    .font(.system(size: 11.5, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }
             .padding(.horizontal, 9)
@@ -46,7 +47,7 @@ public struct MeetingNotchView: View {
 
             // Center: Minimal Icon-Only Action Buttons (Mic | Camera | End Call)
             HStack(spacing: 10) {
-                // 1. Mic Mute / Unmute (Icon Only)
+                // 1. Mic Mute / Unmute (Hardware Input Mic Mute Toggle)
                 Button {
                     service.toggleMute()
                 } label: {
@@ -70,7 +71,7 @@ public struct MeetingNotchView: View {
                 .buttonStyle(.plain)
                 .help(service.session.isMuted ? text("Unmute Microphone", "마이크 음소거 해제") : text("Mute Microphone", "마이크 음소거"))
 
-                // 2. Camera Toggle (Icon Only)
+                // 2. Camera Toggle
                 Button {
                     service.toggleCamera()
                 } label: {
@@ -94,46 +95,55 @@ public struct MeetingNotchView: View {
                 .buttonStyle(.plain)
                 .help(service.session.isCameraOn ? text("Turn Camera Off", "카메라 끄기") : text("Turn Camera On", "카메라 켜기"))
 
-                // 3. Leave / End Call (Icon Only)
-                Button {
-                    service.leaveMeeting()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.red.opacity(0.85))
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)
-                            )
+                // 3. Leave / End Call
+                if service.session.isActive {
+                    Button {
+                        service.leaveMeeting()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.red.opacity(0.85))
+                                .frame(width: 36, height: 36)
+                                .overlay(
+                                    Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)
+                                )
 
-                        Image(systemName: "phone.down.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
+                            Image(systemName: "phone.down.fill")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
                     }
+                    .contentShape(Circle())
+                    .buttonStyle(.plain)
+                    .help(text("Leave Call", "통화 종료"))
                 }
-                .contentShape(Circle())
-                .buttonStyle(.plain)
-                .help(text("Leave Call", "통화 종료"))
             }
 
             Spacer()
 
-            // Right: Auxiliary App Controls (Icon Only)
+            // Right: Auxiliary App Controls (Open Google Meet / App Window / Copy Link)
             HStack(spacing: 6) {
-                if service.detectedPid != nil {
-                    Button {
-                        service.activateMeetingApp()
-                    } label: {
-                        Image(systemName: "arrow.up.forward.app")
-                            .font(.system(size: 11.5, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.8))
-                            .frame(width: 28, height: 28)
-                            .background(Circle().fill(Color.white.opacity(0.08)))
+                Button {
+                    if let detectedPid = service.detectedPid, let app = NSRunningApplication(processIdentifier: detectedPid) {
+                        app.activate(options: [.activateIgnoringOtherApps])
+                    } else if let url = URL(string: "https://meet.google.com") {
+                        NSWorkspace.shared.open(url)
                     }
-                    .contentShape(Circle())
-                    .buttonStyle(.plain)
-                    .help(text("Open Meeting Window", "미팅 창 열기"))
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.forward.app")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(text("Open Meet", "구글밋 열기"))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4.5)
+                    .background(Color.white.opacity(0.1), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.7))
                 }
+                .buttonStyle(.plain)
+                .help(text("Open Google Meet", "Google Meet 열기"))
 
                 if service.session.meetingURL != nil {
                     Button {

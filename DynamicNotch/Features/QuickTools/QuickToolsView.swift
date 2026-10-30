@@ -711,7 +711,7 @@ struct NotchiePanoramicHubView: View {
                 if meetingService.session.isActive {
                     let session = meetingService.session
                     Button {
-                        store.hubMode = .meeting
+                        store.hubMode = store.hubMode == .meeting ? .nook : .meeting
                     } label: {
                         HStack(spacing: 4.5) {
                             Circle()
@@ -743,6 +743,60 @@ struct NotchiePanoramicHubView: View {
                     .buttonStyle(.plain)
                     .help(text("Active Meeting Controls", "진행 중인 미팅 제어"))
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                } else {
+                    Button {
+                        store.hubMode = store.hubMode == .meeting ? .nook : .meeting
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "video.badge.checkmark")
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(store.hubMode == .meeting ? Color(red: 0.0, green: 0.75, blue: 0.45) : Color.white.opacity(0.7))
+
+                            Text(text("Meet", "구글밋"))
+                                .font(.system(size: 11, weight: store.hubMode == .meeting ? .bold : .semibold, design: .rounded))
+                                .foregroundStyle(store.hubMode == .meeting ? .white : .white.opacity(0.82))
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(
+                            Capsule()
+                                .fill(store.hubMode == .meeting ? Color(red: 0.0, green: 0.75, blue: 0.45).opacity(0.28) : Color.white.opacity(0.06))
+                                .overlay(
+                                    Capsule().strokeBorder(store.hubMode == .meeting ? Color(red: 0.0, green: 0.75, blue: 0.45).opacity(0.6) : Color.white.opacity(0.12), lineWidth: 0.8)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(text("Google Meet & Meeting Controls", "구글밋 및 회의 제어 열기"))
+                }
+
+                if store.hubMode == .nook {
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            store.toggleSoundMixerInCalendarSlot()
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: store.isSoundMixerVisibleInCalendarSlot ? "slider.horizontal.2.square" : "speaker.wave.2.fill")
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(store.isSoundMixerVisibleInCalendarSlot ? accentColor : Color.white.opacity(0.7))
+
+                            Text(text("Mixer", "사운드 믹서"))
+                                .font(.system(size: 11, weight: store.isSoundMixerVisibleInCalendarSlot ? .bold : .semibold, design: .rounded))
+                                .foregroundStyle(store.isSoundMixerVisibleInCalendarSlot ? .white : .white.opacity(0.82))
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(
+                            Capsule()
+                                .fill(store.isSoundMixerVisibleInCalendarSlot ? accentColor.opacity(0.28) : Color.white.opacity(0.06))
+                                .overlay(
+                                    Capsule().strokeBorder(store.isSoundMixerVisibleInCalendarSlot ? accentColor.opacity(0.6) : Color.white.opacity(0.12), lineWidth: 0.8)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(text("Toggle Sound Mixer in calendar slot", "앱별 사운드 믹서 열기/닫기"))
                 } else if store.hubMode == .messages {
                     Button {
                         store.hubMode = .nook
@@ -1485,18 +1539,53 @@ private struct NotchieNowPlayingStudioColumn: View {
 
             Spacer(minLength: 4)
 
-            // Centered Transport Bar
-            HStack(spacing: 24) {
-                Image(systemName: "backward.fill")
-                    .font(.system(size: 13.5, weight: .semibold))
-                Image(systemName: "play.fill")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.82))
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 13.5, weight: .semibold))
+            // Centered Transport Bar & Quick Controls
+            HStack(spacing: 8) {
+                Button {
+                    onToggleLyrics?()
+                } label: {
+                    Image(systemName: isLyricsActive ? "quote.bubble.fill" : "quote.bubble")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(isLyricsActive ? accentColor : Color.white.opacity(0.68))
+                        .frame(width: 22, height: 22)
+                        .background(
+                            Circle()
+                                .fill(isLyricsActive ? accentColor.opacity(0.22) : Color.white.opacity(0.06))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(privacyText("Toggle lyrics in calendar slot", "가사 보기 / 캘린더 전환"))
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 16) {
+                    Image(systemName: "backward.fill")
+                        .font(.system(size: 13.5, weight: .semibold))
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.82))
+                    Image(systemName: "forward.fill")
+                        .font(.system(size: 13.5, weight: .semibold))
+                }
+                .foregroundStyle(.white.opacity(0.52))
+
+                Spacer(minLength: 0)
+
+                Button {
+                    onToggleSoundMixer?()
+                } label: {
+                    Image(systemName: isSoundMixerActive ? "slider.horizontal.2.square" : "speaker.wave.2.fill")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(isSoundMixerActive ? accentColor : Color.white.opacity(0.68))
+                        .frame(width: 22, height: 22)
+                        .background(
+                            Circle()
+                                .fill(isSoundMixerActive ? accentColor.opacity(0.22) : Color.white.opacity(0.06))
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(privacyText("Toggle Sound Mixer in calendar slot", "사운드 믹서 및 앱별 볼륨 조절"))
             }
-            .foregroundStyle(.white.opacity(0.52))
-            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -1681,7 +1770,7 @@ private struct ObservedNowPlayingStudioBody: View {
                             Button {
                                 onToggleSoundMixer()
                             } label: {
-                                Image(systemName: nowPlayingViewModel.currentAudioOutputRoute?.systemImageName ?? "laptopcomputer")
+                                Image(systemName: isSoundMixerActive ? "slider.horizontal.2.square" : (nowPlayingViewModel.currentAudioOutputRoute?.systemImageName ?? "laptopcomputer"))
                                     .font(.system(size: 11.5, weight: .semibold))
                                     .foregroundStyle(isSoundMixerActive ? accentColor : Color.white.opacity(0.68))
                                     .frame(width: 22, height: 22)
@@ -1691,7 +1780,7 @@ private struct ObservedNowPlayingStudioBody: View {
                                     )
                             }
                             .buttonStyle(.plain)
-                            .help(privacyText("Toggle Sound Mixer in calendar slot", "사운드 믹서 및 앱별 볼륨 조절"))
+                            .help(privacyText("Toggle Sound Mixer (App Volumes) in calendar slot", "사운드 믹서 및 앱별 볼륨 조절"))
                         } else if mediaSettings?.nowPlayingAppearanceOptions.showsOutputDeviceButton ?? true {
                             AudioOutputRoutePickerButton(
                                 nowPlayingViewModel: nowPlayingViewModel,

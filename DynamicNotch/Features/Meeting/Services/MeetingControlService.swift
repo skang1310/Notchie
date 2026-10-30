@@ -638,9 +638,6 @@ public final class MeetingControlService: ObservableObject {
         } else if session.isActive && detectedPid != nil {
             // Previously detected meeting is no longer running -> clean exit
             stopMeetingSession()
-            if QuickToolsStore.shared.hubMode == .meeting {
-                QuickToolsStore.shared.hubMode = .nook
-            }
         }
         if detectionTimer != nil { configureDetectionTimer() }
     }
