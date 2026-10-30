@@ -141,8 +141,8 @@ enum NotchContentPriority {
     static let trayActive = 5
     static let airDropTransferActive = 6
     static let nowPlaying = 7
-    static let timer = 8
-    static let calendar = 9
+    static let timer = 9
+    static let calendar = 8
     static let screenRecording = 10
 
     static let dragAndDrop = 10001

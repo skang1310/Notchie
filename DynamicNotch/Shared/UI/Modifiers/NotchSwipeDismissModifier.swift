@@ -295,6 +295,9 @@ private extension NotchSwipeDismissMonitorView {
 
     func shouldTrackSwipe(for event: NSEvent) -> Bool {
         guard !isHoveringScrollableContent else { return false }
+        guard !QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot else { return false }
+        guard !SoundMixerService.shared.isAdjustingVolume else { return false }
+        guard !QuickToolsStore.shared.isCalendarFullScheduleVisible else { return false }
         guard canSwipeUp || canSwipeDown else { return false }
         guard window != nil else { return false }
         guard event.hasPreciseScrollingDeltas else { return false }

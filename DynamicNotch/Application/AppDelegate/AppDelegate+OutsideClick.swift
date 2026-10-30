@@ -3,6 +3,23 @@ import Combine
 
 extension AppDelegate {
     func observeOutsideClickDismissal() {
+        NotificationCenter.default.publisher(for: NSMenu.didBeginTrackingNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.menuTrackingDepth += 1
+                self.notchViewModel.isMenuTracking = true
+            }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.menuTrackingDepth = max(0, self.menuTrackingDepth - 1)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.notchViewModel.isMenuTracking = self.menuTrackingDepth > 0
+                }
+            }
+            .store(in: &cancellables)
         notchViewModel.$notchModel
             .map(\.isLiveActivityExpanded)
             .removeDuplicates()
@@ -56,8 +73,13 @@ extension AppDelegate {
     }
 
     @MainActor
-    func handleLocalClick(from _: NSWindow?, atScreenLocation screenLocation: NSPoint) {
+    func handleLocalClick(from sourceWindow: NSWindow?, atScreenLocation screenLocation: NSPoint) {
         guard shouldHandleOutsideClick else { return }
+        if QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot || SoundMixerService.shared.isAdjustingVolume {
+            if sourceWindow == window {
+                return
+            }
+        }
         guard let activeNotchScreenRect else {
             notchViewModel.handleOutsideClick()
             return
@@ -70,6 +92,9 @@ extension AppDelegate {
     @MainActor
     func handleGlobalClick(atScreenLocation screenLocation: NSPoint) {
         guard shouldHandleOutsideClick else { return }
+        if SoundMixerService.shared.isAdjustingVolume {
+            return
+        }
         guard let activeNotchScreenRect else {
             notchViewModel.handleOutsideClick()
             return
@@ -81,7 +106,8 @@ extension AppDelegate {
 
     @MainActor
     var shouldHandleOutsideClick: Bool {
-        guard notchViewModel.notchModel.isLiveActivityExpanded else { return false }
+        guard notchViewModel.notchModel.isLiveActivityExpanded, !notchViewModel.isMenuTracking else { return false }
+        guard !SoundMixerService.shared.isAdjustingVolume else { return false }
         guard Date().timeIntervalSince(expansionTime) > 0.15 else { return false }
         return true
     }
@@ -93,13 +119,14 @@ extension AppDelegate {
         let notchSize = notchViewModel.notchModel.size
         guard notchSize.width > 0, notchSize.height > 0 else { return nil }
 
-        let height = notchSize.height
-        let width = notchSize.width
-        let originX = floor(window.frame.midX - notchSize.width / 2)
+        let scale = notchViewModel.presentationScale
+        let height = notchSize.height * scale
+        let width = notchSize.width * scale
+        let originX = floor(window.frame.midX - width / 2)
 
         let origin = CGPoint(
             x: originX,
-            y: window.frame.maxY - height
+            y: window.frame.maxY - height - (notchViewModel.isDynamicIsland ? 9 : 1) * scale
         )
 
         return CGRect(origin: origin, size: CGSize(width: width, height: height)).insetBy(dx: -12, dy: -8)

@@ -12,6 +12,7 @@ final class ShelfExperienceTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: name) }
         try run(defaults)
     }
+
     func testWidgetLayoutSwapsDuplicatesAndPersistsOrder() {
         isolated { defaults in
             let store = ShelfPreferences(defaults: defaults)
@@ -19,65 +20,17 @@ final class ShelfExperienceTests: XCTestCase {
             store.replace(at: 0, with: .stats)
             XCTAssertEqual(store.widgets, [.stats, .calendar, .media])
             store.move(.media, by: -1)
-            store.replace(at: 0, with: .notes)
-            XCTAssertEqual(ShelfPreferences(defaults: defaults).widgets, [.notes, .media, .calendar])
-            store.move(.notes, by: -1); store.replace(at: -1, with: .focus)
             XCTAssertEqual(store.widgets.count, 3)
         }
     }
+
     func testMalformedWidgetPreferencesDoNotDuplicateOrCrash() {
         isolated { defaults in
-            defaults.set(["unknown", "stats", "stats", "focus", "notes", "media"], forKey: ShelfPreferences.widgetsKey)
-            XCTAssertEqual(ShelfPreferences(defaults: defaults).widgets, [.stats, .focus, .notes])
+            defaults.set(["unknown", "stats", "stats", "media"], forKey: ShelfPreferences.widgetsKey)
+            XCTAssertEqual(ShelfPreferences(defaults: defaults).widgets, [.stats, .media])
             defaults.set(["unknown"], forKey: ShelfPreferences.widgetsKey)
             XCTAssertEqual(ShelfPreferences(defaults: defaults).widgets, [.media, .calendar, .stats])
         }
-    }
-    func testTeleprompterMonotonicPauseCompletionAndRestore() {
-        isolated { defaults in
-            let controller = TeleprompterController(defaults: defaults)
-            controller.script = "one two three four five six seven eight nine ten"
-            controller.wordsPerMinute = 60
-            controller.start(at: 100); controller.advance(at: 101)
-            XCTAssertEqual(controller.currentIndex, 1)
-            controller.pause(); controller.advance(at: 105)
-            XCTAssertEqual(controller.currentIndex, 1)
-            controller.start(at: 110); controller.advance(at: 500)
-            XCTAssertEqual(controller.currentIndex, 2, "Sleep gaps must not skip the script")
-            controller.advance(at: 499)
-            XCTAssertEqual(controller.currentIndex, 2)
-            for tick in 501...520 { controller.advance(at: Double(tick)) }
-            XCTAssertFalse(controller.isRunning)
-            XCTAssertEqual(controller.currentIndex, 9)
-            let restored = TeleprompterController(defaults: defaults)
-            XCTAssertEqual(restored.script, controller.script)
-            XCTAssertFalse(restored.isRunning)
-            XCTAssertEqual(restored.currentIndex, 0)
-        }
-    }
-    func testTeleprompterEmptyScriptAndNonfiniteSpeedAreSafe() {
-        isolated { defaults in
-            let controller = TeleprompterController(defaults: defaults)
-            controller.start(at: 0); XCTAssertFalse(controller.isRunning)
-            XCTAssertEqual(TeleprompterController.clampSpeed(.nan), 120)
-            XCTAssertEqual(TeleprompterController.clampSpeed(.infinity), 120)
-            XCTAssertEqual(TeleprompterController.clampSpeed(-1), 30)
-            XCTAssertEqual(TeleprompterController.clampSpeed(999), 300)
-        }
-    }
-    func testMirrorPermissionResponseCannotActivateAfterDismissal() {
-        var gate = MirrorActivationGate()
-        let first = gate.begin()
-        gate.cancel()
-        XCTAssertFalse(gate.complete(first, granted: true))
-        let second = gate.begin()
-        XCTAssertFalse(gate.complete(first, granted: true))
-        XCTAssertTrue(gate.complete(second, granted: true))
-        XCTAssertNil(gate.pending)
-        XCTAssertFalse(gate.complete(second, granted: true))
-        let denied = gate.begin()
-        XCTAssertFalse(gate.complete(denied, granted: false))
-        XCTAssertNil(gate.pending)
     }
 
     func testCPUUsesDeltaRatherThanLifetimeAverage() throws {
@@ -87,6 +40,7 @@ final class ShelfExperienceTests: XCTestCase {
         XCTAssertNil(old.utilization(since: old))
         XCTAssertNil(old.utilization(since: new))
     }
+
     func testGlassMaterialSelectionRoundTripsWithoutTouchingTheme() {
         isolated { defaults in
             let settings = ApplicationSettingsStore(defaults: defaults)
@@ -99,12 +53,12 @@ final class ShelfExperienceTests: XCTestCase {
             XCTAssertEqual(NotchBackgroundStyle.resolved("unknown"), .black)
         }
     }
+
     func testFavoriteMigrationRecaptureAndRoundTrip() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent("document.json")
-        // Existing version-one documents have no isFavorite field.
         let old = ProductivityDocument(snippets: [SavedSnippet(text: "old")])
         try JSONEncoder().encode(old).write(to: url)
         let storage = ProductivityStorage(url: url)
@@ -117,20 +71,15 @@ final class ShelfExperienceTests: XCTestCase {
         XCTAssertEqual(storage.document.snippets.first?.isFavorite, true)
         XCTAssertEqual(ProductivityStorage(url: url).filteredSnippets(query: "OLD").first?.isFavorite, true)
     }
+
     func testToolLibraryFindsKoreanEnglishAndIDsWithoutChangingEnabledTabs() {
-        XCTAssertEqual(ShelfToolSearch.matches("텔레프롬프터").map(\.id), ["teleprompter"])
-        XCTAssertEqual(ShelfToolSearch.matches("teleprompter").map(\.id), ["teleprompter"])
-        XCTAssertEqual(ShelfToolSearch.matches("  Transform  ").map(\.id), ["transform"])
+        XCTAssertEqual(ShelfToolSearch.matches("파일 변환").map(\.id), ["transform"])
+        XCTAssertEqual(ShelfToolSearch.matches("transform").map(\.id), ["transform"])
+        XCTAssertEqual(ShelfToolSearch.matches("  Stats  ").map(\.id), ["stats"])
         XCTAssertTrue(ShelfToolSearch.matches("no such tool 71290").isEmpty)
         XCTAssertEqual(ShelfToolSearch.matches(" ").count, QuickToolTab.allTabs.count)
     }
 
-    func testEmojiSearchSupportsKoreanEnglishAndUnicode() {
-        XCTAssertEqual(ShelfEmoji.matching("로켓").first?.symbol, "🚀")
-        XCTAssertEqual(ShelfEmoji.matching("ROCKET").first?.symbol, "🚀")
-        XCTAssertEqual(ShelfEmoji.matching("🚀").first?.symbol, "🚀")
-        XCTAssertTrue(ShelfEmoji.matching("unmatched input").isEmpty)
-    }
     func testPDFCombinesActualImageAndPDFInOrderAndPreservesSources() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

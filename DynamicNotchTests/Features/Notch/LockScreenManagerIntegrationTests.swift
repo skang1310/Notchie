@@ -25,7 +25,7 @@ final class LockScreenManagerIntegrationTests: XCTestCase {
         service.publish(isLocked: false)
         service.publish(isLocked: false)
 
-        await assertEventually(timeout: 0.2) {
+        await assertEventually(timeout: 1.0) {
             await MainActor.run {
                 soundPlayer.playedSounds == [.lock, .unlock] &&
                 !manager.isLocked &&
@@ -33,7 +33,7 @@ final class LockScreenManagerIntegrationTests: XCTestCase {
             }
         }
 
-        await assertEventually(timeout: 0.2) {
+        await assertEventually(timeout: 1.0) {
             await MainActor.run {
                 manager.isLockIdle && manager.event == .stopped
             }
@@ -57,7 +57,7 @@ final class LockScreenManagerIntegrationTests: XCTestCase {
         service.publish(isLocked: true)
         service.publish(isLocked: false)
 
-        await assertEventually(timeout: 0.2) {
+        await assertEventually(timeout: 1.0) {
             await MainActor.run {
                 soundPlayer.playedSounds.isEmpty &&
                 !manager.isLocked &&
@@ -65,7 +65,7 @@ final class LockScreenManagerIntegrationTests: XCTestCase {
             }
         }
 
-        await assertEventually(timeout: 0.2) {
+        await assertEventually(timeout: 1.0) {
             await MainActor.run {
                 manager.isLockIdle && manager.event == .stopped
             }

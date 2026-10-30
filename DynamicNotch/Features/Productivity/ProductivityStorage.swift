@@ -2,19 +2,51 @@ import Foundation
 import Combine
 internal import AppKit
 
-struct FocusCompletion: Codable, Identifiable { var id = UUID(); var date: Date; var seconds: Int }
-struct DailyTask: Codable, Identifiable { var id = UUID(); var text: String; var day: String; var done = false
-    init(id: UUID = UUID(), day: String, text: String, done: Bool = false) {
-        self.id = id; self.day = day; self.text = text; self.done = done
+struct SavedSnippet: Codable, Identifiable {
+    var id = UUID()
+    var text: String
+    var date = Date()
+    var isFavorite: Bool? = nil
+    var sourceAppName: String? = nil
+
+    init(id: UUID = UUID(), text: String, date: Date = Date(), isFavorite: Bool? = nil, sourceAppName: String? = nil) {
+        self.id = id
+        self.text = text
+        self.date = date
+        self.isFavorite = isFavorite
+        self.sourceAppName = sourceAppName
     }
 }
-struct SavedSnippet: Codable, Identifiable { var id = UUID(); var text: String; var date = Date(); var isFavorite: Bool? = nil; var sourceAppName: String? = nil }
+
 struct ProductivityDocument: Codable {
     var version = 1
-    var focusHistory: [FocusCompletion] = []
-    var tasks: [DailyTask] = []
     var snippets: [SavedSnippet] = []
-    var hiddenBundleIDs: [String] = []
+
+    // Preserved for backwards compatibility when decoding existing user documents
+    private var focusHistory: [String]? = nil
+    private var tasks: [String]? = nil
+    private var hiddenBundleIDs: [String]? = nil
+
+    init(version: Int = 1, snippets: [SavedSnippet] = []) {
+        self.version = version
+        self.snippets = snippets
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, snippets, focusHistory, tasks, hiddenBundleIDs
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        self.snippets = try container.decodeIfPresent([SavedSnippet].self, forKey: .snippets) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(version, forKey: .version)
+        try container.encode(snippets, forKey: .snippets)
+    }
 }
 
 @MainActor
@@ -59,22 +91,6 @@ final class ProductivityStorage: ObservableObject {
         } catch { self.error = error.localizedDescription; return false }
     }
 
-    static func dayKey(_ date: Date = .now, calendar: Calendar = .current) -> String {
-        let c = calendar.dateComponents([.year, .month, .day], from: date)
-        return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
-    }
-
-    var todayTasks: [DailyTask] { document.tasks.filter { $0.day == Self.dayKey() } }
-
-    @discardableResult func addTask(_ text: String) -> Bool {
-        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty, todayTasks.count < 3 else { return false }
-        return update { $0.tasks.append(DailyTask(day: Self.dayKey(), text: String(clean.prefix(300)))) }
-    }
-
-    func toggleTask(_ id: UUID) { update { doc in if let i = doc.tasks.firstIndex(where: { $0.id == id }) { doc.tasks[i].done.toggle() } } }
-    func removeTask(_ id: UUID) { update { $0.tasks.removeAll { $0.id == id } } }
-
     @discardableResult func saveSnippet(_ text: String, sourceAppName: String? = nil) -> Bool {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf8.count <= 100_000,
               document.snippets.count < 100 || document.snippets.contains(where: { $0.text == text }) else { return false }
@@ -87,7 +103,6 @@ final class ProductivityStorage: ObservableObject {
             } else {
                 doc.snippets.insert(SavedSnippet(text: text, sourceAppName: sourceAppName.map { String($0.prefix(100)) }), at: 0)
             }
-            // Refuse automatic eviction of personal snippets; the user can remove them explicitly.
         }
     }
 

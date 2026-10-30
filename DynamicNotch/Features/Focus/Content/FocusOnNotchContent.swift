@@ -23,11 +23,13 @@ struct FocusOnNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     }
     
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        return .init(width: baseWidth + 70, height: baseHeight)
+        let extraWidth: CGFloat = appearanceStyle == .standard ? 90 : 70
+        return .init(width: baseWidth + extraWidth, height: baseHeight)
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        return .init(width: baseWidth + 65, height: baseHeight)
+        let extraWidth: CGFloat = appearanceStyle == .standard ? 85 : 65
+        return .init(width: baseWidth + extraWidth, height: baseHeight)
     }
 
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {

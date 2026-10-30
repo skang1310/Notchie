@@ -45,6 +45,7 @@ final class MediaRemoteNowPlayingService: NowPlayingMonitoring, NowPlayingDetail
     private let commandDispatcher = MediaRemoteCommandDispatcher()
     private let applicationBridge = NowPlayingApplicationBridge()
 
+    private var commandTask: Task<Void, Never>?
     private var process: Process?
     private var outputPipe: Pipe?
     private var errorPipe: Pipe?
@@ -111,13 +112,25 @@ final class MediaRemoteNowPlayingService: NowPlayingMonitoring, NowPlayingDetail
     }
 
     func send(_ command: NowPlayingCommand) {
-        commandDispatcher.send(command)
-
-        if command.requiresApplicationBridge,
-           applicationBridge.send(command, source: lastSnapshot?.playbackSource) {
-            recordOptimisticApplicationPlaybackState(for: command)
-            let delay: TimeInterval = if case .seek = command { 0.8 } else { 0.2 }
-            scheduleApplicationPlaybackRefresh(for: lastSnapshot, force: true, delay: delay)
+        callbackQueue.async { [weak self] in
+            guard let self else { return }
+            let previous = self.commandTask
+            let source = self.lastSnapshot?.playbackSource
+            self.commandTask = Task { [weak self] in
+                await previous?.value
+                guard !Task.isCancelled, let self else { return }
+                let delivered = await NowPlayingCommandDelivery.deliver(
+                    application: { await self.applicationBridge.send(command, source: source) },
+                    fallback: { self.commandDispatcher.send(command) })
+                if delivered {
+                    self.callbackQueue.async { [weak self] in
+                        guard let self else { return }
+                        self.recordOptimisticApplicationPlaybackState(for: command)
+                        let delay: TimeInterval = if case .seek = command { 0.8 } else { 0.2 }
+                        self.scheduleApplicationPlaybackRefresh(for: self.lastSnapshot, force: true, delay: delay)
+                    }
+                }
+            }
         }
     }
 
@@ -138,17 +151,6 @@ final class MediaRemoteNowPlayingService: NowPlayingMonitoring, NowPlayingDetail
                 self.applicationPlaybackRefreshTask = nil
                 self.stopApplicationPlaybackPolling()
             }
-        }
-    }
-}
-
-private extension NowPlayingCommand {
-    var requiresApplicationBridge: Bool {
-        switch self {
-        case .seek, .setVolume, .setFavorite:
-            return true
-        case .play, .pause, .togglePlayPause, .nextTrack, .previousTrack, .setShuffle, .setRepeatMode:
-            return false
         }
     }
 }

@@ -41,8 +41,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var hideWindowWorkItem: DispatchWorkItem?
     var cancellables = Set<AnyCancellable>()
     private var quickToolsPresentation: AnyCancellable?
-    private var quickToolsAutoDismissTask: Task<Void, Never>?
     var isPrimaryWindowSuspendedForLock = false
+    var displayRecoveryWorkItem: DispatchWorkItem?
+    var contextUpdateWorkItem: DispatchWorkItem?
+    var menuTrackingDepth = 0
+    var dragRegistrationRevision = UUID()
     var expansionTime: Date = .distantPast
     
     override init() {
@@ -81,29 +84,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     .sink { [weak self] _ in self?.notchViewModel.expandActiveLiveActivity() }
                 self.notchViewModel.send(.showLiveActivity(QuickToolsNotchContent(store: QuickToolsStore.shared, openedFromIdleHover: true)))
 
-                self.quickToolsAutoDismissTask?.cancel()
-                self.quickToolsAutoDismissTask = Task { @MainActor [weak self] in
-                    try? await Task.sleep(nanoseconds: 6_000_000_000)
-                    guard !Task.isCancelled, let self else { return }
-                    if let notchRect = self.activeNotchScreenRect, notchRect.contains(NSEvent.mouseLocation) {
-                        return
-                    }
-                    if QuickToolsStore.shared.isNotchHubPinned {
-                        return
-                    }
-                    self.notchViewModel.handleOutsideClick()
-                }
+
             }.store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: .closeQuickToolsInNotch)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.quickToolsAutoDismissTask?.cancel()
                 self?.quickToolsPresentation?.cancel()
                 self?.notchViewModel.send(.hideLiveActivity(id: "local.quickTools"))
             }.store(in: &cancellables)
-        NotificationCenter.default.publisher(for: .presentationRuleChanged)
-            .receive(on: RunLoop.main).sink { [weak self] _ in self?.updateWindowFrame() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: .pauseLocalMonitors)
             .receive(on: RunLoop.main).sink { [weak self] _ in
                 guard let self else { return }
@@ -112,16 +101,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.settingsViewModel.lockScreen.isLockScreenMediaPanelEnabled = false
                 self.settingsViewModel.screenRecording.isScreenRecordingLiveActivityEnabled = false
                 self.settingsViewModel.mediaAndFiles.isTimerLiveActivityEnabled = false
-            }.store(in: &cancellables)
-        NotificationCenter.default.publisher(for: .localJobCompleted)
-            .receive(on: RunLoop.main).sink { _ in
-                QuickToolsStore.shared.selectedTool = "jobs"
-                NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
-            }.store(in: &cancellables)
-        NotificationCenter.default.publisher(for: .focusSessionCompleted)
-            .receive(on: RunLoop.main).sink { _ in
-                QuickToolsStore.shared.selectedTool = "focus"
-                NotificationCenter.default.post(name: .showQuickToolsInNotch, object: nil)
             }.store(in: &cancellables)
         ProductivityCoordinator.shared.start()
         HeyMacFaceUnlockController.shared.resumeIfAuthorized()
@@ -138,7 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(updateWindowFrame),
+                selector: #selector(handleDisplayConfigurationChange),
                 name: NSApplication.didChangeScreenParametersNotification,
                 object: nil
             )
@@ -175,7 +154,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HeyMacFaceUnlockController.shared.shutdown()
         ProductivityCoordinator.shared.shutdown()
         QuickToolsStore.shared.shutdown()
+        MeetingControlService.shared.stopDetection()
+        NotchMessageNotificationService.shared.stopMonitoring()
+        displayRecoveryWorkItem?.cancel()
+        contextUpdateWorkItem?.cancel()
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
         NotificationCenter.default.removeObserver(self)
+        displayRecoveryWorkItem?.cancel()
+        contextUpdateWorkItem?.cancel()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         container.lockScreenManager.stopMonitoring()
         container.nowPlayingViewModel.stopMonitoring()

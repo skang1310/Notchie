@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 public struct MessageConversation: Identifiable, Hashable, Sendable {
     public let id: String
@@ -69,5 +70,72 @@ public struct ChatMessageItem: Identifiable, Hashable, Sendable {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+public enum MessageAppSource: String, CaseIterable, Identifiable, Sendable {
+    case iMessage
+    case slack
+    case other
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .iMessage: return "Messages"
+        case .slack: return "Slack"
+        case .other: return "Message"
+        }
+    }
+
+    public var iconName: String {
+        switch self {
+        case .iMessage: return "bubble.left.and.bubble.right.fill"
+        case .slack: return "number"
+        case .other: return "envelope.fill"
+        }
+    }
+
+    public var accentColor: Color {
+        switch self {
+        case .iMessage: return Color(red: 0.18, green: 0.55, blue: 1.0)
+        case .slack: return Color(red: 0.88, green: 0.11, blue: 0.45)
+        case .other: return Color.green
+        }
+    }
+}
+
+public struct NotchIncomingMessage: Identifiable, Sendable {
+    public let id: String
+    public let sender: String
+    public let text: String
+    public let app: MessageAppSource
+    public let chatId: String?
+    public let date: Date
+
+    public init(
+        id: String = UUID().uuidString,
+        sender: String,
+        text: String,
+        app: MessageAppSource = .iMessage,
+        chatId: String? = nil,
+        date: Date = Date()
+    ) {
+        self.id = id
+        self.sender = sender
+        self.text = text
+        self.app = app
+        self.chatId = chatId
+        self.date = date
+    }
+
+    public var avatarInitials: String {
+        let trimmed = sender.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return "?" }
+        let comps = trimmed.components(separatedBy: " ").filter { !$0.isEmpty }
+        if comps.count >= 2 {
+            return "\(comps[0].prefix(1))\(comps[1].prefix(1))".uppercased()
+        }
+        return String(trimmed.prefix(2)).uppercased()
     }
 }

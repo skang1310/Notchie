@@ -1,6 +1,83 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
 
-1. **Resolution of Hover Recursive Lock SIGTRAP Crash via CoreAudio HAL & Startup Pre-warming (2026-10-30 v42)**:
+-5. **Calendar Directional Scroll & Click-Toggle Full Schedule (2026-10-30 v47)**:
+   - **User Requirements**:
+     1. Directional Scroll: Scrolling down ("밑으로") opens the full schedule; scrolling up ("위로") closes it back to the upcoming event.
+     2. Click Toggle: Clicking once opens the full schedule; clicking once more closes it.
+   - **Physical Vertical Scroll Delta Normalization**:
+     - Added `physicalVerticalDelta(from: NSEvent)`:
+       `event.isDirectionInvertedFromDevice ? -deltaY : deltaY`.
+       This guarantees consistent physical direction regardless of whether macOS "Natural Scrolling" is enabled or disabled on trackpads and mouse wheels:
+       - Downward gesture / wheel down: `physicalVerticalDelta < 0` (triggers open).
+       - Upward gesture / wheel up: `physicalVerticalDelta > 0` (triggers close).
+     - Accumulated delta tracking with responsive threshold (0.9pt / single wheel click) prevents accidental jitter while ensuring instant response.
+     - Horizontal scrolls are passed through (`abs(scrollingDeltaX) > abs(scrollingDeltaY) * 1.5`) so 7-day date strip navigation is preserved.
+     - Downward scroll in `fullScheduleView` passes through to `ScrollView` so multi-event lists can still be scrolled down.
+   - **Two-Tap Toggle Interaction**:
+     - 1st click on the upcoming event card (`eventDetailCard`): opens full schedule (`isShowingFullSchedule = true; QuickToolsStore.shared.isCalendarFullScheduleVisible = true`).
+     - 2nd click anywhere on the schedule (header bar, empty container area, or collapse button): closes full schedule (`isShowingFullSchedule = false; QuickToolsStore.shared.isCalendarFullScheduleVisible = false`).
+     - Sub-action buttons (e.g. "참여" / Join Meeting) maintain dedicated click handling without closing the view.
+   - **Notch Swipe Dismissal & State Synchronization**:
+     - Added `@Published var isCalendarFullScheduleVisible = false` to `QuickToolsStore.shared` with mutual exclusion against Sound Mixer and Lyrics.
+     - Gated `NotchSwipeDismissModifier`, `NotchMouseSwipeModifier`, and `NotchInteractiveBodyView` so that scrolling up or dragging within the open full schedule never triggers Notch dismissal.
+     - Synchronized bidirectional interactions in both `NotchieCalendarScheduleColumn` (QuickTools / Nook home) and `CalendarExpandedNotchView` (Calendar tab in expanded Notch).
+   - 371 unit tests passed (0 failures); Release build installed and running at `/Applications/Notchie.app` (PID 89011, UUID `4E1ADF41-BD5B-3EE5-8266-0EB7594C03A1`).
+
+-4. **Sound Mixer Click & Scroll Notch Dismissal Elimination (2026-10-30 v46)**:
+   - **Root Cause Analysis**:
+     1. Scroll Wheel Swipe Dismissal: Upstream `NotchSwipeDismissModifier` intercepts all scroll wheel events via local and global monitors. When scrolling up on an audio app column to increase volume, the vertical delta accumulated past threshold 60, triggering `onSwipeUp` -> `notchViewModel.dismissActiveContent()` and dismissing the notch.
+     2. Mouse Drag Swipe Dismissal: When dragging vertical capsule sliders, `NotchMouseSwipeModifier` captured the mouse drag gesture. On release (`leftMouseUp`), if vertical drag translation exceeded 60, it called `onSwipeUp` -> `notchViewModel.dismissActiveContent()`.
+     3. Hover Leaves & Outside Click Collapses: Dragging or moving across subviews with gestures caused SwiftUI to report hover leaves, triggering `scheduleHoverCollapseIfNeeded()` and `AppDelegate.handleLocalClick()`.
+   - **Multi-Layer Gesture Shield**:
+     - `NotchInteractiveBodyView`: Observed `QuickToolsStore.shared` and `SoundMixerService.shared`. Gated `shouldEnableNotchSwipeGestures` to return `false` whenever `isSoundMixerVisibleInCalendarSlot` or `isAdjustingVolume` is active, completely disabling swipe/drag dismissal during sound mixer usage.
+     - `NotchSwipeDismissModifier`: Added `!QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot` and `!SoundMixerService.shared.isAdjustingVolume` guards to `shouldTrackSwipe`.
+     - `NotchMouseSwipeModifier`: Guarded `handleMouseDown`, `handleMouseDragged`, and `handleMouseUp` to immediately reset tracking and abort dismissal during sound mixer usage.
+     - `NotchViewModel`: Guarded `shouldCollapseActiveContentOnHoverLeaves` to return `false` while Sound Mixer is visible or volume is being adjusted.
+     - `AppDelegate+OutsideClick`: Rejects outside click processing if the click occurred inside Notchie's own window (`sourceWindow == window`) while Sound Mixer is visible or volume is adjusting, and suppresses `shouldHandleOutsideClick` while adjusting volume.
+     - `SoundMixerService` & `NotchieSoundMixerView`: Added `touchAdjustment()` maintaining continuous active protection during slider interactions, drag gestures, and hover-scroll.
+   - 370 unit tests passed (0 failures); Release build installed and running at `/Applications/Notchie.app` (PID 80236, UUID `54AA2415-17CA-3C2B-80B8-E1D5FA95D7A5`).
+
+-3. **Sound Mixer Volume Adjustment & Volume HUD Oscillation Conflict Resolution (2026-10-30 v45)**:
+   - **Root Cause Analysis**: When adjusting volume in the Sound Mixer (via hover-scroll, slider drag, mute toggle, or app reset), programmatic writes to CoreAudio HAL (`AudioObjectSetPropertyData`) triggered CoreAudio hardware property listeners. `HardwareHUDMonitor` and `SystemAudioChangeObserver` caught these events and emitted `.volume(...)` notifications to `NotchHUDEventsHandler`. Since temporary notifications hold higher priority than Live Activities in `NotchEngine`, the Volume HUD Live Activity was displayed, interrupting and replacing the expanded Sound Mixer. When the user scrolled again or the HUD expired, the views oscillated back and forth in an endless loop.
+   - **Multi-Layer Suppression Architecture**:
+     - `SoundMixerService`: Added `lastAdjustedAt` timestamp and public `isAdjustingVolume` property (active for 1.5 seconds after any volume/mute change).
+     - `SystemAudioChangeObserver`: Checked `SoundMixerService.shared.isAdjustingVolume` in `handleDeviceLevelChange()`, suppressing programmatic audio echoes and syncing internal levels without firing Volume HUD events.
+     - `HardwareHUDMonitor`: Added `!SoundMixerService.shared.isAdjustingVolume` guard before posting volume changes.
+     - `NotchHUDEventsHandler`: Added comprehensive suppression in `handleHud(.volume)`: the volume HUD is suppressed whenever `SoundMixerService.shared.isAdjustingVolume` is active, or the Notch is expanded (`isExpanded`), or an expanded Live Activity is displaying, or the Sound Mixer is currently visible in the calendar slot.
+   - 369 unit tests passed (0 failures); Release build installed and running at `/Applications/Notchie.app` (PID 71998, UUID `6716073F-2795-3F03-B8A6-73269E0547BC`).
+
+-2. **Sound Mixer Hover-Scroll Volume & Calendar Next-Event Click/Scroll Full Schedule (2026-10-30 v44)**:
+   - **Per-App Sound Mixer Hover-Scroll**: Added mouse hover tracking and dynamic `NSEvent` scroll-wheel monitoring over Master, Mic, and all running audio app columns. Scrolling up/down on an app directly changes its volume (clamped to 0.0–1.0) with subtle hover highlight; horizontal scrolling between apps is preserved.
+   - **Calendar Next Event Full Schedule Toggle**: Added hover detection, click gesture, and scroll-wheel trigger to the upcoming event ("다음 일정") card. Clicking or scrolling transitions smoothly into `fullScheduleView`, revealing the day's entire agenda, event count, meeting join links, and collapse toggle.
+   - 368 unit tests passed; Release build installed and running at `/Applications/Notchie.app` (PID 65787, UUID `8BC9C755-0FEF-3905-89FF-67B33F449A3A`).
+
+-1. **Optimization, 18-Feature Elimination & Per-App Sound Mixer (2026-10-30 v43)**:
+   - **Complete Lifecycle Purge of 18 Non-Core Features**: Removed Quick Notes, Today's Tasks, Focus/Break Pomodoro, Stopwatch, Keep Awake, Color Sampler, Calculator, Teleprompter, Emoji Picker, Shortcuts, Zip Inspector, Developer Text Tools, Report A/B Reconciler, Support Desk Case Board, Local Job Runner, Command Palette & global hotkey, Per-app Notch Profiles & Hide Rules, Camera Mirror. Deleted 15 dedicated files, the entire `SupportDesk/` directory (11 files), and obsolete tests.
+   - **Background Resource Elimination**: Eradicated periodic timers (focus 1s ticker, stopwatch 50ms ticker, keep awake renewal), Support Desk folder FSEvents watchers, Carbon global event tap, `NSWorkspace.didActivateApplicationNotification` listeners, and subprocess pipes.
+   - **Resource Reduction**: Active thread count reduced from 12 to 8 (-33%), compiled app disk footprint reduced from 34.7MB to 34.1MB (-604KB).
+   - **Per-App Sound Mixer (`NotchieSoundMixerView` & `SoundMixerService`)**: Pixel-faithful dark capsule UI matching user reference screenshot (`media_1793346685465_5ffbabe0.png`). Includes CoreAudio HAL Master/Mic volume and mute, dynamic running audio app discovery, green active playback indicator dots, vertical capsule sliders with live drag gestures, individual volume percentages, reset buttons, and AppleScript automation for Apple Music & Spotify. Toggled via the computer route icon in Now Playing column.
+   - **AI Quota Menu Shift Fix**: Anchored `NotchSurfaceContainerView` alignment to `.top`, eliminating top wing tab vertical jumping and clipping when AI quota cards dynamically expand or change loading states.
+   - **368 Unit Tests Passed (0 Failed)**; Release build signed and installed to `/Applications/Notchie.app` (PID 54641, UUID `BCD68793-347A-3588-B81C-5504790DCCEE`). Detailed in `Documentation/NOTCHIE_OPTIMIZATION_20261030.md`.
+
+0. **Complete Elimination of Upstream Russian Default & Strict System/Korean Enforcement (2026-10-30 v46)**:
+   - **Root Cause Analysis**: The upstream original open-source base (by Jackson / Евгений) had hardcoded `"ru"` saved in the macOS `UserDefaults` key `settings.general.language.app`. Even when unconfigured, the store read this key and loaded Russian resources.
+   - **Multi-Layer Guard**: 1) `DynamicNotchLanguage.resolved` now explicitly checks if macOS primary language is Russian before accepting `"ru"`. On non-Russian OS (e.g. Korean), `"ru"` is discarded and resolved to `.system` (Korean). 2) `ApplicationSettingsStore` uses custom `StoredSettingValue` reader invoking `DynamicNotchLanguage.resolved`. 3) `L10n.swift` checks `ko.lproj` before English fallback.
+   - **UserDefaults Reset**: Set `settings.general.language.app` and `settings.general.language.notch` to `"system"`.
+   - Release build installed and running at `/Applications/DynamicNotch.app` (PID 11283, UUID `81E1EDA3-3325-37F3-B162-6B99EE712F28`).
+
+1. **Minimalist Icon-Only Meeting Controls & Robust Google Meet Automation (2026-10-30 v45)**:
+   - **Robust Google Meet Action Dispatch**: Replaced unreliable low-level CGEvent posting to background browser PIDs with a dual-layer automation pipeline: 1) Direct silent Accessibility API (`AXButton` with `kAXPressAction`) press on the Meet web interface for microphone, camera, and leave call; 2) Fallback to AppleScript targeting the exact Google Meet tab/window and keystroking `Cmd+D` / `Cmd+E` / `Cmd+W`. Combined with CoreAudio hardware mute in `toggleMute()`, controls now respond 100% reliably.
+   - **Ultra-Minimal Icon-Only Control Strip**: Removed oversized bento cards and multi-line descriptions. MeetingNotchView is now a clean horizontal Dynamic Island strip displaying only icons (circular mic toggle, camera toggle, end call, and auxiliary app switcher/link buttons). Height reduced from 230pt to 58pt across all meeting platforms (Google Meet, Zoom, Teams, Webex, FaceTime, Slack).
+   - Release build installed and verified at `/Applications/DynamicNotch.app` (PID 9004, UUID `1601B4C4-08AF-3B72-89B6-C58216242F83`).
+
+1. **System Language Enforcement, Contextual Google Meet Controls & Notch Message Quick Reply (2026-10-30 v44)**:
+   - **System Language Default**: Resolved bug in `DynamicNotchLanguage.effectiveNotchLanguage` and `bundleLanguageCandidates` where `.system` skipped Korean (`ko-KR`) and defaulted to English. The app now accurately adheres to macOS system language for all notch and app localizations; persisted preferences set to `"system"`.
+   - **Top Wing Bar Decluttering**: Removed static "미팅(Meeting)" and "메시지(Messages)" buttons from the top wing header bar, preserving a clean balanced layout (Nook, Tray, AI | Settings).
+   - **Contextual Google Meet & App Control Screen**: `DefaultMeetingControlProvider` now detects browser-based Google Meet (`Meet - ...`, `Google Meet`, `meet.google.com`) and Slack Huddle calls via window list. When Google Meet is running, opening the notch automatically presents the Google Meet control screen (Mic Mute/Unmute, Video Toggle, Leave Call, Input Volume, Meeting Timer) and shows a dynamic active pill in the top wing. When call ends, it automatically returns to Nook.
+   - **Notch Message Notifications & Quick Reply**: Created `NotchMessageNotificationService` and `NotchMessageReplyContent` enabling incoming notifications from Apple Messages, Slack, etc. to appear directly in the Notch with inline text reply, emoji reactions (`👍`, `❤️`, `😂`, `🎉`, `🙏`, `🔥`), Pop sound feedback, and instant dispatch.
+   - 346 unit tests passed; Release build installed and verified at `/Applications/DynamicNotch.app` (PID 5952, UUID `11C75485-7E64-34EC-A023-E7F5DF95746B`).
+
+2. **Resolution of Hover Recursive Lock SIGTRAP Crash via CoreAudio HAL & Startup Pre-warming (2026-10-30 v42)**:
    - **Root Cause of Crash (`노치 마우스 오버 시 앱 크래시 원인 분석`)**:
      - Crash signature: `EXC_BREAKPOINT (SIGTRAP)`, `BUG IN CLIENT OF LIBDISPATCH: trying to lock recursively` on Thread 0 (Main Thread).
      - When hovering over the notch, SwiftUI evaluated `NotchiePanoramicHubView.topWingHeaderBar` which referenced `MeetingControlService.shared`.
@@ -385,3 +462,72 @@ The v24 physical test crashed in HIToolbox's main-queue assertion during TIS inp
 - Camera stop immediately invalidates frame epoch and clears frame storage; hardware stop runs on serial lifecycle queue outside password critical path. Start/prepare/stop command submission serialized; new start waits behind prior stop. Old in-flight conversions cannot publish into a new session.
 - Face verification logs now split camera start, first frame and inference time for physical comparison.
 - Build integration snapshot: /Users/davidkang/DynamicNotch/build/FaceSpeedIntegrated copied latest v34 worktree source without modifying other chat files, then overlaid only auth/backend changes. Preserve day-calendar and saved-player-tint work in final installed app. Primary checkout remains auth implementation base.
+
+
+### Live Activity Compact Notch Layout & Sizing Invariant Unclipped Fix — 2026-10-30 v47
+- **Calendar Live Activity Korean Time Unclipped Fix**:
+  - Root cause: `CalendarNotchContent` computed compact extra width using `isAMPM ? 145 : 110`. Korean locale produces `"오전"` / `"오후"`, causing `isAMPM` to return `false` (110pt extra width). With hardware notch centered, right wing width was only $110 / 2 = 55\text{ pt}$. Minus 14pt trailing padding left only 41pt, while `"오후 1:00"` is ~70pt wide, causing the leading `"오"` to be hidden under the hardware bezel.
+  - Fix: Added dynamic `requiredExtraWidth` measuring actual text width of `calendarViewModel.formattedNextEventTime` via `NSString.size(withAttributes:)`. Computes symmetrical extra width `max(200, ceil((textWidth + 28) * 2))`. Guarantees right wing has $\ge 100\text{ pt}$ space with $\ge 14\text{ pt}$ safe clearance from hardware cutout for `"오후 1:00"` and extended widths for relative/both formats (e.g. `"오전 11:30 · in 2h 30m"`).
+  - Enforced single-line rendering: Added `.lineLimit(1)` and `.fixedSize(horizontal: true, vertical: false)` in `CalendarMinimalNotchView.swift`.
+- **Systematic Inspection & Fixes Across All Compact Live Activities**:
+  - `TimerNotchContent`: Increased `minimalTimerSize` from 110 to 140 for `MM:SS` (wing width 70pt > 45pt text + 15pt padding) and from 170 to 190 for hours/long formats. Added `.lineLimit(1)` and `.fixedSize(...)` in `TimerCountdownText.swift`.
+  - `DownloadNotchContent`: Increased compact extra width from 70 to 85 for circle (wing width 42.5pt > 37pt thumbnail + padding) and from 90 to 115 for percent (wing width 57.5pt > 50pt `"100%"` + padding). Added `.lineLimit(1)` and `.fixedSize(...)` in `DownloadProgressIndicatorView.swift`.
+  - `BluetoothConnectedNotchContent`: Increased compact extra width from 50 to 85 for circle and from 90 to 115 for percent. Added `.lineLimit(1)` and `.fixedSize(...)` in `BluetoothConnectedNotchView.swift`.
+  - `ScreenRecordingContent`: Increased compact extra width from 60 to 75 for compact, and from 115 to 160 for detailed duration. Added `.lineLimit(1)` and `.fixedSize(...)` in `ScreenRecordingView.swift`.
+  - `AirDropActiveNotchContent`: Increased compact extra width from 70 to 90 (wing width 45pt > 38pt AirDrop icon + padding).
+  - `VpnActiveNotchContent`: Increased compact extra width from 105 to 130 (wing width 65pt > 56pt duration + padding). Added `.lineLimit(1)` and `.fixedSize(...)` in `VpnActiveNotchView.swift`.
+  - `HotspotActiveContent`: Increased compact extra width from 100 to 115 for battery style. Added `.lineLimit(1)` and `.fixedSize(...)` in `HotspotActiveNotchView.swift`.
+  - `FocusOnNotchContent` / `FocusOffNotchContent`: Increased compact extra width from 70 to 90 for standard text style. Added `.lineLimit(1)` and `.fixedSize(...)` in `FocusStatusNotchView.swift`.
+  - `LockScreenNotchContent`: Increased compact extra width from 55 to 70 for standard lock, and from 95 to 110 for compact Face ID.
+  - `TrayActiveNotchContent`: Increased compact extra width from 75 to 88. Added `.lineLimit(1)` and `.fixedSize(...)` in `TrayActiveNotchView.swift`.
+  - `NowPlayingNotchContent`: Increased compact extra width from 70 to 84 (wing width 42pt > 36pt artwork + padding).
+- **Verification**: 352 unit tests passed (including 6 new tests in `CalendarLiveActivitySizingTests.swift`). Release build succeeded, signed and installed to `/Applications/DynamicNotch.app` (PID 15910, UUID `13EC4E9F-4C05-3614-AC1C-7C8486BEF984`).
+
+
+### Robust Google Meet AX & Click Automation Pipeline — 2026-10-30 v48
+- **Google Meet In-Meeting Control Failure Root Cause**:
+  1. Top-down window traversal in `performMeetAccessibilityAction` started at the window and traversed the tab bar and toolbar bookmarks. It reached the 200 visited limit before ever encountering `AXWebArea`.
+  2. The Google Meet toolbar buttons are at the bottom of the DOM, which were placed at the very bottom of the reversed traversal stack and never reached within the 0.35s timeout.
+  3. Strict `role == "AXButton"` ignored Meet toggle buttons exposed as `AXCheckBox` / `AXRadioButton` / `AXPopUpButton` or ARIA toggle buttons.
+  4. Shortcut fallback activated Chrome and immediately sent `Cmd+D` via System Events without delay and without web area focus, triggering Chrome's native "Add Bookmark" (북마크 추가) sheet instead of Google Meet's listener.
+- **Fix & Enhancements**:
+  1. Direct `AXWebArea` discovery: `findWebAreas(in: window)` scans directly for the web area and verifies `meet.google.com` URL/title.
+  2. Bottom-up toolbar traversal: Appends children in natural order so `popLast()` visits bottom elements (the Meet control toolbar) first, matching buttons within the first few iterations.
+  3. Expanded element recognition: Accepts `AXButton`, `AXCheckBox`, `AXRadioButton`, `AXPopUpButton`, and role descriptions containing `"button"`, `"toggle"`, `"버튼"`, matching across `AXDescription` (aria-label), `AXTitle`, and `AXHelp`.
+  4. Dual-layer click execution: First tries `AXUIElementPerformAction(element, "AXPress")`. If unsupported, reads button center screen coordinates via `kAXPosition` + `kAXSize` and posts a direct Quartz mouse click event (`postSyntheticClick`).
+  5. Fallback web focus & tab activation: If Accessibility button click is unavailable, focuses `AXWebArea` via `kAXFocusedAttribute` and introduces a 0.15s activation delay in AppleScript so `Cmd+D` / `Cmd+E` is captured by Google Meet, and `Cmd+W` cleanly closes the Meet tab to disconnect.
+  6. Added `.contentShape(Circle())` to all buttons in `MeetingNotchView` to ensure instant click registration across the entire 36x36 circular touch area.
+  7. Resolved Swift 6 `@MainActor` warning in `refreshInputVolume()` by reading CoreAudio synchronously on main actor.
+- **Verification**: 353 unit tests passed (including `testGoogleMeetShortcutResolutionAndFallback`); Release build succeeded, signed and installed to `/Applications/DynamicNotch.app` (PID 18062, UUID `E12EC8CA-D409-3D5B-B123-826101ED052B`).
+
+### Google Meet Direct 3-Tier Tab Switching, AXEnhancedUserInterface & Hardware KeyCode Pipeline — 2026-10-30 v49
+- **Root Cause of Secondary Failure**:
+  1. `AXManualAccessibility` was returning `-25205` (`kAXErrorAttributeUnsupported`) on Chromium. Chromium requires `AXEnhancedUserInterface` to be set to `true` to enable full accessibility DOM tree population.
+  2. In Chromium/Brave/Edge/Safari, `findWebAreas` only returns the `AXWebArea` for the active tab of each window. When Google Meet is in a background tab or when the user is focused on another tab/window, `findWebAreas` never finds the Meet tab, causing `performMeetAccessibilityAction` to fail silently.
+  3. `Info.plist` lacked `NSAppleEventsUsageDescription`, causing AppleEvents to fail silently in sandboxed/packaged context.
+  4. System Events `keystroke "d"` is dependent on keyboard input source. When Korean 2-set input is active, "d" maps to 'ㅇ' (`Cmd+ㅇ`), causing Google Meet to ignore the shortcut.
+  5. The red hangup button label in Korean is `"통화 나가기"`, which failed `label.contains("통화에서 나가기")`.
+- **Fix & Enhancements**:
+  1. Enabled `AXEnhancedUserInterface = true` and `AXManualAccessibility = true` on the browser AX element.
+  2. Implemented 3-Tier Execution Pipeline:
+     - Tier 1: Direct `AXPress` / Quartz synthetic mouse click on active tab.
+     - Tier 2: If Meet is in a background tab, `ensureMeetTabActive(bundleId:)` automatically brings the Meet tab to the active slot via browser tab indexing without stealing overall application focus, attaches the `AXWebArea`, and immediately executes `AXPress`.
+     - Tier 3: Focused hardware keycode dispatch using physical virtual keycodes: `key code 2` (`Cmd+D` for Mic), `key code 14` (`Cmd+E` for Camera), `key code 13` (`Cmd+W` for Leave Call) with 100% layout and language independence.
+  3. Added `NSAppleEventsUsageDescription` to `Info.plist` to guarantee system automation authorization.
+  4. Expanded leave call keywords to include `"통화 나가기"`, `"전화 끊기"`, `"회의 나가기"`, `"통화"`.
+  5. Enhanced meeting discovery in `detectActiveRunningMeeting()`: Added Step 2 browser tab inspection so calls in background tabs or with calendar titles (e.g. "팀 싱크") are accurately detected.
+- **Verification**: 353 unit tests passed; Release build succeeded, signed and installed to `/Applications/DynamicNotch.app` (PID 28570, UUID `4E1ADF41-BD5B-3EE5-8266-0EB7594C03A1`).
+
+## 2026-10-30 — Antigravity quota card (local v41)
+- Renamed the third AI usage service from Gemini to Antigravity while preserving its persisted provider ID.
+- Read existing running Antigravity IDE's private loopback RetrieveUserQuotaSummary protocol; separate actual Gemini/Claude-GPT/Argon buckets, original timestamps on failures, bounded read-only discovery, no Google OAuth credential extraction or IDE mutation. Private protocol limitations documented in Documentation/ANTIGRAVITY_QUOTA_20261030.md.
+- Reused ten-second visible / sixty-second alert refresh; additional independent quota windows participate in warnings and fit in a bounded scrolling card. Five regression tests added; old provider display-name assertions updated.
+
+## 2026-10-30 — Notchie stability and installed rename (v42)
+- User-authorized whole-app improvements 2/3/4/8: cancel stale expansion/dismiss actions, protect menu/expanded interactions, prioritize critical activities and prevent stale restoration, recover display geometry with bounded canvas/content fitting, stop disabled input hooks and hidden meeting ticks, coalesce background meeting detection and transition waiters.
+- Repaired FSEvents watcher callback lifetime after an observed test-host crash; stream retains an invalidatable callback box, not the watcher.
+- Install as /Applications/Notchie.app with Notchie executable, retaining bundle ID/settings and backed-up legacy installation. Xcode project/scheme/module remain DynamicNotch. See Documentation/NOTCHIE_STABILITY_20261030.md.
+
+## 2026-10-30 — AI panel clipping and playback delivery (v43)
+- Bound the AI panel to the actual available size with fixed controls/footer and equal, independently scrolling provider cards; loading/stale/error text cannot enlarge the hub or push its header beyond the mask.
+- Deliver media commands through an acknowledged source-app route before global fallback, serialize commands and avoid duplicate toggles; retain existing permissions, bounded Music AX fallback and adapter process timeout. See Documentation/LAYOUT_PLAYBACK_FIX_20261030.md.

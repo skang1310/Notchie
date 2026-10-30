@@ -19,6 +19,8 @@ struct CalendarMinimalNotchView: View {
                     .font(.system(size: 14, design: .rounded))
                     .foregroundStyle(.red)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
         .padding(.leading, isNotchlessScreen ? 6.scaled(by: notchScale) : 14.scaled(by: notchScale))

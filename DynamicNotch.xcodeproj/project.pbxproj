@@ -588,6 +588,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DynamicNotch/Application/Info.plist;
+				EXECUTABLE_NAME = Notchie;
 				INFOPLIST_KEY_CFBundleDisplayName = Notchie;
 				INFOPLIST_KEY_CFBundleName = Notchie;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -636,6 +637,11 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 25;
 				DEAD_CODE_STRIPPING = YES;
+				DEPLOYMENT_POSTPROCESSING = YES;
+				STRIP_INSTALLED_PRODUCT = YES;
+				STRIP_STYLE = "non-global";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				GCC_OPTIMIZATION_LEVEL = 2;
 				DEVELOPMENT_ASSET_PATHS = "DynamicNotch/Resources/Preview\\ Content";
 				DEVELOPMENT_TEAM = AXCMBMA992;
 				ENABLE_APP_SANDBOX = NO;
@@ -655,6 +661,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DynamicNotch/Application/Info.plist;
+				EXECUTABLE_NAME = Notchie;
 				INFOPLIST_KEY_CFBundleDisplayName = Notchie;
 				INFOPLIST_KEY_CFBundleName = Notchie;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -715,7 +722,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DynamicNotch.app/Contents/MacOS/DynamicNotch";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DynamicNotch.app/Contents/MacOS/Notchie";
 				TEST_TARGET_NAME = DynamicNotch;
 			};
 			name = Debug;
@@ -744,7 +751,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DynamicNotch.app/Contents/MacOS/DynamicNotch";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DynamicNotch.app/Contents/MacOS/Notchie";
 				TEST_TARGET_NAME = DynamicNotch;
 			};
 			name = Release;

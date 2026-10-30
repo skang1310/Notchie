@@ -9,13 +9,14 @@ import SwiftUI
 
 struct TimerCompactIndicatorView: View {
     let source: TimerSource
+    @State private var isPresentationVisible = false
     
     @Environment(\.isNotchlessScreen) private var isNotchlessScreen
     
     private var lineWidth: CGFloat { 2.8 }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 24, paused: source.isPaused)) { context in
+        TimelineView(.animation(minimumInterval: 1 / 24, paused: source.isPaused || !isPresentationVisible)) { context in
             let progress = resolvedProgress(at: context.date)
             let angle = Angle.degrees((-Double(progress) * 360) - 90)
 
@@ -50,6 +51,7 @@ struct TimerCompactIndicatorView: View {
             }
             .frame(width: 20, height: 20)
         }
+        .background(PresentationVisibilityReader(isVisible: $isPresentationVisible).frame(width: 0, height: 0))
     }
 
     private func resolvedProgress(at date: Date) -> CGFloat {

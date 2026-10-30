@@ -1,5 +1,6 @@
 import Foundation
 internal import AppKit
+import Carbon
 
 struct NowPlayingApplicationPlaybackState: Equatable {
     let bundleIdentifier: String
@@ -18,19 +19,35 @@ struct NowPlayingApplicationPlaybackState: Equatable {
 final class NowPlayingApplicationBridge {
     private let youtubeMusicClient = YouTubeMusicRemoteClient()
 
-    func send(_ command: NowPlayingCommand, source: NowPlayingPlaybackSource?) -> Bool {
-        guard let bundleIdentifier = source?.preferredBundleIdentifier else { return false }
-
-        switch bundleIdentifier {
-        case "com.apple.Music":
-            return sendAppleMusic(command)
-        case "com.spotify.client":
-            return sendSpotify(command)
-        case "com.github.th-ch.youtube-music":
-            return sendYouTubeMusic(command)
-        default:
-            return false
+    /// Return true only after the target application acknowledges the command.
+    func send(_ command: NowPlayingCommand, source: NowPlayingPlaybackSource?) async -> Bool {
+        guard let bundleID = source?.preferredBundleIdentifier, isApplicationRunning(bundleIdentifier: bundleID) else { return false }
+        if bundleID == "com.github.th-ch.youtube-music" {
+            return await youtubeMusicClient.send(command)
         }
+        let body: String?
+        switch bundleID {
+        case "com.apple.Music": body = appleMusicCommandBody(for: command)
+        case "com.spotify.client": body = spotifyCommandBody(for: command)
+        default: return false
+        }
+        guard let body else { return false }
+        // Check existing Automation authorization without prompting or granting access.
+        let target = NSAppleEventDescriptor(bundleIdentifier: bundleID)
+        guard AEDeterminePermissionToAutomateTarget(target.aeDesc, typeWildCard, typeWildCard, false) == noErr else {
+            guard bundleID == "com.apple.Music" else { return false }
+            return await Task.detached(priority: .userInitiated) { MusicAccessibilityPlayback.send(command) }.value
+        }
+        do {
+            try await NowPlayingAppleScriptRunner.executeVoid("""
+            with timeout of 2 seconds
+                tell application id "\(bundleID)"
+                    \(body)
+                end tell
+            end timeout
+            """)
+            return true
+        } catch { return false }
     }
 
     func favoriteState(for source: NowPlayingPlaybackSource?) async -> Bool? {
@@ -63,40 +80,6 @@ final class NowPlayingApplicationBridge {
 }
 
 private extension NowPlayingApplicationBridge {
-    func sendAppleMusic(_ command: NowPlayingCommand) -> Bool {
-        guard isApplicationRunning(bundleIdentifier: "com.apple.Music") else { return false }
-        guard let body = appleMusicCommandBody(for: command) else { return false }
-
-        Task {
-            try? await NowPlayingAppleScriptRunner.executeVoid("""
-            tell application "Music"
-                try
-                    \(body)
-                end try
-            end tell
-            """)
-        }
-
-        return true
-    }
-
-    func sendSpotify(_ command: NowPlayingCommand) -> Bool {
-        guard isApplicationRunning(bundleIdentifier: "com.spotify.client") else { return false }
-        guard let body = spotifyCommandBody(for: command) else { return false }
-
-        Task {
-            try? await NowPlayingAppleScriptRunner.executeVoid("""
-            tell application "Spotify"
-                try
-                    \(body)
-                end try
-            end tell
-            """)
-        }
-
-        return true
-    }
-
     func appleMusicPlaybackState() async -> NowPlayingApplicationPlaybackState? {
         guard isApplicationRunning(bundleIdentifier: "com.apple.Music") else { return nil }
 
@@ -195,16 +178,6 @@ private extension NowPlayingApplicationBridge {
             volume: min(max(volumePercentage / 100, 0), 1),
             refreshedAt: .now
         )
-    }
-
-    func sendYouTubeMusic(_ command: NowPlayingCommand) -> Bool {
-        guard isApplicationRunning(bundleIdentifier: "com.github.th-ch.youtube-music") else { return false }
-
-        Task {
-            await youtubeMusicClient.send(command)
-        }
-
-        return true
     }
 
     func appleMusicFavoriteState() async -> Bool? {
@@ -379,7 +352,7 @@ private final class YouTubeMusicRemoteClient {
         session = URLSession(configuration: configuration)
     }
 
-    func send(_ command: NowPlayingCommand) async {
+    func send(_ command: NowPlayingCommand) async -> Bool {
         do {
             switch command {
             case .play:
@@ -409,10 +382,12 @@ private final class YouTubeMusicRemoteClient {
             case .setFavorite(let isFavorite):
                 try await setFavorite(isFavorite)
             }
+            return true
         } catch YouTubeMusicRemoteError.authenticationRequired {
             invalidateToken()
+            return false
         } catch {
-            return
+            return false
         }
     }
 

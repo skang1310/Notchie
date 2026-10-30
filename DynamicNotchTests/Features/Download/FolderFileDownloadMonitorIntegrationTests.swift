@@ -2,6 +2,33 @@ import XCTest
 @testable import DynamicNotch
 
 final class FolderFileDownloadMonitorIntegrationTests: XCTestCase {
+    func testStopAndReleaseWhileFilesystemCallbacksArePending() {
+        let root = makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        for index in 0..<5 {
+            let folder = root.appendingPathComponent("batch-\(index)", isDirectory: true)
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var monitor: FolderFileDownloadMonitor? = FolderFileDownloadMonitor(monitoredDirectories: [folder],
+                chromiumReader: ChromiumDownloadMetadataReader(explicitDatabaseURLs: []))
+            let ready = expectation(description: "Watcher publishes before release \(index)")
+            let gate = DownloadExpectationGate()
+            monitor?.onSnapshotChange = { transfers in
+                if !transfers.isEmpty && gate.claim() { ready.fulfill() }
+            }
+            monitor?.startMonitoring()
+            FileManager.default.createFile(atPath: folder.appendingPathComponent("partial.crdownload").path,
+                contents: Data(repeating: 1, count: 1024))
+            wait(for: [ready], timeout: 3)
+            // Queue a second filesystem change while the stream is still alive, then release it.
+            try? Data(repeating: 2, count: 2048).write(to: folder.appendingPathComponent("partial.crdownload"))
+            monitor?.stopMonitoring()
+            monitor = nil
+        }
+        let drained = expectation(description: "Pending filesystem deliveries drain after watcher release")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.7) { drained.fulfill() }
+        wait(for: [drained], timeout: 2)
+    }
+
     func testSafariStyleDownloadPackagePublishesActiveTransfer() {
         let tempDirectory = makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDirectory) }

@@ -158,7 +158,7 @@ xcodebuild -project DynamicNotch.xcodeproj \
   -derivedDataPath build/DynamicNotch-release \
   CODE_SIGNING_ALLOWED=NO build
 
-# 3. /Applications 설치 및 ad-hoc 코드 서명 엄격 검증
+# 3. /Applications/Notchie.app 설치 및 코드 서명 엄격 검증
 ./scripts/install-local.sh build/DynamicNotch-release/Build/Products/Release/DynamicNotch.app
 ```
 

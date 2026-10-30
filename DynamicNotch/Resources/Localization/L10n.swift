@@ -116,6 +116,11 @@ private extension Bundle {
             }
         }
 
+        if let koPath = Bundle.main.path(forResource: "ko", ofType: "lproj"),
+           let koBundle = Bundle(path: koPath) {
+            return koBundle
+        }
+
         if let fallbackPath = Bundle.main.path(
             forResource: Bundle.main.preferredLocalizations.first,
             ofType: "lproj"

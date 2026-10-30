@@ -7,36 +7,11 @@ import SwiftUI
 internal import AppKit
 
 public struct AIUsageNotchView: View {
-    @StateObject private var service = AIUsageService.shared
-    @State private var selectedFilter: ProviderFilter = .all
-
-    private enum ProviderFilter: String, CaseIterable, Identifiable {
-        case all = "all"
-        case claude = "claude"
-        case codex = "codex"
-        case gemini = "gemini"
-
-        var id: String { rawValue }
-
-        func title(isKorean: Bool) -> String {
-            switch self {
-            case .all: return isKorean ? "전체 보기" : "All"
-            case .claude: return "Claude"
-            case .codex: return "Codex"
-            case .gemini: return "Gemini"
-            }
-        }
-
-        func provider() -> AIProviderType? {
-            switch self {
-            case .all: return nil
-            case .claude: return .claudeCode
-            case .codex: return .codex
-            case .gemini: return .gemini
-            }
-        }
-    }
-
+    @StateObject private var service: AIUsageService
+    @State private var isPresentationVisible = false
+    @State private var liveConsumer = UUID()
+    @ObservedObject private var preferences = AIUsagePreferences.shared
+    @ObservedObject private var claudeTeam = ClaudeTeamConnection.shared
     private var isKorean: Bool {
         let raw = UserDefaults.standard.string(forKey: GeneralSettingsStorage.Keys.appLanguage) ?? DynamicNotchLanguage.system.rawValue
         return DynamicNotchLanguage.resolved(raw).locale.language.languageCode?.identifier == "ko"
@@ -46,21 +21,40 @@ public struct AIUsageNotchView: View {
         privacyText(en, ko)
     }
 
-    public init() {}
+    public init() { _service = StateObject(wrappedValue: .shared) }
+    init(service: AIUsageService) { _service = StateObject(wrappedValue: service) }
 
     public var body: some View {
-        VStack(spacing: 8) {
-            topControlBar
-
-            cardsContainer
-                .frame(maxWidth: .infinity)
-
-            bottomStatusBar
+        GeometryReader { geometry in
+            let layout = AIUsagePanelMetrics(size: geometry.size)
+            VStack(spacing: AIUsagePanelMetrics.spacing) {
+                topControlBar.frame(height: AIUsagePanelMetrics.controlsHeight)
+                TimelineView(.animation(minimumInterval: 30, paused: !isPresentationVisible)) { context in
+                    cardsContainer(now: context.date, width: layout.cardWidth, height: layout.cardsHeight)
+                }
+                .frame(height: layout.cardsHeight)
+                bottomStatusBar.frame(height: AIUsagePanelMetrics.footerHeight)
+            }
+            .padding(.horizontal, AIUsagePanelMetrics.horizontalPadding)
+            .padding(.vertical, AIUsagePanelMetrics.verticalPadding)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .onAppear {
-            service.refresh()
+        .background(Color.black.opacity(0.92), in: RoundedRectangle(cornerRadius: 12))
+        .environment(\.colorScheme, .dark)
+        .background(PresentationVisibilityReader(isVisible: $isPresentationVisible).frame(width: 0, height: 0))
+        .onChange(of: claudeTeam.enabled) { _, _ in
+            Task { await service.refreshQuotasAsync() }
+        }
+        .task(id: isPresentationVisible) {
+            guard isPresentationVisible else { return }
+            CodexLiveQuotaClient.shared.acquire(liveConsumer)
+            defer { CodexLiveQuotaClient.shared.release(liveConsumer) }
+            // Keep quota reads separate from the slower local activity scan.
+            while !Task.isCancelled {
+                await service.refreshIfNeeded(maxAge: 60)
+                await service.refreshQuotasAsync()
+                do { try await Task.sleep(for: .seconds(10)) } catch { return }
+            }
         }
     }
 
@@ -68,54 +62,35 @@ public struct AIUsageNotchView: View {
 
     private var topControlBar: some View {
         HStack(spacing: 8) {
-            // Filter Pills (All / Claude / Codex / Gemini)
-            HStack(spacing: 2.5) {
-                ForEach(ProviderFilter.allCases) { filter in
-                    let isSelected = selectedFilter == filter
-                    Button {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                            selectedFilter = filter
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            if let prov = filter.provider() {
-                                AIProductLogoView(provider: prov, size: 12)
-                            } else {
-                                Image(systemName: "square.grid.2x2")
-                                    .font(.system(size: 8.5, weight: .semibold))
-                                    .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.6))
-                            }
-
-                            Text(filter.title(isKorean: isKorean))
-                                .font(.system(size: 10, weight: isSelected ? .semibold : .medium, design: .rounded))
-                                .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.65))
-                        }
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3.5)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(isSelected ? Color.white.opacity(0.14) : Color.clear)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(2)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
-                    )
-            )
+            Label(text("AI Usage", "AI 사용량"), systemImage: "square.grid.2x2")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.8))
 
             Spacer()
+
+            Menu {
+                Toggle(text("Read my Claude Team usage page", "내 Claude Team 사용량 화면 읽기"), isOn: $claudeTeam.enabled)
+                Button(text("Open Claude Team Usage", "Claude Team 사용량 열기")) {
+                    NSWorkspace.shared.open(URL(string: "https://claude.ai/new#settings/usage")!)
+                }
+                Text(text("Reads only an open Team usage page in Chrome; uses existing Accessibility access. No cookies or tokens.", "Chrome에 열린 Team 사용량 화면만 읽습니다. 기존 손쉬운 사용 권한을 쓰며 쿠키·토큰은 읽지 않습니다."))
+                Divider()
+                Toggle(text("Usage warnings", "사용량 경고 알림"), isOn: $preferences.alertsEnabled)
+                Picker(text("Warning threshold", "알림 기준"), selection: $preferences.threshold) {
+                    ForEach([70, 80, 90, 95], id: \.self) { Text("\($0)%").tag($0) }
+                }
+                Toggle(text("Reset countdown", "초기화 카운트다운"), isOn: $preferences.countdownEnabled)
+                Divider()
+                Text(text("Only recorded provider quotas are shown", "서비스 한도 기록이 있을 때만 표시합니다"))
+            } label: { Image(systemName: "slider.horizontal.3") }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help(text("AI Usage Settings", "AI 사용량 설정"))
 
             // Actions: Refresh & Directory
             HStack(spacing: 6) {
                 Button {
-                    service.refresh()
+                    Task { await service.refreshAsync(); await service.refreshQuotasAsync() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 9.5, weight: .semibold))
@@ -148,59 +123,28 @@ public struct AIUsageNotchView: View {
 
     // MARK: - Cards Container
 
-    private var cardsContainer: some View {
-        Group {
-            switch selectedFilter {
-            case .all:
-                HStack(spacing: 8) {
-                    if let claude = service.claudeSummary {
-                        codenotchCard(summary: claude)
-                            .frame(maxWidth: .infinity)
-                    }
-                    if let codex = service.codexSummary {
-                        codenotchCard(summary: codex)
-                            .frame(maxWidth: .infinity)
-                    }
-                    if let gemini = service.geminiSummary {
-                        codenotchCard(summary: gemini)
-                            .frame(maxWidth: .infinity)
+    private func cardsContainer(now: Date, width: CGFloat, height: CGFloat) -> some View {
+        HStack(alignment: .top, spacing: AIUsagePanelMetrics.spacing) {
+            ForEach(AIProviderType.allCases) { provider in
+                ScrollView(.vertical, showsIndicators: true) {
+                    if let summary = service.summary(for: provider) {
+                        codenotchCard(summary: summary, now: now)
+                            .frame(width: width, alignment: .topLeading)
+                    } else {
+                        ProgressView().frame(width: width, height: height)
                     }
                 }
-                .frame(maxWidth: .infinity)
-
-            case .claude:
-                if let claude = service.claudeSummary {
-                    codenotchCard(summary: claude)
-                        .frame(maxWidth: 360)
-                        .frame(maxWidth: .infinity)
-                } else {
-                    emptyProviderView(for: .claudeCode)
-                }
-
-            case .codex:
-                if let codex = service.codexSummary {
-                    codenotchCard(summary: codex)
-                        .frame(maxWidth: 360)
-                        .frame(maxWidth: .infinity)
-                } else {
-                    emptyProviderView(for: .codex)
-                }
-
-            case .gemini:
-                if let gemini = service.geminiSummary {
-                    codenotchCard(summary: gemini)
-                        .frame(maxWidth: 360)
-                        .frame(maxWidth: .infinity)
-                } else {
-                    emptyProviderView(for: .gemini)
-                }
+                .frame(width: width, height: height)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .accessibilityIdentifier("aiUsage.card." + provider.rawValue)
             }
         }
+        .frame(height: height, alignment: .top)
     }
 
     // MARK: - Codenotch Card View (Exact Match to User UI Reference)
 
-    private func codenotchCard(summary: AIProviderUsageSummary) -> some View {
+    private func codenotchCard(summary: AIProviderUsageSummary, now: Date) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             // Header Row: [Product Logo] Provider [TierBadge] ... TimeAgo
             HStack(spacing: 6) {
@@ -208,7 +152,7 @@ public struct AIUsageNotchView: View {
                 AIProductLogoView(provider: summary.provider, size: 16)
 
                 // Provider Name
-                Text(summary.provider.displayName)
+                Text(summary.provider.shortDisplayName)
                     .font(.system(size: 11.5, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
@@ -223,11 +167,21 @@ public struct AIUsageNotchView: View {
                 Spacer()
 
                 // Relative Time Ago
-                if let timeAgo = summary.localizedTimeAgo(isKorean: isKorean) {
+                if summary.provider != .gemini, let timeAgo = summary.localizedTimeAgo(isKorean: isKorean, now: now) {
                     Text(timeAgo)
                         .font(.system(size: 9, weight: .regular))
                         .foregroundStyle(.white.opacity(0.48))
                 }
+            }
+
+            Text(summary.hasRecordedQuota
+                ? (summary.provider == .claudeCode ? text("My Team quota", "Team 개인 한도") : (summary.provider == .gemini ? text("Antigravity local query", "Antigravity 로컬 조회") : (summary.isLiveAPI ? text("Server query", "서버 직접 조회") : text("Provider record", "서비스 한도 기록")))) + " · " + (summary.quotaRecordedAt ?? summary.lastUpdated).formatted(date: .omitted, time: .shortened)
+                : text("Local activity only · quota unavailable", "로컬 활동만 확인 · 한도 정보 없음"))
+                .font(.system(size: 8)).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
+
+            if summary.provider == .codex && service.codexLiveQueryFailed {
+                Text(text("Live query failed · check Codex login/network", "실시간 조회 실패 · Codex 로그인·네트워크 확인"))
+                    .font(.system(size: 8)).foregroundStyle(.yellow)
             }
 
             // Active Session Row: ● DynamicNotch [Running]
@@ -255,7 +209,7 @@ public struct AIUsageNotchView: View {
                         Circle()
                             .fill(Color.green)
                             .frame(width: 3.5, height: 3.5)
-                        Text(isKorean ? "실행 중" : "Active")
+                        Text(isKorean ? "최근 활동" : "Recent")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(Color.green)
                     }
@@ -275,22 +229,26 @@ public struct AIUsageNotchView: View {
                     )
             )
 
-            // Primary Window: 5 hours (Util %)
-            quotaBarSection(
-                label: isKorean ? "5시간 세션" : "5 hours",
-                utilization: summary.primaryWindow.utilization,
-                resetDetail: summary.primaryWindow.formattedResetDetail(isKorean: isKorean, includeCountdown: true),
-                accentColor: Color.white.opacity(0.92)
-            )
-
-            // Secondary Window: This week / Daily Quota
-            if let secondary = summary.secondaryWindow {
-                quotaBarSection(
-                    label: isKorean ? "이번 주" : "This week",
-                    utilization: secondary.utilization,
-                    resetDetail: secondary.formattedResetDetail(isKorean: isKorean, includeCountdown: false),
-                    accentColor: Color.white.opacity(0.92)
-                )
+            if summary.hasRecordedQuota {
+                quotaWindows(summary, now: now)
+                if summary.provider == .gemini {
+                    Text(text("Model quotas · scroll for more", "모델별 한도 · 스크롤로 더 보기"))
+                        .font(.system(size: 8)).foregroundStyle(.white.opacity(0.5))
+                }
+                if !summary.isQuotaFresh(at: now) {
+                    Text(summary.provider == .claudeCode
+                        ? text("Open the Team Usage page in Chrome to update", "Chrome에서 Team 사용량 화면을 열면 갱신됩니다")
+                        : text("Older record · retrying live query", "이전 기록 · 실시간 조회 재시도 중"))
+                        .font(.system(size: 8)).foregroundStyle(.yellow)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(text("Quota unavailable", "한도 정보 없음")).font(.system(size: 12, weight: .semibold))
+                    Text(summary.provider == .gemini
+                        ? text("Open Antigravity and sign in to check its quota.", "Antigravity를 실행하고 로그인하면 한도를 확인합니다.")
+                        : text("Session counts cannot determine quota or reset time.", "세션 수로 사용률·초기화 시각을 계산하지 않습니다."))
+                        .font(.system(size: 9)).foregroundStyle(.white.opacity(0.5))
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
             }
         }
         .padding(10)
@@ -304,6 +262,20 @@ public struct AIUsageNotchView: View {
         )
     }
 
+    private func quotaWindows(_ summary: AIProviderUsageSummary, now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach([summary.primaryWindow] + (summary.secondaryWindow.map { [$0] } ?? []) + summary.additionalWindows) { window in
+                quotaBarSection(label: window.localizedTitle(isKorean: isKorean), utilization: window.utilization,
+                    resetDetail: resetDetail(window, now: now), accentColor: .white.opacity(0.92))
+            }
+        }
+    }
+
+    private func resetDetail(_ window: AIQuotaWindow, now: Date) -> String {
+        guard window.resetsAt > now else { return text("Reset time passed · awaiting new record", "초기화 시각 경과 · 새 기록 대기") }
+        return window.formattedResetDetail(isKorean: isKorean, now: now, includeCountdown: preferences.countdownEnabled)
+    }
+
     // MARK: - Quota Bar Section (Exact Codenotch Format)
 
     private func quotaBarSection(
@@ -313,6 +285,7 @@ public struct AIUsageNotchView: View {
         accentColor: Color
     ) -> some View {
         let clampedUtil = max(0.0, min(100.0, utilization))
+        let remaining = 100 - clampedUtil
         let isLimitReached = clampedUtil >= 98.0
         let barColor = isLimitReached ? Color.red.opacity(0.9) : accentColor
 
@@ -322,12 +295,13 @@ public struct AIUsageNotchView: View {
                 Text(label)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.82))
+                    .lineLimit(1).minimumScaleFactor(0.8)
 
                 Spacer()
 
                 HStack(spacing: 3) {
                     if isLimitReached {
-                        Text(isKorean ? "소진" : "Max")
+                        Text(clampedUtil >= 100 ? text("Empty", "소진") : text("Low", "임박"))
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(Color.red)
                             .padding(.horizontal, 4)
@@ -335,7 +309,9 @@ public struct AIUsageNotchView: View {
                             .background(Color.red.opacity(0.15), in: Capsule())
                     }
 
-                    Text(String(format: "%.0f%%", clampedUtil))
+                    Text(String(format: text("%.0f%% left", "%.0f%% 남음"), remaining))
+                        .help(String(format: text("%.0f%% used", "%.0f%% 사용"), clampedUtil))
+                        .accessibilityLabel(String(format: text("%.0f%% used, %.0f%% left", "%.0f%% 사용, %.0f%% 남음"), clampedUtil, remaining))
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
                         .foregroundStyle(isLimitReached ? Color.red : Color.white)
                 }
@@ -351,7 +327,7 @@ public struct AIUsageNotchView: View {
                     Capsule(style: .continuous)
                         .fill(barColor)
                         .frame(
-                            width: max(clampedUtil > 0 ? 4.0 : 0.0, geo.size.width * CGFloat(clampedUtil / 100.0)),
+                            width: max(remaining > 0 ? 4.0 : 0.0, geo.size.width * CGFloat(remaining / 100.0)),
                             height: 4.5
                         )
                 }
@@ -377,7 +353,7 @@ public struct AIUsageNotchView: View {
                     .font(.system(size: 8.5))
                     .foregroundStyle(.white.opacity(0.45))
 
-                Text(text("Live local session tracking", "실시간 로컬 세션 감지"))
+                Text(text("Quota checks every 10s while visible", "화면 표시 중 10초 간격 한도 확인"))
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(.white.opacity(0.55))
             }
@@ -385,7 +361,7 @@ public struct AIUsageNotchView: View {
             Spacer()
 
             if let lastRefreshed = service.lastRefreshed {
-                Text("\(text("Updated", "업데이트")): \(timeOnly(lastRefreshed))")
+                Text("\(text("Activity scan", "활동 기록")): \(timeOnly(lastRefreshed))")
                     .font(.system(size: 8.5, weight: .regular))
                     .foregroundStyle(.white.opacity(0.4))
             }
@@ -394,44 +370,9 @@ public struct AIUsageNotchView: View {
         .padding(.top, 1)
     }
 
-    // MARK: - Empty Provider View
-
-    private func emptyProviderView(for provider: AIProviderType) -> some View {
-        VStack(spacing: 8) {
-            AIProductLogoView(provider: provider, size: 28)
-
-            Text(String(format: text("%@ not detected", "%@가 감지되지 않았습니다"), provider.displayName))
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.75))
-
-            Text(text("Run it in terminal to start tracking quota", "터미널에서 실행하면 사용량이 기록됩니다"))
-                .font(.system(size: 9, weight: .regular))
-                .foregroundStyle(.white.opacity(0.45))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.8)
-                )
-        )
-    }
-
     private func openActiveDirectory() {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let target: URL
-        switch selectedFilter {
-        case .all, .claude:
-            target = home.appendingPathComponent(".claude")
-        case .codex:
-            target = home.appendingPathComponent(".codex")
-        case .gemini:
-            target = home.appendingPathComponent(".gemini")
-        }
-        NSWorkspace.shared.open(target)
+        NSWorkspace.shared.open(home.appendingPathComponent(".claude"))
     }
 
     private func timeOnly(_ date: Date) -> String {
@@ -477,15 +418,8 @@ public struct AIProductLogoView: View {
                         .foregroundStyle(Color.green)
                 }
             case .gemini:
-                if let nsImage = NSImage(named: "geminiLogo") {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } else {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: size * 0.75, weight: .semibold))
-                        .foregroundStyle(Color.cyan)
-                }
+                Image(systemName: "a.circle.fill")
+                    .resizable().scaledToFit().foregroundStyle(.white)
             }
         }
         .frame(width: size, height: size)

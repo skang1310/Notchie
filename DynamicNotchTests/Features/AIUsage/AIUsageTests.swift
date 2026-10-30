@@ -5,10 +5,25 @@
 
 import XCTest
 import SwiftUI
+import Combine
 @testable import DynamicNotch
 
 @MainActor
 final class AIUsageTests: XCTestCase {
+
+    func testConcurrentRefreshRequestsShareOnePublication() async throws {
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let service = AIUsageService(claudeDirectory: missing, codexDirectory: missing, geminiDirectory: missing)
+        var publications = 0
+        let observation = service.$lastRefreshed.dropFirst().sink { _ in publications += 1 }
+        let requests = (0..<20).map { _ in service.refresh() }
+        for request in requests { await request.value }
+        XCTAssertEqual(publications, 1)
+        XCTAssertFalse(service.isLoading)
+        await service.refreshAsync()
+        XCTAssertEqual(publications, 2, "A completed refresh must allow a fresh scan")
+        withExtendedLifetime(observation) {}
+    }
 
     // MARK: - Claude Stats & Data Parsing Tests
 
@@ -277,11 +292,10 @@ final class AIUsageTests: XCTestCase {
 
         let claudeSummary = AIUsageService.computeClaudeSummary(stats: stats, history: [recent1, recent2], activeModel: "claude-opus-5-5", now: now)
         XCTAssertEqual(claudeSummary.provider, .claudeCode)
-        XCTAssertTrue(claudeSummary.primaryWindow.remainingPercentage > 0)
-        XCTAssertEqual(claudeSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
-        XCTAssertNotNil(claudeSummary.secondaryWindow)
-        XCTAssertEqual(claudeSummary.secondaryWindow?.titleKo, "주간 쿼터 한도")
-        XCTAssertEqual(claudeSummary.tierBadge, "Max 5x")
+        XCTAssertFalse(claudeSummary.hasRecordedQuota)
+        XCTAssertEqual(claudeSummary.primaryWindow.titleKo, "한도 정보 없음")
+        XCTAssertNil(claudeSummary.secondaryWindow)
+        XCTAssertEqual(claudeSummary.tierBadge, "—")
         XCTAssertEqual(claudeSummary.activeSessionTitle, "P1")
         XCTAssertTrue(claudeSummary.isSessionActive)
         XCTAssertFalse(claudeSummary.primaryWindow.formattedResetDetail(isKorean: false).isEmpty)
@@ -292,9 +306,9 @@ final class AIUsageTests: XCTestCase {
         let codexSummary = AIUsageService.computeCodexSummary(sessions: [codexSession], config: codexConfig, now: now)
         XCTAssertEqual(codexSummary.provider, .codex)
         XCTAssertEqual(codexSummary.activeModel, "gpt-6.1-sol")
-        XCTAssertEqual(codexSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
-        XCTAssertEqual(codexSummary.secondaryWindow?.titleKo, "이번 주 한도")
-        XCTAssertEqual(codexSummary.tierBadge, "Plus")
+        XCTAssertFalse(codexSummary.hasRecordedQuota)
+        XCTAssertNil(codexSummary.secondaryWindow)
+        XCTAssertEqual(codexSummary.tierBadge, "—")
         XCTAssertEqual(codexSummary.activeSessionTitle, "Codex thread")
         XCTAssertTrue(codexSummary.isSessionActive)
 
@@ -309,20 +323,17 @@ final class AIUsageTests: XCTestCase {
             rateLimitResetsAt: rateLimitReset
         )
         let rateLimitedSummary = AIUsageService.computeCodexSummary(sessions: [codexSession], config: rateLimitedConfig, now: now)
-        XCTAssertEqual(rateLimitedSummary.primaryWindow.utilization, 100.0)
-        XCTAssertEqual(rateLimitedSummary.primaryWindow.remainingPercentage, 0.0)
-        XCTAssertEqual(rateLimitedSummary.primaryWindow.subtitleKo, "할당량 소진됨")
-        XCTAssertEqual(rateLimitedSummary.secondaryWindow?.utilization, 100.0)
-        XCTAssertTrue(rateLimitedSummary.primaryWindow.formattedResetDetail(isKorean: true, now: now).contains("한도 소진"))
-        XCTAssertTrue(rateLimitedSummary.primaryWindow.formattedResetDetail(isKorean: false, now: now).contains("Limit Reached"))
+        // An old generic exhaustion message cannot identify both quota windows.
+        XCTAssertFalse(rateLimitedSummary.hasRecordedQuota)
+        XCTAssertNil(rateLimitedSummary.secondaryWindow)
 
         let geminiSession = GeminiSessionEntry(id: "g1", title: "Gemini agent", stepCount: 15, lastModified: now.addingTimeInterval(-900))
         let geminiSummary = AIUsageService.computeGeminiSummary(sessions: [geminiSession], modelName: "gemini-2.5-pro", now: now)
         XCTAssertEqual(geminiSummary.provider, .gemini)
         XCTAssertEqual(geminiSummary.activeModel, "gemini-2.5-pro")
-        XCTAssertEqual(geminiSummary.primaryWindow.titleKo, "5시간 세션 롤링 창")
-        XCTAssertEqual(geminiSummary.secondaryWindow?.titleKo, "이번 주 한도")
-        XCTAssertEqual(geminiSummary.tierBadge, "Advanced")
+        XCTAssertFalse(geminiSummary.hasRecordedQuota)
+        XCTAssertNil(geminiSummary.secondaryWindow)
+        XCTAssertEqual(geminiSummary.tierBadge, "—")
         XCTAssertEqual(geminiSummary.activeSessionTitle, "Gemini agent")
         XCTAssertTrue(geminiSummary.isSessionActive)
         XCTAssertTrue(geminiSummary.primaryWindow.remainingPercentage > 0)
@@ -335,8 +346,8 @@ final class AIUsageTests: XCTestCase {
         XCTAssertTrue(AIProviderType.allCases.contains(.gemini))
 
         let gemini = AIProviderType.gemini
-        XCTAssertEqual(gemini.displayName, "Google Gemini")
-        XCTAssertEqual(gemini.shortDisplayName, "Gemini")
+        XCTAssertEqual(gemini.displayName, "Google Antigravity")
+        XCTAssertEqual(gemini.shortDisplayName, "Antigravity")
         XCTAssertEqual(gemini.iconName, "wand.and.stars")
     }
 
@@ -403,5 +414,26 @@ final class AIUsageTests: XCTestCase {
         store.hubMode = .ai
         let extraHeight = store.shelfExtraHeight(isIsland: false)
         XCTAssertEqual(extraHeight, 270)
+    }
+
+    func testResetDetailCountdownUsesDaysBeyondTwentyFourHours() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        func window(_ seconds: TimeInterval) -> AIQuotaWindow {
+            AIQuotaWindow(title: "Weekly", titleKo: "주간", utilization: 16, resetsAt: now.addingTimeInterval(seconds))
+        }
+        // 5 days 22 hours 37 minutes -> days + hours, never "142시간".
+        let weekly = window(5 * 86400 + 22 * 3600 + 37 * 60)
+        let ko = weekly.formattedResetDetail(isKorean: true, now: now)
+        XCTAssertTrue(ko.hasSuffix("· 5일 22시간 후"), ko)
+        XCTAssertFalse(ko.contains("142시간"))
+        XCTAssertTrue(weekly.formattedResetDetail(isKorean: false, now: now).hasSuffix("· in 5 days 22 hr"))
+        // Exactly one day boundary and singular English unit.
+        XCTAssertTrue(window(86400 + 60).formattedResetDetail(isKorean: true, now: now).hasSuffix("· 1일 0시간 후"))
+        XCTAssertTrue(window(86400 + 3600).formattedResetDetail(isKorean: false, now: now).hasSuffix("· in 1 day 1 hr"))
+        // Under 24 hours keeps hours + minutes.
+        XCTAssertTrue(window(23 * 3600 + 59 * 60).formattedResetDetail(isKorean: true, now: now).hasSuffix("· 23시간 59분 후"))
+        XCTAssertTrue(window(30 * 60).formattedResetDetail(isKorean: false, now: now).hasSuffix("· in 30 min"))
+        // Countdown toggle off shows no countdown at all.
+        XCTAssertFalse(weekly.formattedResetDetail(isKorean: true, now: now, includeCountdown: false).contains("·"))
     }
 }

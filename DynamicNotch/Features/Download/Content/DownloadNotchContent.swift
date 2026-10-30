@@ -27,12 +27,12 @@ struct DownloadNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     }
     
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let width: CGFloat = indicatorStyle == .circle ? 70 : 90
+        let width: CGFloat = indicatorStyle == .circle ? 85 : 115
         return .init(width: baseWidth + width, height: baseHeight)
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let width: CGFloat = indicatorStyle == .circle ? 60 : 90
+        let width: CGFloat = indicatorStyle == .circle ? 85 : 115
         return .init(width: baseWidth + width, height: baseHeight)
     }
     

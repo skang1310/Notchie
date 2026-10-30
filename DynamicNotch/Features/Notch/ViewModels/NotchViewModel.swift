@@ -13,6 +13,19 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var isActivityPresentationHidden = false
     @Published private(set) var hasDisplayedContent = false
     @Published private(set) var topInset: CGFloat = 0
+    @Published private(set) var pointerInteractionRevision = UUID()
+    @Published var isMenuTracking = false
+    @Published var isPrimarySurfaceHidden = false
+    @Published private(set) var presentationBounds = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+
+    var presentationScale: CGFloat {
+        OverlayWindowLayout.fitScale(content: presentedNotchSize, available: presentationBounds)
+    }
+
+    func updatePresentationBounds(_ screenSize: CGSize) {
+        let bounds = CGSize(width: max(1, screenSize.width - 24), height: max(1, screenSize.height - 40))
+        if presentationBounds != bounds { presentationBounds = bounds }
+    }
     
     @Published var isLocked = false
     @Published var isHoveringScrollableContent = false
@@ -151,6 +164,9 @@ final class NotchViewModel: ObservableObject {
     var shouldCollapseActiveContentOnHoverLeaves: Bool {
         guard isDisplayingExpandedLiveActivity else { return false }
         if QuickToolsStore.shared.isNotchHubPinned {
+            return false
+        }
+        if QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot || SoundMixerService.shared.isAdjustingVolume {
             return false
         }
         if displayedContent is QuickToolsNotchContent {
@@ -348,7 +364,7 @@ final class NotchViewModel: ObservableObject {
             return
         }
         
-        self.topInset = screenMetrics.topInset
+        if self.topInset != screenMetrics.topInset { self.topInset = screenMetrics.topInset }
         
         let screenWidth = screenMetrics.width
         let baseScreenWidth: CGFloat = 1440.0
@@ -403,7 +419,7 @@ final class NotchViewModel: ObservableObject {
     func setActivityPresentationHidden(_ isHidden: Bool) {
         guard isActivityPresentationHidden != isHidden else { return }
 
-        resetSwipeStretch()
+        invalidatePointerInteraction()
 
         withAnimation(animations.notchVisibility) {
             isActivityPresentationHidden = isHidden
@@ -573,11 +589,16 @@ final class NotchViewModel: ObservableObject {
 
     private func performActiveLiveActivityExpansion() {
         expansionTransitionTask?.cancel()
+        let targetPresentation = displayedPresentationID
         isExpandingLiveActivityTransition = true
 
         expansionTransitionTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: ExpansionTransitionTiming.preparationDelay)
             guard let self, !Task.isCancelled else { return }
+            guard self.displayedPresentationID == targetPresentation else {
+                self.cancelPendingExpansion()
+                return
+            }
 
             if !self.hasRealDisplayedContent && self.settings.isIdleNotchHoverMenuEnabled && !self.isLocked {
                 self.engine.presentIdleHoverContent(
@@ -596,7 +617,23 @@ final class NotchViewModel: ObservableObject {
     }
     
     func handleOutsideClick() {
+        guard !isMenuTracking else { return }
+        cancelPendingExpansion()
         engine.handleOutsideClick()
+    }
+
+    func cancelPendingExpansion() {
+        expansionTransitionTask?.cancel()
+        expansionTransitionTask = nil
+        isExpandingLiveActivityTransition = false
+    }
+
+    func invalidatePointerInteraction() {
+        cancelPendingExpansion()
+        resetSwipeStretch()
+        isPressed = false
+        pressScale = 1
+        pointerInteractionRevision = UUID()
     }
     
     func handleStrokeVisibility() {

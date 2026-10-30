@@ -1,6 +1,6 @@
 import Foundation
 
-enum NowPlayingCommand: Equatable {
+enum NowPlayingCommand: Equatable, Sendable {
     case play
     case pause
     case togglePlayPause

@@ -89,15 +89,7 @@ final class NotchlessWindowConstrainer {
 
         bindSettings()
         setupWorkspaceNotifications()
-        setupMouseUpMonitor()
-
-        if AXIsProcessTrusted() {
-            registerAllRunningApplications()
-            setupMouseEventTap()
-            constrainAllVisibleWindows()
-        } else {
-            startAccessibilityRetryTimer()
-        }
+        updateMonitoringState()
     }
 
     func stop() {
@@ -127,14 +119,7 @@ final class NotchlessWindowConstrainer {
             .receive(on: RunLoop.main)
             .sink { [weak self] isEnabled in
                 guard let self else { return }
-                if isEnabled {
-                    self.setupMouseEventTap()
-                    self.constrainAllVisibleWindows()
-                } else {
-                    self.snapPreviewManager.hideImmediately()
-                    self.preSnapSizes.removeAll()
-                    self.activeDragSession = nil
-                }
+                self.updateMonitoringState()
             }
             .store(in: &cancellables)
 
@@ -153,7 +138,8 @@ final class NotchlessWindowConstrainer {
             .compactMap { $0.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication }
             .receive(on: RunLoop.main)
             .sink { [weak self] app in
-                self?.registerApp(app)
+                guard let self, self.settings.isNotchlessWindowMarginEnabled else { return }
+                self.registerApp(app)
             }
             .store(in: &cancellables)
 
@@ -168,15 +154,14 @@ final class NotchlessWindowConstrainer {
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                guard let self, self.settings.isNotchlessWindowMarginEnabled else { return }
-                self.constrainAllVisibleWindows()
+                self?.updateMonitoringState()
             }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                guard let self else { return }
+                guard let self, self.settings.isNotchlessWindowMarginEnabled else { return }
                 if AXIsProcessTrusted() {
                     if self.observers.isEmpty {
                         self.retryTimer?.cancel()
@@ -190,6 +175,34 @@ final class NotchlessWindowConstrainer {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    /// Disabled features retain only settings/workspace subscriptions, not global input/AX hooks.
+    private func updateMonitoringState() {
+        guard isRunning else { return }
+        guard settings.isNotchlessWindowMarginEnabled, NSScreen.screens.contains(where: \.isNotchless) else {
+            retryTimer?.cancel(); retryTimer = nil
+            snapPreviewManager.hideImmediately()
+            preSnapSizes.removeAll()
+            activeDragSession = nil
+            if let mouseUpMonitor { NSEvent.removeMonitor(mouseUpMonitor); self.mouseUpMonitor = nil }
+            teardownMouseEventTap()
+            unregisterAllApplications()
+            return
+        }
+        setupMouseUpMonitor()
+        if AXIsProcessTrusted() {
+            retryTimer?.cancel(); retryTimer = nil
+            registerAllRunningApplications()
+            setupMouseEventTap()
+            constrainAllVisibleWindows()
+        } else if retryTimer == nil {
+            startAccessibilityRetryTimer()
+        }
+    }
+
+    var hasActiveConstraintMonitors: Bool {
+        mouseUpMonitor != nil || mouseEventTap != nil || !observers.isEmpty || retryTimer != nil
     }
 
     private func setupMouseUpMonitor() {
@@ -206,10 +219,10 @@ final class NotchlessWindowConstrainer {
 
     private func startAccessibilityRetryTimer() {
         retryTimer?.cancel()
-        retryTimer = Timer.publish(every: 3.0, on: .main, in: .common)
+        retryTimer = Timer.publish(every: 10.0, tolerance: 2, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
-                guard let self else { return }
+                guard let self, self.settings.isNotchlessWindowMarginEnabled else { return }
                 if AXIsProcessTrusted() {
                     self.retryTimer?.cancel()
                     self.retryTimer = nil

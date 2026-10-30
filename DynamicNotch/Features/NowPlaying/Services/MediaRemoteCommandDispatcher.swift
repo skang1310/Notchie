@@ -69,12 +69,20 @@ final class MediaRemoteCommandDispatcher {
         let process = Process()
         process.executableURL = Self.perlExecutableURL
         process.arguments = resources.invocationArguments(for: commandArguments)
-        process.standardOutput = Pipe()
-        process.standardError = Pipe()
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
 
         do {
             try process.run()
-            process.waitUntilExit()
+            guard exited.wait(timeout: .now() + 3) == .success else {
+                process.terminate()
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+                    if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+                }
+                return false
+            }
             return process.terminationStatus == 0
         } catch {
             return false

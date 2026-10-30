@@ -37,18 +37,18 @@ struct ScreenRecordingContent: NotchContentProtocol, DynamicIslandCustomizable {
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
         switch style {
         case .compact:
-            return .init(width: baseWidth + 60, height: baseHeight)
+            return .init(width: baseWidth + 75, height: baseHeight)
         case .detailed:
-            return .init(width: baseWidth + 115, height: baseHeight)
+            return .init(width: baseWidth + 160, height: baseHeight)
         }
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
         switch style {
         case .compact:
-            return .init(width: baseWidth + 50, height: baseHeight)
+            return .init(width: baseWidth + 70, height: baseHeight)
         case .detailed:
-            return .init(width: baseWidth + 105, height: baseHeight)
+            return .init(width: baseWidth + 160, height: baseHeight)
         }
     }
 

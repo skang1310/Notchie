@@ -167,6 +167,12 @@ private extension NotchMouseSwipeMonitorView {
     }
 
     func handleMouseDown(_ event: NSEvent) {
+        guard !QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot,
+              !SoundMixerService.shared.isAdjustingVolume,
+              !QuickToolsStore.shared.isCalendarFullScheduleVisible else {
+            resetTracking()
+            return
+        }
         guard canSwipeUp || canSwipeDown else {
             resetTracking()
             return
@@ -184,6 +190,12 @@ private extension NotchMouseSwipeMonitorView {
     }
 
     func handleMouseDragged(_ event: NSEvent) {
+        guard !QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot,
+              !SoundMixerService.shared.isAdjustingVolume,
+              !QuickToolsStore.shared.isCalendarFullScheduleVisible else {
+            resetTracking()
+            return
+        }
         guard isTrackingDrag, let initialScreenLocation else { return }
 
         let currentLocation = screenLocation(for: event)
@@ -196,6 +208,12 @@ private extension NotchMouseSwipeMonitorView {
     }
 
     func handleMouseUp(_ event: NSEvent) {
+        guard !QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot,
+              !SoundMixerService.shared.isAdjustingVolume,
+              !QuickToolsStore.shared.isCalendarFullScheduleVisible else {
+            resetTracking()
+            return
+        }
         guard isTrackingDrag, let initialScreenLocation else {
             resetTracking()
             return

@@ -1,3 +1,4 @@
+internal import AppKit
 import SwiftUI
 
 struct CalendarNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
@@ -14,14 +15,20 @@ struct CalendarNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
         }
     }
     
-    private var isAMPM: Bool {
-        let time = calendarViewModel.formattedNextEventTime.lowercased()
-        return time.contains("am") || time.contains("pm") || time.contains("a.m.") || time.contains("p.m.")
+    var requiredExtraWidth: CGFloat {
+        let time = calendarViewModel.formattedNextEventTime
+        guard !time.isEmpty else { return 110 }
+        
+        let font = NSFont.systemFont(ofSize: 14)
+        let textWidth = (time as NSString).size(withAttributes: [.font: font]).width
+        // Trailing padding 14 + textWidth + inner notch bezel margin 14
+        let singleWingNeeded = textWidth + 28
+        let dynamicWidth = singleWingNeeded * 2
+        return max(200, ceil(dynamicWidth))
     }
     
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraWidth: CGFloat = isAMPM ? 145 : 110
-        return .init(width: baseWidth + extraWidth, height: baseHeight)
+        return .init(width: baseWidth + requiredExtraWidth, height: baseHeight)
     }
     
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
@@ -29,7 +36,7 @@ struct CalendarNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraWidth: CGFloat = isAMPM ? 135 : 100
+        let extraWidth = max(180, requiredExtraWidth - 10)
         return .init(width: baseWidth + extraWidth, height: baseHeight)
     }
     

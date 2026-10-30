@@ -9,6 +9,7 @@ struct TimerFinishedNotchContent: NotchContentProtocol, DynamicIslandCustomizabl
     var strokeColor: Color { .orange.opacity(0.4) }
     var expandsOnTap: Bool { true }
     var isRestorable: Bool { false }
+    var interruptsExpandedInteraction: Bool { true }
 
     init(
         onDismiss: @escaping @MainActor () -> Void = {},

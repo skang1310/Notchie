@@ -29,6 +29,8 @@ struct ScreenRecordingView: View {
                     .font(.system(size: 14, design: .rounded))
                     .foregroundStyle(.red)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
         .padding(.horizontal, isNotchlessScreen ? 7.scaled(by: scale) : 16.scaled(by: scale))

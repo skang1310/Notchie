@@ -37,6 +37,7 @@ struct NotchView: View {
             .onChange(of: settingsViewModel.application.notchHeight) { _, _ in
                 notchViewModel.updateDimensions()
             }
+            .scaleEffect(notchViewModel.presentationScale, anchor: .top)
             // Keep the center stationary while the child interpolates its width.
             // Animating a leading origin and width separately produces lateral drift.
             .position(x: canvas.size.width / 2,

@@ -53,6 +53,14 @@ final class NotchHUDEventsHandler {
 
         case .volume(let level, let deviceName):
             guard settingsViewModel.isHUDEnabled(.volume) else { return }
+            // Do not display the Volume HUD Live Activity when adjusting volume via
+            // Sound Mixer or when the Notch is expanded / Sound Mixer is active, preventing
+            // layout oscillation and visual conflicts.
+            guard !SoundMixerService.shared.isAdjustingVolume else { return }
+            guard !notchViewModel.notchModel.isExpanded else { return }
+            guard !notchViewModel.isDisplayingExpandedLiveActivity else { return }
+            guard !QuickToolsStore.shared.isSoundMixerVisibleInCalendarSlot else { return }
+
             notchViewModel.send(
                 .showTemporaryNotification(
                     HudNotchContent(

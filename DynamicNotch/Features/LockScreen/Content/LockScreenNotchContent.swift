@@ -20,16 +20,16 @@ struct LockScreenNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
 
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
         if isCompactFaceIDActive {
-            return .init(width: baseWidth + 95, height: baseHeight + 10)
+            return .init(width: baseWidth + 110, height: baseHeight + 10)
         }
-        return .init(width: baseWidth + 55, height: baseHeight)
+        return .init(width: baseWidth + 70, height: baseHeight)
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
         if isCompactFaceIDActive {
-            return .init(width: baseWidth + 95, height: baseHeight + 10)
+            return .init(width: baseWidth + 110, height: baseHeight + 10)
         }
-        return .init(width: baseWidth + 55, height: baseHeight)
+        return .init(width: baseWidth + 70, height: baseHeight)
     }
 
     func compactCornerRadius(baseRadius: CGFloat) -> (top: CGFloat, bottom: CGFloat) {

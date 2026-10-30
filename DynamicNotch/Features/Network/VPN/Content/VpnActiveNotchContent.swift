@@ -15,11 +15,11 @@ struct VpnActiveNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     var isExpandable: Bool { true }
 
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        .init(width: baseWidth + 105, height: baseHeight)
+        .init(width: baseWidth + 130, height: baseHeight)
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        .init(width: baseWidth + 105, height: baseHeight)
+        .init(width: baseWidth + 130, height: baseHeight)
     }
 
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {

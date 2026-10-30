@@ -7,12 +7,20 @@ struct CalendarExpandedNotchView: View {
     @Environment(\.locale) private var locale
     
     let notchViewModel: NotchViewModel
+
+    @State private var isShowingFullSchedule = false
+    @State private var isHoveringEvent = false
+    @State private var scrollMonitor: Any? = nil
+    @State private var accumulatedScrollDelta: CGFloat = 0
     
     var body: some View {
         VStack {
             Spacer()
             
-            if let event = calendarViewModel.nextEvent {
+            if isShowingFullSchedule {
+                fullScheduleList
+                    .transition(.opacity)
+            } else if let event = calendarViewModel.nextEvent {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
                         title(event: event)
@@ -20,6 +28,15 @@ struct CalendarExpandedNotchView: View {
                         location(event: event)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            isShowingFullSchedule = true
+                        }
+                    }
+                    .onHover { hovering in
+                        handleEventHover(hovering)
+                    }
                     
                     Spacer()
                     buttons(event: event)
@@ -33,6 +50,156 @@ struct CalendarExpandedNotchView: View {
         .padding(.leading, isNotchlessScreen ? 20 : 45)
         .padding(.trailing, isNotchlessScreen ? 15 : 40)
         .padding(.bottom, isNotchlessScreen ? 20 : 18)
+        .onDisappear {
+            isHoveringEvent = false
+            removeScrollMonitor()
+            isShowingFullSchedule = false
+        }
+    }
+
+    private func physicalVerticalDelta(from event: NSEvent) -> CGFloat {
+        let deltaY = CGFloat(event.scrollingDeltaY)
+        return event.isDirectionInvertedFromDevice ? -deltaY : deltaY
+    }
+
+    private func handleEventHover(_ hovering: Bool) {
+        isHoveringEvent = hovering
+        if hovering {
+            accumulatedScrollDelta = 0
+            if scrollMonitor == nil {
+                scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                    if abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) * 1.5 {
+                        return event
+                    }
+
+                    let physicalDelta = self.physicalVerticalDelta(from: event)
+
+                    if !self.isShowingFullSchedule {
+                        // Closed: downward scroll ("밑으로") opens full schedule
+                        if physicalDelta < -0.25 {
+                            self.accumulatedScrollDelta += physicalDelta
+                            if self.accumulatedScrollDelta <= -0.9 || abs(event.scrollingDeltaY) >= 0.8 {
+                                self.accumulatedScrollDelta = 0
+                                DispatchQueue.main.async {
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                        self.isShowingFullSchedule = true
+                                    }
+                                }
+                                return nil
+                            }
+                        } else if physicalDelta > 0.25 {
+                            self.accumulatedScrollDelta = 0
+                        }
+                        return event
+                    } else {
+                        // Open: upward scroll ("위로") closes full schedule
+                        if physicalDelta > 0.25 {
+                            self.accumulatedScrollDelta += physicalDelta
+                            if self.accumulatedScrollDelta >= 0.9 || abs(event.scrollingDeltaY) >= 0.8 {
+                                self.accumulatedScrollDelta = 0
+                                DispatchQueue.main.async {
+                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                                        self.isShowingFullSchedule = false
+                                    }
+                                }
+                                return nil
+                            }
+                        } else if physicalDelta < -0.25 {
+                            self.accumulatedScrollDelta = 0
+                        }
+                        return event
+                    }
+                }
+            }
+        } else {
+            removeScrollMonitor()
+        }
+    }
+
+    private func removeScrollMonitor() {
+        if let monitor = scrollMonitor {
+            NSEvent.removeMonitor(monitor)
+            scrollMonitor = nil
+        }
+        accumulatedScrollDelta = 0
+    }
+
+    @ViewBuilder
+    private var fullScheduleList: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(locale.dn("notch.calendar.todaySchedule", fallback: "Today's Schedule"))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                Text("\(calendarViewModel.events.count)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Color.blue.opacity(0.2), in: Capsule())
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                        isShowingFullSchedule = false
+                    }
+                } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.gray)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    isShowingFullSchedule = false
+                }
+            }
+            
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(calendarViewModel.events, id: \.eventIdentifier) { ev in
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(ev.calendar?.cgColor.map { Color(cgColor: $0) } ?? Color.blue)
+                                .frame(width: 4, height: 4)
+                            Text(timeString(from: ev.startDate))
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundColor(.gray)
+                            Text(calendarViewModel.displayTitle(for: ev))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            Spacer()
+                            if let url = MeetingLink.first(url: ev.url, notes: ev.notes, location: ev.location) {
+                                Button {
+                                    NSWorkspace.shared.open(url)
+                                } label: {
+                                    Text(locale.dn("notch.calendar.join", fallback: "Join"))
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.blue, in: Capsule())
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+            .frame(maxHeight: 70)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                isShowingFullSchedule = false
+            }
+        }
+        .onHover { hovering in
+            handleEventHover(hovering)
+        }
     }
     
     @ViewBuilder

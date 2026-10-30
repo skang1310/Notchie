@@ -94,7 +94,7 @@ private struct TimerExpandedNotchViewInternal<VM: ObservableObject>: View {
                 .foregroundStyle(Color.orange.opacity(0.8))
                 .offset(y: 8)
             
-            TimelineView(.animation(minimumInterval: 0.25, paused: source.isPaused)) { context in
+            PresentationTimeline(interval: 0.25, paused: source.isPaused) { context in
                 let remaining = source.remainingTime(at: context.date)
                 let roundedSeconds = max(0, Int(remaining.rounded()))
                 let hours = roundedSeconds / 3600

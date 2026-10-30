@@ -76,7 +76,9 @@ enum DynamicNotchLanguage: String, CaseIterable, Identifiable {
     var bundleLanguageCandidates: [String] {
         switch self {
         case .system:
-            return []
+            return effectiveNotchLanguage.bundleLanguageCandidates
+        case .russian where Locale.preferredLanguages.first?.lowercased().starts(with: "ru") != true:
+            return DynamicNotchLanguage.korean.bundleLanguageCandidates
         case .simplifiedChinese:
             return ["zh-Hans", "zh"]
         case .traditionalChinese:
@@ -582,11 +584,18 @@ enum DynamicNotchLanguage: String, CaseIterable, Identifiable {
             return .system
         }
 
+        // Upstream legacy default was hardcoded to "ru". If the Mac's primary language is not Russian,
+        // ignore legacy "ru" and resolve to system language (Korean/system default).
+        if language == .russian && Locale.preferredLanguages.first?.lowercased().starts(with: "ru") != true {
+            return .system
+        }
+
         return language
     }
 
     static let notchLanguages: [DynamicNotchLanguage] = [
         .english,
+        .korean,
         .russian,
         .german,
         .spanish,
@@ -599,18 +608,22 @@ enum DynamicNotchLanguage: String, CaseIterable, Identifiable {
         case .system:
             for preferred in Locale.preferredLanguages {
                 let code = preferred.lowercased()
-                if code.starts(with: "ru") { return .russian }
-                if code.starts(with: "de") { return .german }
-                if code.starts(with: "es") { return .spanish }
-                if code.starts(with: "fr") { return .french }
-                if code.starts(with: "zh-hans") || code.starts(with: "zh-cn") { return .simplifiedChinese }
+                if code.starts(with: "ko") { return .korean }
                 if code.starts(with: "en") { return .english }
+                if code.starts(with: "ja") { return .japanese }
+                if code.starts(with: "zh-hans") || code.starts(with: "zh-cn") { return .simplifiedChinese }
+                if code.starts(with: "de") { return .german }
+                if code.starts(with: "fr") { return .french }
+                if code.starts(with: "es") { return .spanish }
+                if code.starts(with: "ru") { return .russian }
             }
-            return .english
-        case .english, .russian, .german, .spanish, .french, .simplifiedChinese:
+            return .korean
+        case .russian where Locale.preferredLanguages.first?.lowercased().starts(with: "ru") != true:
+            return .korean
+        case .english, .korean, .russian, .german, .spanish, .french, .simplifiedChinese, .japanese:
             return self
         default:
-            return .english
+            return .korean
         }
     }
 }

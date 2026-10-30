@@ -177,15 +177,19 @@ public struct AIQuotaWindow: Identifiable, Codable, Equatable, Sendable {
 
         if includeCountdown {
             let totalSeconds = Int(diff)
-            let hours = totalSeconds / 3600
+            // Beyond 24 hours the countdown is expressed in days + hours instead of e.g. "142 hr".
+            let days = totalSeconds / 86400
+            let hours = (totalSeconds % 86400) / 3600
             let minutes = (totalSeconds % 3600) / 60
 
             if isKorean {
-                let countdownPart = hours > 0 ? "\(hours)시간 \(minutes)분 후" : "\(max(1, minutes))분 후"
+                let countdownPart = days > 0 ? "\(days)일 \(hours)시간 후"
+                    : (hours > 0 ? "\(hours)시간 \(minutes)분 후" : "\(max(1, minutes))분 후")
                 let suffix = utilization >= 100.0 ? " (한도 소진)" : ""
                 return "\(exactLabel) 리셋 · \(countdownPart)\(suffix)"
             } else {
-                let countdownPart = hours > 0 ? "in \(hours) hr \(minutes) min" : "in \(max(1, minutes)) min"
+                let countdownPart = days > 0 ? "in \(days) day\(days == 1 ? "" : "s") \(hours) hr"
+                    : (hours > 0 ? "in \(hours) hr \(minutes) min" : "in \(max(1, minutes)) min")
                 let suffix = utilization >= 100.0 ? " (Limit Reached)" : ""
                 return "Resets \(exactLabel) · \(countdownPart)\(suffix)"
             }
@@ -201,8 +205,15 @@ public struct AIProviderUsageSummary: Identifiable, Equatable, Sendable {
     public let id: String
     public let provider: AIProviderType
     public let primaryWindow: AIQuotaWindow     // 5-Hour rolling window
+    public let additionalWindows: [AIQuotaWindow]
     public let secondaryWindow: AIQuotaWindow?  // 7-Day weekly quota
     public let activeModel: String
+    public let quotaRecordedAt: Date?
+    public var hasRecordedQuota: Bool { isLiveAPI || quotaRecordedAt != nil }
+    public func isQuotaFresh(at now: Date) -> Bool {
+        guard let date = quotaRecordedAt ?? (isLiveAPI ? lastUpdated : nil) else { return false }
+        return now.timeIntervalSince(date) >= -60 && now.timeIntervalSince(date) <= (isLiveAPI ? 120 : 900)
+    }
     public let isLiveAPI: Bool                  // True if fetched from OAuth /usage API
     public let lastUpdated: Date
     public let tierBadge: String                // e.g. "Max 5x", "Plus", "Advanced"
@@ -216,8 +227,10 @@ public struct AIProviderUsageSummary: Identifiable, Equatable, Sendable {
         provider: AIProviderType,
         primaryWindow: AIQuotaWindow,
         secondaryWindow: AIQuotaWindow? = nil,
+        additionalWindows: [AIQuotaWindow] = [],
         activeModel: String,
         isLiveAPI: Bool = false,
+        quotaRecordedAt: Date? = nil,
         lastUpdated: Date = Date(),
         tierBadge: String = "Pro",
         activeSessionTitle: String? = nil,
@@ -229,8 +242,10 @@ public struct AIProviderUsageSummary: Identifiable, Equatable, Sendable {
         self.provider = provider
         self.primaryWindow = primaryWindow
         self.secondaryWindow = secondaryWindow
+        self.additionalWindows = additionalWindows
         self.activeModel = activeModel
         self.isLiveAPI = isLiveAPI
+        self.quotaRecordedAt = quotaRecordedAt
         self.lastUpdated = lastUpdated
         self.tierBadge = tierBadge
         self.activeSessionTitle = activeSessionTitle
@@ -501,7 +516,7 @@ public enum AIProviderType: String, CaseIterable, Identifiable {
         switch self {
         case .claudeCode: return "Claude Code"
         case .codex: return "OpenAI Codex"
-        case .gemini: return "Google Gemini"
+        case .gemini: return "Google Antigravity"
         }
     }
 
@@ -509,7 +524,7 @@ public enum AIProviderType: String, CaseIterable, Identifiable {
         switch self {
         case .claudeCode: return "Claude"
         case .codex: return "Codex"
-        case .gemini: return "Gemini"
+        case .gemini: return "Antigravity"
         }
     }
 

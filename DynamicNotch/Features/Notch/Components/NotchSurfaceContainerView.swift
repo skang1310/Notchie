@@ -94,7 +94,7 @@ struct NotchSurfaceContainerView: View {
             // Flexible rows otherwise reflow sideways as the shell expands.
             .frame(width: notchViewModel.interactiveNotchSize.width,
                    height: notchViewModel.interactiveNotchSize.height,
-                   alignment: .center)
+                   alignment: .top)
             .scaleEffect(
                 x: shouldApplyPressScale ? notchViewModel.pressScale : 1,
                 y: shouldApplyPressScale ? notchViewModel.pressScale : 1,

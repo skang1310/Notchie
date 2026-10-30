@@ -16,7 +16,7 @@ struct TrayActiveNotchContent: NotchContentProtocol, DynamicIslandCustomizable {
     var isExpandable: Bool { true }
     
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        return .init(width: baseWidth + 75, height: baseHeight)
+        return .init(width: baseWidth + 88, height: baseHeight)
     }
 
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {

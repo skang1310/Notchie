@@ -18,11 +18,11 @@ struct AirDropActiveNotchContent: NotchContentProtocol, DynamicIslandCustomizabl
     }
 
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        return .init(width: baseWidth + 70, height: baseHeight)
+        return .init(width: baseWidth + 90, height: baseHeight)
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        return .init(width: baseWidth + 65, height: baseHeight)
+        return .init(width: baseWidth + 85, height: baseHeight)
     }
 
     func expandedSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {

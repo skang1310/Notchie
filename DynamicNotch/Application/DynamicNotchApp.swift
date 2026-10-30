@@ -17,10 +17,6 @@ struct NotchApp: App {
             Image(systemName: "rectangle.topthird.inset.filled")
         }
         .commands {
-            CommandMenu("productivity.palette") {
-                Button("productivity.palette") { ProductivityCoordinator.shared.showPalette() }
-                    .keyboardShortcut("k", modifiers: [.command, .shift])
-            }
             CommandGroup(replacing: .appSettings) {
                 Button { SettingsWindowController.shared.showWindow() } label: {
                     Text("menuBar.settings")

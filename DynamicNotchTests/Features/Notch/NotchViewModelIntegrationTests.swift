@@ -972,7 +972,7 @@ final class NotchViewModelIntegrationTests: XCTestCase {
     }
 
     @MainActor
-    func testTemporaryNotificationCollapsesExpandedLiveActivityBeforeRestore() async {
+    func testUrgentNotificationCollapsesExpandedLiveActivityBeforeRestore() async {
         let viewModel = NotchViewModel(
             settings: TestNotchSettings(),
             hideDelay: 0.01,
@@ -1003,7 +1003,7 @@ final class NotchViewModelIntegrationTests: XCTestCase {
 
         viewModel.send(
             .showTemporaryNotification(
-                TestNotchContent(id: "temporary", priority: 0),
+                TestNotchContent(id: "temporary", priority: NotchContentPriority.lockScreen),
                 duration: .infinity
             )
         )
@@ -1403,6 +1403,9 @@ final class NotchViewModelIntegrationTests: XCTestCase {
             await MainActor.run { viewModel.notchModel.isPresentingExpandedLiveActivity }
         }
         XCTAssertFalse(viewModel.shouldApplyPressScale)
+
+        viewModel.handleOutsideClick()
+        await assertEventually { await MainActor.run { !viewModel.notchModel.isLiveActivityExpanded } }
 
         // Compact live activity with allowsPressScaleEffect = false: scaleEffect disabled
         viewModel.send(

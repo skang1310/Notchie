@@ -102,9 +102,15 @@ private extension NotchCustomScaleModifier {
                 handleHoverChange(isHovering: hovering)
             }
             .onChange(of: notchViewModel.displayedPresentationID) {
-                if notchViewModel.displayedPresentationID == nil {
-                    resetInteractionState(cancelScaleAnimation: true)
-                }
+                resetInteractionState(cancelScaleAnimation: true)
+            }
+            .onChange(of: notchViewModel.pointerInteractionRevision) {
+                isHovering = false
+                resetInteractionState(cancelScaleAnimation: true)
+            }
+            .onChange(of: notchViewModel.isMenuTracking) {
+                if notchViewModel.isMenuTracking { cancelPendingCollapse() }
+                else if !isHovering { scheduleHoverCollapseIfNeeded() }
             }
             .onChange(of: notchViewModel.isActivityPresentationHidden) {
                 if notchViewModel.isActivityPresentationHidden && !notchViewModel.isLocked && notchViewModel.notchModel.temporaryNotificationContent == nil {
@@ -225,6 +231,9 @@ private extension NotchCustomScaleModifier {
     private func handleHoverChange(isHovering: Bool) {
         let wasHovering = self.isHovering
         self.isHovering = isHovering
+        if !isHovering && !notchViewModel.notchModel.isLiveActivityExpanded {
+            notchViewModel.cancelPendingExpansion()
+        }
 
         if isHovering {
             cancelPendingCollapse()
@@ -308,12 +317,15 @@ private extension NotchCustomScaleModifier {
         if timeSinceExpansion < 0.5 {
             delay = 0.5 - timeSinceExpansion
         } else {
-            delay = 0.05
+            delay = 0.18
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { @MainActor in
             guard pendingCollapseToken == token,
                   !isHovering,
+                  !isPressed,
+                  !notchViewModel.isMenuTracking,
+                  !notchViewModel.isHoveringScrollableContent,
                   notchViewModel.shouldCollapseActiveContentOnHoverLeaves else {
                 return
             }

@@ -158,10 +158,9 @@ final class SystemAudioChangeObserver {
             return
         }
 
-        if Date().timeIntervalSince(audioService.lastProgrammaticChangeAt) < programmaticEchoWindow {
-            // We just wrote this value from the media-key path; the HUD is already
-            // being shown by HardwareHUDMonitor. Keep our baseline in sync but
-            // stay silent.
+        if Date().timeIntervalSince(audioService.lastProgrammaticChangeAt) < programmaticEchoWindow || SoundMixerService.shared.isAdjustingVolume {
+            // We just wrote this value from the media-key or Sound Mixer path; the HUD
+            // should not duplicate it or conflict with Sound Mixer sliders.
             lastReportedLevel = currentLevel()
             return
         }

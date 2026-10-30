@@ -170,6 +170,9 @@ extension AppDelegate {
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
+            center.addObserver(self, selector: #selector(handleDisplayConfigurationChange), name: name, object: nil)
+        }
     }
     
     func updateExternalDrivesMonitoringState() {
@@ -186,8 +189,26 @@ extension AppDelegate {
 
     @objc
     func handleWorkspaceContextChange(_ notification: Notification) {
-        DispatchQueue.main.async { [weak self] in
-            self?.updateWindowFrame()
+        contextUpdateWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.updateWindowFrame() }
+        contextUpdateWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: work)
+    }
+
+    @objc
+    func handleDisplayConfigurationChange(_ notification: Notification) {
+        displayRecoveryWorkItem?.cancel()
+        hideWindowWorkItem?.cancel()
+        hideWindowWorkItem = nil
+        notchViewModel.invalidatePointerInteraction()
+        updateWindowFrame()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.displayRecoveryWorkItem = nil
+            self.updateWindowFrame()
+            if let window = self.window { self.reRegisterDragDestination(for: window) }
         }
+        displayRecoveryWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
     }
 }

@@ -605,27 +605,45 @@ private extension FolderFileDownloadMonitor {
     }
 }
 
+/// Retained by FSEvents independently of the watcher, including callbacks already enqueued at stop.
+private nonisolated final class DirectoryWatcherCallback {
+    private let lock = NSLock()
+    private var callback: (() -> Void)?
+    init(_ callback: @escaping () -> Void) { self.callback = callback }
+    func invoke() {
+        lock.lock(); let callback = callback; lock.unlock()
+        callback?()
+    }
+    func invalidate() { lock.lock(); callback = nil; lock.unlock() }
+}
+
 private nonisolated final class DirectoryWatcher {
     private var stream: FSEventStreamRef?
-    private let onChange: () -> Void
+    private let callback: DirectoryWatcherCallback
 
     init?(urls: [URL], queue: DispatchQueue, onChange: @escaping () -> Void) {
         guard !urls.isEmpty else { return nil }
-        self.onChange = onChange
+        self.callback = DirectoryWatcherCallback(onChange)
 
         let paths = urls.map { $0.path } as CFArray
         var context = FSEventStreamContext(
             version: 0,
-            info: Unmanaged.passUnretained(self).toOpaque(),
-            retain: nil,
-            release: nil,
+            info: Unmanaged.passUnretained(self.callback).toOpaque(),
+            retain: { info in
+                guard let info else { return nil }
+                _ = Unmanaged<DirectoryWatcherCallback>.fromOpaque(info).retain()
+                return info
+            },
+            release: { info in
+                guard let info else { return }
+                Unmanaged<DirectoryWatcherCallback>.fromOpaque(info).release()
+            },
             copyDescription: nil
         )
 
         let callback: FSEventStreamCallback = { _, clientCallBackInfo, _, _, _, _ in
             guard let clientCallBackInfo else { return }
-            let watcher = Unmanaged<DirectoryWatcher>.fromOpaque(clientCallBackInfo).takeUnretainedValue()
-            watcher.onChange()
+            Unmanaged<DirectoryWatcherCallback>.fromOpaque(clientCallBackInfo).takeUnretainedValue().invoke()
         }
 
         let flags = UInt32(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer)
@@ -648,6 +666,7 @@ private nonisolated final class DirectoryWatcher {
     }
 
     func stop() {
+        callback.invalidate()
         guard let stream else { return }
         FSEventStreamStop(stream)
         FSEventStreamInvalidate(stream)

@@ -256,7 +256,7 @@ struct QuickToolsView: View {
 
     private var trayClipboardSettingsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ClipboardSnippetsView(onOpenNotes: { localTraySection = .tray }, maxItems: nil)
+            ClipboardSnippetsView(maxItems: nil)
         }
         .padding(10)
         .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
@@ -465,34 +465,10 @@ struct QuickToolDetailSwitcherView: View {
             case "messages": MessagesNotchView(service: MessagesService.shared)
             case "ai": AIUsageNotchView()
             case "transform": ShelfTransformView()
-            case "teleprompter": TeleprompterView(controller: store.teleprompter)
-            case "emoji": ShelfEmojiView()
             case "stats": ShelfSystemStatsView()
-            case "notes": QuickNotesView(store: store.notes)
-            case "stopwatch": QuickStopwatchView(controller: store.stopwatch)
-            case "awake": KeepAwakeView(controller: store.awake)
-            case "focus": FocusSessionView(controller: store.focus)
-            case "tasks": TodayTasksView()
-            case "snippets": ClipboardSnippetsView(onOpenNotes: { store.selectedTool = "notes"; store.hubMode = .tools })
-            case "rules": AppPresentationRulesView()
-            case "jobs": LocalJobView(runner: store.jobs)
+            case "snippets": ClipboardSnippetsView()
             case "status": ResourceStatusView(store: store)
-            case "calculator": CalculatorToolView()
-            case "shortcuts": ShortcutsToolView()
-            case "zip": ZipToolView()
-            case "developer": DeveloperTextToolsView()
-            case "reports": ReportCompareToolView()
-            case "cases": SupportCaseLauncherView()
-            default:
-                VStack(spacing: 14) {
-                    Text(store.sampledColor ?? "#------").font(.system(size: 30, design: .monospaced))
-                    HStack {
-                        Button("settings.tools.color.pick") { store.sampleColor() }
-                        Button("settings.tools.color.copy") { store.copyColor() }.disabled(store.sampledColor == nil)
-                    }
-                    Text("settings.tools.color.desc").font(.caption).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            default: ShelfSystemStatsView()
             }
         }
     }
@@ -652,7 +628,13 @@ struct NotchiePanoramicHubView: View {
             Group {
                 switch store.hubMode {
                 case .nook, .widgets:
-                    nookThreeColumnDashboard
+                    VStack(spacing: 8) {
+                        nookThreeColumnDashboard
+                        SystemStatusStrip {
+                            store.selectedTool = "stats"
+                            store.hubMode = .tools
+                        }
+                    }
                 case .ai:
                     aiIndependentNotchContainer
                 case .meeting:
@@ -661,8 +643,6 @@ struct NotchiePanoramicHubView: View {
                     MessagesNotchView(service: MessagesService.shared, accentColor: accentColor)
                 case .tray, .shots, .transform, .clips:
                     trayAndShotsUnifiedContainer
-                case .notes:
-                    studioUnifiedContainer
                 case .tools:
                     panoramicToolsBrowser
                 }
@@ -673,9 +653,9 @@ struct NotchiePanoramicHubView: View {
         .padding(.top, isNotchlessScreen ? 6 : 5)
         .padding(.bottom, isNotchlessScreen ? 12 : 13)
         .environment(\.colorScheme, .dark)
-        .onDisappear {
-            if store.isMirrorCameraActive {
-                store.isMirrorCameraActive = false
+        .onAppear {
+            if MeetingControlService.shared.session.isActive {
+                store.hubMode = .meeting
             }
         }
     }
@@ -725,10 +705,10 @@ struct NotchiePanoramicHubView: View {
             Color.clear
                 .frame(width: isNotchlessScreen ? 16 : 148)
 
-            // Right Wing: Communication, Live Controls & Settings (Meeting | Messages | Settings)
+            // Right Wing: Contextual App Controls & Settings
             HStack(spacing: 5) {
                 let meetingService = MeetingControlService.shared
-                if meetingService.session.isActive, store.hubMode != .meeting {
+                if meetingService.session.isActive {
                     let session = meetingService.session
                     Button {
                         store.hubMode = .meeting
@@ -742,23 +722,52 @@ struct NotchiePanoramicHubView: View {
                                 .font(.system(size: 9))
                                 .foregroundStyle(session.platform.accentColor)
 
+                            Text(session.platform.displayName)
+                                .font(.system(size: 11, weight: store.hubMode == .meeting ? .bold : .semibold, design: .rounded))
+                                .foregroundStyle(store.hubMode == .meeting ? .white : .white.opacity(0.88))
+
                             Text(session.formattedDuration)
                                 .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.white.opacity(0.8))
                         }
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3.5)
                         .background(
                             Capsule()
-                                .fill(session.isMuted ? Color.red.opacity(0.2) : Color.green.opacity(0.18))
+                                .fill(store.hubMode == .meeting ? session.platform.accentColor.opacity(0.32) : Color.white.opacity(0.08))
                                 .overlay(
-                                    Capsule().strokeBorder((session.isMuted ? Color.red : Color.green).opacity(0.4), lineWidth: 0.8)
+                                    Capsule().strokeBorder(session.platform.accentColor.opacity(store.hubMode == .meeting ? 0.65 : 0.25), lineWidth: 0.8)
                                 )
                         )
                     }
                     .buttonStyle(.plain)
-                    .help(text("Active Meeting Control", "진행 중인 미팅 제어"))
-                    .transition(.opacity)
+                    .help(text("Active Meeting Controls", "진행 중인 미팅 제어"))
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                } else if store.hubMode == .messages {
+                    Button {
+                        store.hubMode = .nook
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(Color.blue)
+                            Text(text("Messages", "메시지"))
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(
+                            Capsule()
+                                .fill(Color.blue.opacity(0.28))
+                                .overlay(Capsule().strokeBorder(Color.blue.opacity(0.5), lineWidth: 0.8))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(text("Close Messages", "메시지 닫기"))
                 }
 
                 if let vm = resolvedNowPlayingViewModel, vm.hasActiveSession, store.hubMode != .nook {
@@ -770,26 +779,6 @@ struct NotchiePanoramicHubView: View {
                         store.isLyricsVisibleInCalendarSlot = true
                     }
                     .transition(.opacity)
-                }
-
-                primaryWingTabButton(
-                    title: text("Meeting", "미팅"),
-                    systemImage: "video.fill",
-                    isSelected: store.hubMode == .meeting,
-                    badgeCount: 0,
-                    badgeIsAlert: false
-                ) {
-                    store.hubMode = .meeting
-                }
-
-                primaryWingTabButton(
-                    title: text("Messages", "메시지"),
-                    systemImage: "bubble.left.and.bubble.right.fill",
-                    isSelected: store.hubMode == .messages,
-                    badgeCount: 0,
-                    badgeIsAlert: false
-                ) {
-                    store.hubMode = .messages
                 }
 
                 // Apple Glass Settings Button
@@ -989,7 +978,6 @@ struct NotchiePanoramicHubView: View {
                         )
                 case .clips:
                     ClipboardSnippetsView(
-                        onOpenNotes: { store.hubMode = .tray },
                         maxItems: 10,
                         onOpenSettings: {
                             SettingsWindowController.shared.showWindow()
@@ -1016,85 +1004,7 @@ struct NotchiePanoramicHubView: View {
         }
     }
 
-    // MARK: - Unified Studio Container (Clipboard · Notes)
 
-    private var studioUnifiedContainer: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 6) {
-                subModeSegmentButton(
-                    title: text("Clipboard", "클립보드"),
-                    icon: "doc.on.clipboard.fill",
-                    count: ProductivityStorage.shared.document.snippets.count,
-                    isSelected: store.hubMode == .clips
-                ) {
-                    store.hubMode = .clips
-                }
-
-                subModeSegmentButton(
-                    title: text("Quick Notes", "빠른 메모"),
-                    icon: "note.text",
-                    count: 0,
-                    isSelected: store.hubMode == .notes
-                ) {
-                    store.hubMode = .notes
-                }
-
-                Spacer()
-
-                Button {
-                    withAnimation(.spring(response: 0.26, dampingFraction: 0.84)) {
-                        store.hubMode = .nook
-                    }
-                } label: {
-                    HStack(spacing: 3.5) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 9, weight: .bold))
-                        Text(text("Back to Nook", "Nook으로 돌아가기"))
-                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundStyle(.white.opacity(0.85))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(Color.white.opacity(0.09), in: Capsule())
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8))
-                }
-                .buttonStyle(.plain)
-            }
-
-            Group {
-                if store.hubMode == .clips {
-                    ClipboardSnippetsView(
-                        onOpenNotes: { store.selectedTool = "notes"; store.hubMode = .tools },
-                        maxItems: 10,
-                        onOpenSettings: {
-                            SettingsWindowController.shared.showWindow()
-                        }
-                    )
-                        .padding(8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.045))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
-                                )
-                        )
-                } else {
-                    QuickNotesView(store: store.notes)
-                        .padding(8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.045))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
-                                )
-                        )
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
 
     private func subModeSegmentButton(
         title: String,
@@ -1154,6 +1064,12 @@ struct NotchiePanoramicHubView: View {
                     }
                 },
                 isLyricsActive: store.isLyricsVisibleInCalendarSlot,
+                onToggleSoundMixer: {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                        store.toggleSoundMixerInCalendarSlot()
+                    }
+                },
+                isSoundMixerActive: store.isSoundMixerVisibleInCalendarSlot,
                 plainStyle: true
             )
             .frame(width: 230, height: 136)
@@ -1174,6 +1090,21 @@ struct NotchiePanoramicHubView: View {
                     insertion: .opacity.combined(with: .scale(scale: 0.96)),
                     removal: .opacity.combined(with: .scale(scale: 0.96))
                 ))
+            } else if store.isSoundMixerVisibleInCalendarSlot {
+                NotchieSoundMixerView(
+                    nowPlayingViewModel: resolvedNowPlayingViewModel,
+                    accentColor: accentColor,
+                    onDismiss: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            store.isSoundMixerVisibleInCalendarSlot = false
+                        }
+                    }
+                )
+                .frame(maxWidth: .infinity).frame(height: 136)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                    removal: .opacity.combined(with: .scale(scale: 0.96))
+                ))
             } else {
                 NotchieCalendarScheduleColumn(
                     calendarViewModel: store.calendarViewModel,
@@ -1182,7 +1113,6 @@ struct NotchiePanoramicHubView: View {
                     onSwitchToTools: {
                         store.hubMode = .tray
                     },
-                    onSwitchToTasks: {},
                     compactHome: true
                 )
                 .frame(maxWidth: .infinity).frame(height: 136)
@@ -1393,6 +1323,8 @@ private struct NotchieNowPlayingStudioColumn: View {
     let onOpenPlaybackSource: @MainActor @Sendable () -> Void
     var onToggleLyrics: (@MainActor @Sendable () -> Void)? = nil
     var isLyricsActive: Bool = false
+    var onToggleSoundMixer: (@MainActor @Sendable () -> Void)? = nil
+    var isSoundMixerActive: Bool = false
 
     var plainStyle = false
 
@@ -1450,6 +1382,8 @@ private struct NotchieNowPlayingStudioColumn: View {
                     onOpenPlaybackSource: { onOpenPlaybackSource() },
                     onToggleLyrics: onToggleLyrics,
                     isLyricsActive: isLyricsActive,
+                    onToggleSoundMixer: onToggleSoundMixer,
+                    isSoundMixerActive: isSoundMixerActive,
                     scrubProgress: $scrubProgress
                 )
                 .padding(.horizontal, 12)
@@ -1576,6 +1510,8 @@ private struct ObservedNowPlayingStudioBody: View {
     let onOpenPlaybackSource: @MainActor @Sendable () -> Void
     var onToggleLyrics: (@MainActor @Sendable () -> Void)? = nil
     var isLyricsActive: Bool = false
+    var onToggleSoundMixer: (@MainActor @Sendable () -> Void)? = nil
+    var isSoundMixerActive: Bool = false
     @Binding var scrubProgress: CGFloat?
 
     private var resolvedSnapshot: NowPlayingSnapshot {
@@ -1593,7 +1529,7 @@ private struct ObservedNowPlayingStudioBody: View {
 
     var body: some View {
         let snapshot = resolvedSnapshot
-        TimelineView(.periodic(from: .now, by: snapshot.isPlaying ? 0.4 : 15.0)) { context in
+        PresentationTimeline(interval: snapshot.isPlaying ? 0.4 : 15.0) { context in
             let elapsedTime = nowPlayingViewModel.snapshot != nil
                 ? nowPlayingViewModel.elapsedTime(at: context.date)
                 : snapshot.elapsedTime
@@ -1741,7 +1677,22 @@ private struct ObservedNowPlayingStudioBody: View {
 
                         Spacer(minLength: 0)
 
-                        if mediaSettings?.nowPlayingAppearanceOptions.showsOutputDeviceButton ?? true {
+                        if let onToggleSoundMixer {
+                            Button {
+                                onToggleSoundMixer()
+                            } label: {
+                                Image(systemName: nowPlayingViewModel.currentAudioOutputRoute?.systemImageName ?? "laptopcomputer")
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .foregroundStyle(isSoundMixerActive ? accentColor : Color.white.opacity(0.68))
+                                    .frame(width: 22, height: 22)
+                                    .background(
+                                        Circle()
+                                            .fill(isSoundMixerActive ? accentColor.opacity(0.22) : Color.white.opacity(0.06))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .help(privacyText("Toggle Sound Mixer in calendar slot", "사운드 믹서 및 앱별 볼륨 조절"))
+                        } else if mediaSettings?.nowPlayingAppearanceOptions.showsOutputDeviceButton ?? true {
                             AudioOutputRoutePickerButton(
                                 nowPlayingViewModel: nowPlayingViewModel,
                                 width: 22,
@@ -1882,13 +1833,15 @@ private struct NotchieCalendarScheduleColumn: View {
     @Binding var selectedDayOffset: Int
     let accentColor: Color
     let onSwitchToTools: () -> Void
-    let onSwitchToTasks: () -> Void
     var compactHome = false
 
-    @ObservedObject private var productivityStorage = ProductivityStorage.shared
+    @State private var isShowingFullSchedule = false
     @State private var isHoveringDates = false
     @State private var scrollMonitor: Any?
     @State private var accumulatedDelta: CGFloat = 0
+    @State private var isHoveringSchedule = false
+    @State private var scheduleScrollMonitor: Any?
+    @State private var accumulatedScheduleDelta: CGFloat = 0
 
     private func text(_ en: String, _ ko: String) -> String {
         privacyText(en, ko)
@@ -1947,6 +1900,76 @@ private struct NotchieCalendarScheduleColumn: View {
         }
     }
 
+    private func physicalVerticalDelta(from event: NSEvent) -> CGFloat {
+        let deltaY = CGFloat(event.scrollingDeltaY)
+        return event.isDirectionInvertedFromDevice ? -deltaY : deltaY
+    }
+
+    private func handleScheduleHover(_ hovering: Bool) {
+        isHoveringSchedule = hovering
+        if hovering {
+            accumulatedScheduleDelta = 0
+            if scheduleScrollMonitor == nil {
+                scheduleScrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                    // If predominantly horizontal, ignore for calendar open/close (allow date navigation)
+                    if abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) * 1.5 {
+                        return event
+                    }
+
+                    let physicalDelta = self.physicalVerticalDelta(from: event)
+
+                    if !self.isShowingFullSchedule {
+                        // Closed: downward scroll ("밑으로") opens full schedule
+                        if physicalDelta < -0.25 {
+                            self.accumulatedScheduleDelta += physicalDelta
+                            if self.accumulatedScheduleDelta <= -0.9 || abs(event.scrollingDeltaY) >= 0.8 {
+                                self.accumulatedScheduleDelta = 0
+                                DispatchQueue.main.async {
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                        self.isShowingFullSchedule = true
+                                        QuickToolsStore.shared.isCalendarFullScheduleVisible = true
+                                    }
+                                }
+                                return nil
+                            }
+                        } else if physicalDelta > 0.25 {
+                            self.accumulatedScheduleDelta = 0
+                        }
+                        return event
+                    } else {
+                        // Open: upward scroll ("위로") closes full schedule
+                        if physicalDelta > 0.25 {
+                            self.accumulatedScheduleDelta += physicalDelta
+                            if self.accumulatedScheduleDelta >= 0.9 || abs(event.scrollingDeltaY) >= 0.8 {
+                                self.accumulatedScheduleDelta = 0
+                                DispatchQueue.main.async {
+                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                                        self.isShowingFullSchedule = false
+                                        QuickToolsStore.shared.isCalendarFullScheduleVisible = false
+                                    }
+                                }
+                                return nil
+                            }
+                        } else if physicalDelta < -0.25 {
+                            self.accumulatedScheduleDelta = 0
+                        }
+                        return event
+                    }
+                }
+            }
+        } else {
+            removeScheduleScrollMonitor()
+        }
+    }
+
+    private func removeScheduleScrollMonitor() {
+        if let monitor = scheduleScrollMonitor {
+            NSEvent.removeMonitor(monitor)
+            scheduleScrollMonitor = nil
+        }
+        accumulatedScheduleDelta = 0
+    }
+
     private func events(on date: Date) -> [EKEvent] {
         guard let events = calendarViewModel?.events else { return [] }
         let cal = Calendar.current
@@ -1957,11 +1980,47 @@ private struct NotchieCalendarScheduleColumn: View {
     }
 
     var body: some View {
-        let pendingTask = productivityStorage.todayTasks.first(where: { !$0.done }) ?? productivityStorage.todayTasks.first
+        Group {
+            if isShowingFullSchedule {
+                fullScheduleView
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.97)),
+                        removal: .opacity.combined(with: .scale(scale: 0.97))
+                    ))
+            } else if compactHome {
+                nookCalendar
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.97)),
+                        removal: .opacity.combined(with: .scale(scale: 0.97))
+                    ))
+            } else {
+                standardCalendar
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.97)),
+                        removal: .opacity.combined(with: .scale(scale: 0.97))
+                    ))
+            }
+        }
+        .onDisappear {
+            isHoveringDates = false
+            if let monitor = scrollMonitor {
+                NSEvent.removeMonitor(monitor)
+                scrollMonitor = nil
+            }
+            isHoveringSchedule = false
+            removeScheduleScrollMonitor()
+            QuickToolsStore.shared.isCalendarFullScheduleVisible = false
+        }
+        .onReceive(QuickToolsStore.shared.$isCalendarFullScheduleVisible) { isVisible in
+            if !isVisible && isShowingFullSchedule {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                    isShowingFullSchedule = false
+                }
+            }
+        }
+    }
 
-        if compactHome {
-            nookCalendar
-        } else {
+    private var standardCalendar: some View {
         ZStack {
             if !compactHome {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -2012,45 +2071,6 @@ private struct NotchieCalendarScheduleColumn: View {
                     .buttonStyle(.plain)
 
                     Spacer()
-
-                    if !compactHome {
-                    if let task = pendingTask {
-                        Button {
-                            productivityStorage.toggleTask(task.id)
-                        } label: {
-                            HStack(spacing: 3.5) {
-                                Image(systemName: task.done ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 9.5, weight: .bold))
-                                    .foregroundStyle(task.done ? accentColor : .white.opacity(0.6))
-                                Text(task.text)
-                                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.85))
-                                    .strikethrough(task.done)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: 68, alignment: .leading)
-                            }
-                            .padding(.horizontal, 6.5)
-                            .padding(.vertical, 2.5)
-                            .background(Color.white.opacity(0.08), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        Button(action: onSwitchToTasks) {
-                            HStack(spacing: 3) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 8.5, weight: .bold))
-                                    .foregroundStyle(accentColor)
-                                Text(text("Task", "할 일"))
-                                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.78))
-                            }
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2.5)
-                            .background(Color.white.opacity(0.08), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    }
                 }
 
                 // Middle Row: Precision 7-Day Horizontal Strip (Single-Line Guaranteed)
@@ -2146,7 +2166,6 @@ private struct NotchieCalendarScheduleColumn: View {
             .padding(.horizontal, 11)
             .padding(.vertical, 9)
         }
-        }
     }
 
     /// The home calendar stays open and airy: month + dates above, agenda below.
@@ -2233,22 +2252,43 @@ private struct NotchieCalendarScheduleColumn: View {
     private func eventDetailCard(for event: EKEvent) -> some View {
         let title = calendarViewModel?.displayTitle(for: event) ?? event.title ?? "Event"
         let meetingURL = MeetingLink.first(url: event.url, notes: event.notes, location: event.location)
+        let dayEvents = events(on: selectedDate)
+        let otherEventsCount = max(0, dayEvents.count - 1)
 
         return HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 2)
-                .fill(accentColor)
+                .fill(event.calendar?.cgColor.map { Color(cgColor: $0) } ?? accentColor)
                 .frame(width: 3, height: 24)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
 
-                Text(eventTimeRangeText(for: event))
-                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
-                    .lineLimit(1)
+                    if otherEventsCount > 0 {
+                        Text("+\(otherEventsCount)")
+                            .font(.system(size: 8, weight: .bold, design: .rounded))
+                            .foregroundStyle(accentColor)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(accentColor.opacity(0.18), in: Capsule())
+                    }
+                }
+
+                HStack(spacing: 4) {
+                    Text(eventTimeRangeText(for: event))
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.56))
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(isHoveringSchedule ? accentColor : .white.opacity(0.35))
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -2283,10 +2323,204 @@ private struct NotchieCalendarScheduleColumn: View {
         .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(0.055))
+                .fill(isHoveringSchedule ? Color.white.opacity(0.09) : Color.white.opacity(0.055))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.7)
+                        .strokeBorder(isHoveringSchedule ? accentColor.opacity(0.4) : Color.white.opacity(0.09), lineWidth: 0.8)
+                )
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                isShowingFullSchedule = true
+                QuickToolsStore.shared.isCalendarFullScheduleVisible = true
+            }
+        }
+        .onHover { hovering in
+            handleScheduleHover(hovering)
+        }
+        .help(text("Click or scroll down to view full schedule", "클릭하거나 밑으로 스크롤하여 전체 일정 보기"))
+    }
+
+    // MARK: - Full Schedule View (전체 일정)
+
+    private var fullScheduleView: some View {
+        let dayEvents = events(on: selectedDate)
+
+        return VStack(spacing: 5) {
+            // Header Bar: [📅 10월 30일 (수) 전체 일정] ... [N개] ... [✕ 접기]
+            HStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(accentColor)
+
+                    Text(selectedDate, format: .dateTime.month().day().weekday(.short))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text(text("Schedule", "전체 일정"))
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+
+                Text("\(dayEvents.count)")
+                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(accentColor)
+                    .padding(.horizontal, 4.5)
+                    .padding(.vertical, 1)
+                    .background(accentColor.opacity(0.18), in: Capsule())
+
+                Spacer()
+
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                        isShowingFullSchedule = false
+                        QuickToolsStore.shared.isCalendarFullScheduleVisible = false
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(text("Collapse", "접기"))
+                            .font(.system(size: 9, weight: .semibold))
+                        Image(systemName: "chevron.up")
+                            .font(.system(size: 8, weight: .bold))
+                    }
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2.5)
+                    .background(Color.white.opacity(0.1), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6))
+                }
+                .buttonStyle(.plain)
+                .help(text("Return to next event view", "다음 일정 보기로 접기"))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                    isShowingFullSchedule = false
+                    QuickToolsStore.shared.isCalendarFullScheduleVisible = false
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
+
+            // Scrollable Agenda List of All Events
+            if dayEvents.isEmpty {
+                VStack(spacing: 4) {
+                    Image(systemName: "calendar.badge.checkmark")
+                        .font(.system(size: 15))
+                    Text(text("No events for this day", "이 날의 일정이 없습니다"))
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundStyle(.white.opacity(0.45))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                        isShowingFullSchedule = false
+                        QuickToolsStore.shared.isCalendarFullScheduleVisible = false
+                    }
+                }
+            } else {
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(spacing: 4) {
+                        ForEach(dayEvents, id: \.eventIdentifier) { event in
+                            scheduleRow(for: event)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 2)
+                }
+                .frame(maxHeight: .infinity)
+            }
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.08), Color.white.opacity(0.03)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+                )
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                isShowingFullSchedule = false
+                QuickToolsStore.shared.isCalendarFullScheduleVisible = false
+            }
+        }
+        .onHover { hovering in
+            handleScheduleHover(hovering)
+        }
+        .help(text("Click or scroll up to return to next event view", "클릭하거나 위로 스크롤하여 전체 일정 접기"))
+    }
+
+    private func scheduleRow(for event: EKEvent) -> some View {
+        let title = calendarViewModel?.displayTitle(for: event) ?? event.title ?? "Event"
+        let meetingURL = MeetingLink.first(url: event.url, notes: event.notes, location: event.location)
+
+        return HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(event.calendar?.cgColor.map { Color(cgColor: $0) } ?? accentColor)
+                .frame(width: 2.5, height: 20)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Text(eventTimeRangeText(for: event))
+                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let meetingURL {
+                Button {
+                    NSWorkspace.shared.open(meetingURL)
+                } label: {
+                    HStack(spacing: 2.5) {
+                        Image(systemName: "video.fill")
+                            .font(.system(size: 8, weight: .bold))
+                        Text(text("Join", "참여"))
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2.5)
+                    .background(Color.blue, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    calendarViewModel?.openCalendarEvent()
+                } label: {
+                    Image(systemName: "arrow.up.right.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.6)
                 )
         )
     }
@@ -2431,7 +2665,7 @@ private struct NotchieNotchLyricsColumn: View {
 
                 // Lyrics Content Body
                 if let vm = nowPlayingViewModel {
-                    TimelineView(.periodic(from: .now, by: 0.35)) { context in
+                    PresentationTimeline(interval: 0.35) { context in
                         lyricsBody(viewModel: vm, at: context.date)
                     }
                 } else {
@@ -2762,43 +2996,7 @@ private struct ObservedPanoramicTrayBody: View {
     }
 }
 
-// MARK: - Stopwatch & KeepAwake Views
 
-struct QuickStopwatchView: View {
-    @ObservedObject var controller: StopwatchController
-    var body: some View {
-        VStack(spacing: 16) {
-            if controller.state.isRunning {
-                TimelineView(.periodic(from: .now, by: 0.2)) { _ in time(StopwatchState.formatted(controller.state.elapsed(at: .now))) }
-            } else { time(StopwatchState.formatted(controller.state.accumulated)) }
-            HStack(spacing: 20) {
-                Button(LocalizedStringKey(controller.state.isRunning ? "settings.tools.pause" : "settings.tools.start")) {
-                    if controller.state.isRunning { controller.pause() } else { controller.start() }
-                }
-                Button("settings.tools.reset") { controller.reset() }
-            }
-            Text("settings.tools.stopwatch.desc").font(.caption).foregroundStyle(.secondary)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    private func time(_ value: String) -> some View { Text(value).font(.system(size: 34, weight: .light, design: .monospaced)).monospacedDigit() }
-}
-
-struct KeepAwakeView: View {
-    @ObservedObject var controller: KeepAwakeController
-    var body: some View {
-        VStack(spacing: 14) {
-            Image(systemName: controller.until == nil ? "cup.and.saucer" : "cup.and.saucer.fill").font(.title)
-            if let until = controller.until {
-                Text(until, style: .timer).monospacedDigit()
-                Button("settings.tools.stop") { controller.stop() }
-            } else {
-                HStack { ForEach([15, 30, 60], id: \.self) { minutes in Button("\(minutes) min") { controller.start(seconds: Double(minutes * 60)) } } }
-            }
-            if let error = controller.error { Text(error).foregroundStyle(.red).font(.caption) }
-            Text("settings.tools.awake.desc").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
 
 // MARK: - QuickToolsNotchContent (Panoramic Geometry & Corner Radius)
 
@@ -2876,28 +3074,14 @@ struct QuickToolsCompactView: View {
 
             Spacer()
 
-            // Right Wing: Tools & Focus Session
+            // Right Wing: Tools
             HStack(spacing: 7) {
-                if store.focus.timer.isActive {
-                    FocusCompactView(controller: store.focus)
-                }
-
                 Image(systemName: "wrench.and.screwdriver.fill")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(store.hubMode == .tools ? accentColor : .white.opacity(0.85))
             }
         }
         .padding(.horizontal, 14)
-    }
-}
-
-struct FocusCompactView: View {
-    @ObservedObject var controller: FocusSessionController
-    var body: some View {
-        Text(controller.timer.formattedRemainingTime)
-            .monospacedDigit()
-            .font(.caption)
-            .foregroundStyle(ApplicationSettingsStore.currentCustomAccentColor())
     }
 }
 

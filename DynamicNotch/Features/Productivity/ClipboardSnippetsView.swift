@@ -2,7 +2,6 @@ import SwiftUI
 internal import AppKit
 
 struct ClipboardSnippetsView: View {
-    var onOpenNotes: () -> Void = {}
     var maxItems: Int? = nil
     var onOpenSettings: (() -> Void)? = nil
     @ObservedObject private var storage = ProductivityStorage.shared
@@ -136,7 +135,6 @@ struct ClipboardSnippetsView: View {
                 .accessibilityIdentifier("clipboard.capture")
             Spacer(minLength: 0)
             HStack(spacing: 2) {
-                segment(privacyText("Notes", "메모"), selected: false) { onOpenNotes() }
                 segment(privacyText("Clipboard", "클립보드"), selected: !favoritesOnly) { favoritesOnly = false }
                 segment(privacyText("Starred", "즐겨찾기"), selected: favoritesOnly) { favoritesOnly = true }
             }.padding(3).background(.primary.opacity(0.05), in: Capsule()).overlay(Capsule().strokeBorder(.primary.opacity(0.08), lineWidth: 0.7))

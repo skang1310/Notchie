@@ -132,11 +132,11 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
         isolated { defaults in
             let store = QuickToolsStore(defaults: defaults)
             XCTAssertEqual(store.enabledTabIDs, QuickToolTab.defaultEnabledIDs)
-            store.setTabEnabled("developer", enabled: true)
-            XCTAssertTrue(store.isTabEnabled("developer"))
+            store.setTabEnabled("status", enabled: true)
+            XCTAssertTrue(store.isTabEnabled("status"))
 
             let reloaded = QuickToolsStore(defaults: defaults)
-            XCTAssertTrue(reloaded.isTabEnabled("developer"))
+            XCTAssertTrue(reloaded.isTabEnabled("status"))
 
             for id in QuickToolTab.allTabs.map(\.id) {
                 reloaded.setTabEnabled(id, enabled: false)
@@ -222,7 +222,7 @@ final class AlcoveSettingsExtensionTests: XCTestCase {
         let hubContent = QuickToolsNotchContent(store: store, openedFromIdleHover: true)
         let nookSize = hubContent.expandedSize(baseWidth: 190, baseHeight: 38)
         XCTAssertGreaterThanOrEqual(nookSize.width, 712)
-        XCTAssertEqual(nookSize.height, 38 + 172)
+        XCTAssertEqual(nookSize.height, 38 + 206, "Home reserves 34 points for the system status strip")
         XCTAssertEqual(hubContent.expandedCornerRadius(baseRadius: 12).top, 19)
         XCTAssertEqual(hubContent.expandedCornerRadius(baseRadius: 12).bottom, 28)
 

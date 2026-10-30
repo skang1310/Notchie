@@ -41,6 +41,26 @@ private final class MockMessagesProvider: MessagesProviderProtocol, @unchecked S
 @MainActor
 final class MeetingAndMessagesTests: XCTestCase {
 
+    func testElapsedTimerOnlyRunsWithVisibleConsumersAndUsesWallClock() {
+        let service = MeetingControlService(provider: MockMeetingControlProvider())
+        defer { service.stopDetection() }
+        service.startMeetingSession(title: "Test", platform: .meet)
+        XCTAssertFalse(service.isElapsedTimerRunning)
+        let first = UUID(), second = UUID()
+        service.acquirePresentation(first)
+        service.acquirePresentation(second)
+        XCTAssertTrue(service.isElapsedTimerRunning)
+        service.updateElapsedTime(now: service.session.startTime!.addingTimeInterval(75))
+        XCTAssertEqual(service.session.elapsedSeconds, 75)
+        service.releasePresentation(first)
+        XCTAssertTrue(service.isElapsedTimerRunning)
+        service.releasePresentation(second)
+        XCTAssertFalse(service.isElapsedTimerRunning)
+        service.acquirePresentation(first)
+        service.stopMeetingSession()
+        XCTAssertFalse(service.isElapsedTimerRunning)
+    }
+
     func testMeetingSessionStateFormatting() {
         var state = MeetingSessionState(
             isActive: true,
@@ -151,9 +171,86 @@ final class MeetingAndMessagesTests: XCTestCase {
         XCTAssertTrue(QuickToolTab.allTabs.contains { $0.id == "messages" })
 
         store.hubMode = .meeting
-        XCTAssertEqual(store.shelfExtraHeight(isIsland: true), 220)
+        XCTAssertEqual(store.shelfExtraHeight(isIsland: true), 54)
 
         store.hubMode = .messages
         XCTAssertEqual(store.shelfExtraHeight(isIsland: true), 280)
+    }
+
+    func testGoogleMeetDetectionAndPlatformProperties() {
+        XCTAssertEqual(MeetingPlatform.meet.displayName, "Google Meet")
+        XCTAssertEqual(MeetingPlatform.meet.iconName, "video.badge.checkmark")
+
+        let mock = MockMeetingControlProvider()
+        mock.detectedMeeting = (.meet, 12345, "Meet - team-sync-daily")
+
+        let service = MeetingControlService(provider: mock)
+        service.pollRunningMeeting()
+
+        XCTAssertTrue(service.session.isActive)
+        XCTAssertEqual(service.session.platform, .meet)
+        XCTAssertEqual(service.session.title, "Meet - team-sync-daily")
+        XCTAssertEqual(service.detectedPid, 12345)
+
+        // Ending meeting cleans up session
+        mock.detectedMeeting = nil
+        service.pollRunningMeeting()
+        XCTAssertFalse(service.session.isActive)
+    }
+
+    func testNotchIncomingMessageAndReplyContent() {
+        let incoming = NotchIncomingMessage(
+            sender: "Evyatar Ram",
+            text: "Can you review the PR?",
+            app: .slack
+        )
+        XCTAssertEqual(incoming.avatarInitials, "ER")
+        XCTAssertEqual(incoming.app.displayName, "Slack")
+        XCTAssertEqual(incoming.app.iconName, "number")
+
+        var sentReply: String?
+        var dismissed = false
+        let content = NotchMessageReplyContent(
+            message: incoming,
+            onSend: { sentReply = $0 },
+            onDismiss: { dismissed = true }
+        )
+
+        XCTAssertEqual(content.id, "message.reply." + incoming.id)
+        XCTAssertTrue(content.isExpandable)
+        XCTAssertTrue(content.expandsOnTap)
+        XCTAssertTrue(content.pinsExpandedInteraction)
+        XCTAssertEqual(content.priority, 950)
+
+        let compact = content.compactSize(baseWidth: 100, baseHeight: 30)
+        XCTAssertGreaterThan(compact.width, 100)
+
+        let expanded = content.expandedSize(baseWidth: 100, baseHeight: 30)
+        XCTAssertGreaterThan(expanded.width, compact.width)
+        XCTAssertGreaterThan(expanded.height, compact.height)
+
+        XCTAssertNotNil(content.compactView())
+        XCTAssertNotNil(content.expandedView())
+    }
+
+    func testKoreanLanguageSystemResolution() {
+        let lang = DynamicNotchLanguage.system
+        XCTAssertEqual(lang.effectiveNotchLanguage, .korean)
+        XCTAssertTrue(lang.bundleLanguageCandidates.contains("ko"))
+        XCTAssertTrue(DynamicNotchLanguage.notchLanguages.contains(.korean))
+
+        // Ensure legacy upstream "ru" default is rejected on non-Russian OS and resolves to system / Korean
+        let resolvedRu = DynamicNotchLanguage.resolved("ru")
+        XCTAssertEqual(resolvedRu, .system)
+        XCTAssertEqual(resolvedRu.effectiveNotchLanguage, .korean)
+    }
+
+    func testGoogleMeetShortcutResolutionAndFallback() {
+        let provider = DefaultMeetingControlProvider()
+        // When platform is unknown or PID is nil, sendShortcut resolves running meeting or defaults to .meet
+        // Ensures no fatal crash or silent drop
+        provider.sendShortcut(platform: .unknown, action: .toggleMute, pid: nil)
+        provider.sendShortcut(platform: .meet, action: .toggleCamera, pid: nil)
+        provider.sendShortcut(platform: .meet, action: .leaveCall, pid: nil)
     }
 }

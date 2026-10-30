@@ -88,6 +88,7 @@ final class SystemSettingsVpnMonitor: ObservableObject {
                 self?.checkState()
             }
         }
+        pollTimer?.tolerance = 0.1
     }
 
     private func stopPolling() {
@@ -103,6 +104,7 @@ final class SystemSettingsVpnMonitor: ObservableObject {
         }
 
         if app.isHidden {
+            stopPolling()
             updateState(false)
             return
         }

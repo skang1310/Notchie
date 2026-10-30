@@ -11,6 +11,9 @@ final class ScreenshotMonitorService {
     
     private var originalScreenshotLocation: String?
     private var fileWatcherTimer: Timer?
+    private let directoryWatcher = DirectoryEventWatcher()
+    private var pendingScan: Task<Void, Never>?
+    private var monitoringGeneration = 0
     private var knownFilePaths = Set<String>()
     private var isMonitoring = false
     private var lastPasteboardChangeCount: Int = NSPasteboard.general.changeCount
@@ -39,10 +42,16 @@ final class ScreenshotMonitorService {
         
         primeBaseline()
         
-        let timer = Timer(timeInterval: 0.35, repeats: true) { [weak self] _ in
-            self?.scanForNewScreenshots()
-            self?.scanTargetDirectoryForRecordings()
+        monitoringGeneration += 1
+        directoryWatcher.onChange = { [weak self] in self?.scheduleEventScan() }
+        updateDirectoryWatchers()
+        // Slow recovery handles folder replacement, path-setting changes and missed events.
+        let timer = Timer(timeInterval: 15, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.updateDirectoryWatchers()
+            self.scanNow()
         }
+        timer.tolerance = 3
         RunLoop.main.add(timer, forMode: .common)
         fileWatcherTimer = timer
     }
@@ -50,10 +59,35 @@ final class ScreenshotMonitorService {
     func stopMonitoring() {
         guard isMonitoring else { return }
         isMonitoring = false
+        monitoringGeneration += 1
+        pendingScan?.cancel(); pendingScan = nil
+        directoryWatcher.stop()
+        directoryWatcher.onChange = nil
         fileWatcherTimer?.invalidate()
         fileWatcherTimer = nil
     }
     
+    private func updateDirectoryWatchers() {
+        directoryWatcher.update(candidateScreenshotDirectories() + candidateScreenRecordingDirectories())
+    }
+
+    private func scheduleEventScan() {
+        guard isMonitoring else { return }
+        // Do not reset the debounce continuously while a recording is being written.
+        guard pendingScan == nil else { return }
+        let generation = monitoringGeneration
+        pendingScan = Task { @MainActor [weak self] in
+            // Retry partial image writes even when no further directory event is delivered.
+            for delay in [0.15, 0.35, 0.7, 1.5, 3.0] {
+                do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+                guard let self, self.isMonitoring, self.monitoringGeneration == generation else { return }
+                self.updateDirectoryWatchers()
+                self.scanNow()
+            }
+            self?.pendingScan = nil
+        }
+    }
+
     func updateLastPasteboardChangeCount() {
         lastPasteboardChangeCount = NSPasteboard.general.changeCount
     }

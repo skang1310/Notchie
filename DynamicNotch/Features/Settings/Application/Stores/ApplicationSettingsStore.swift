@@ -22,7 +22,14 @@ enum AppIconAppearanceStyle: String, CaseIterable, Identifiable, StoredSettingVa
 extension SettingsAppearanceMode: StoredSettingValue {}
 extension NotchBackgroundStyle: StoredSettingValue {}
 extension NotchDisplayLocation: StoredSettingValue {}
-extension DynamicNotchLanguage: StoredSettingValue {}
+extension DynamicNotchLanguage: StoredSettingValue {
+    static func read(from defaults: UserDefaults, key: String, defaultValue: DynamicNotchLanguage) -> DynamicNotchLanguage {
+        guard let raw = defaults.string(forKey: key) else {
+            return .system
+        }
+        return DynamicNotchLanguage.resolved(raw)
+    }
+}
 extension NotchAnimationPreset: StoredSettingValue {}
 extension NotchExpandInteraction: StoredSettingValue {}
 extension NotchCollapseInteraction: StoredSettingValue {}

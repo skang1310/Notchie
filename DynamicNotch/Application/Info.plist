@@ -9,7 +9,7 @@
 	<key>DynamicNotchTestHost</key>
 	<string>$(DYNAMICNOTCH_TEST_HOST)</string>
 	<key>DynamicNotchLocalRevision</key>
-	<string>Notchie-FaceSpeed-20261029-v35</string>
+	<string>Notchie-LayoutPlayback-20261030-v43</string>
 	<key>DynamicNotchLocalBuild</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -18,6 +18,8 @@
 	<string>Notchie needs access to your calendar to display upcoming events in the notch.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Notchie needs access to your calendar to display upcoming events in the notch.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Notchie needs automation access to control meeting audio, video and system shortcuts.</string>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/jackson-storm/DynamicNotch/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>

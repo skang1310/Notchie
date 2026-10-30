@@ -27,6 +27,8 @@ struct DownloadProgressIndicatorView: View {
                 Text("\(Int((clampedProgress * 100).rounded()))%")
                     .font(.system(size: percentFontSize))
                     .foregroundStyle(Color.accentColor.gradient)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
             case .circle:
                 CircleIndicatorView(

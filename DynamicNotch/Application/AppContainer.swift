@@ -131,6 +131,7 @@ final class AppContainer {
         if !isRunningTests {
             _ = MeetingControlService.shared
             _ = MessagesService.shared
+            _ = NotchMessageNotificationService.shared
         }
     }
 }

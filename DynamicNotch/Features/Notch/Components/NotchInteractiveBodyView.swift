@@ -4,6 +4,8 @@ internal import AppKit
 struct NotchInteractiveBodyView: View {
     @ObservedObject var notchViewModel: NotchViewModel
     @ObservedObject var settingsViewModel: SettingsViewModel
+    @ObservedObject private var quickToolsStore = QuickToolsStore.shared
+    @ObservedObject private var soundMixer = SoundMixerService.shared
     
     var body: some View {
         NotchSurfaceContainerView(
@@ -11,6 +13,7 @@ struct NotchInteractiveBodyView: View {
             settingsViewModel: settingsViewModel
         )
         .opacity(isVisiblyHiddenInFullscreen ? 0 : 1)
+        .allowsHitTesting(!isVisiblyHiddenInFullscreen)
         .shadow(
             color: (notchViewModel.presentedNotchSize.height >= notchViewModel.notchModel.baseHeight + 30)
             ? .black.opacity(0.2) : .clear, radius: 20
@@ -42,14 +45,15 @@ struct NotchInteractiveBodyView: View {
     }
     
     private var isVisiblyHiddenInFullscreen: Bool {
-        guard notchViewModel.isDynamicIsland else { return false }
-        guard settingsViewModel.application.isDynamicIslandHiddenInFullscreenEnabled else { return false }
-        guard let screen = NSScreen.preferredNotchScreen(for: settingsViewModel) ?? NSScreen.main else { return false }
-        return SkyLightOperator.shared.isFullscreenSpaceActive(on: screen) && !notchViewModel.hasDisplayedContent
+        notchViewModel.isPrimarySurfaceHidden
     }
     
     private var shouldEnableNotchSwipeGestures: Bool {
         guard (!notchViewModel.isActivityPresentationHidden || notchViewModel.isLocked) || notchViewModel.notchModel.temporaryNotificationContent != nil else { return false }
+        
+        if quickToolsStore.isSoundMixerVisibleInCalendarSlot || soundMixer.isAdjustingVolume || quickToolsStore.isCalendarFullScheduleVisible {
+            return false
+        }
         
         return !(
             notchViewModel.isDisplayingExpandedLiveActivity &&

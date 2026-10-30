@@ -11,7 +11,9 @@ enum NotchScreenSelection {
     static func preferredDisplayID(for preferences: NotchScreenSelectionPreferences, candidates: [NotchScreenSelectionCandidate], primaryDisplayID: CGDirectDisplayID?) -> CGDirectDisplayID? {
         switch preferences.displayLocation {
         case .builtIn:
-            return candidates.first(where: \.isBuiltIn)?.displayID
+            if let builtIn = candidates.first(where: \.isBuiltIn) { return builtIn.displayID }
+            guard preferences.allowsAutomaticDisplaySwitching else { return nil }
+            return candidates.first(where: { $0.displayID == primaryDisplayID })?.displayID ?? candidates.first?.displayID
 
         case .main:
             if let primaryDisplayID, candidates.contains(where: { $0.displayID == primaryDisplayID }) {

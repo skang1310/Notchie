@@ -118,6 +118,7 @@ final class HardwareHUDMonitor {
     }
 
     private func handleExternalVolumeChange(level: Int, deviceName: String?) {
+        guard !SoundMixerService.shared.isAdjustingVolume else { return }
         // These changes don't come from a key we can consume (headphone stem,
         // Control Center, Siri), so macOS draws its own OSD and — since it's owned
         // by MenuBarAgent on macOS 26 — it can't be suppressed. We simply mirror

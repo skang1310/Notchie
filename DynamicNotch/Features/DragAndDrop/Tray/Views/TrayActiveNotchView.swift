@@ -23,6 +23,8 @@ struct TrayActiveNotchView: View {
             Text("\(fileTrayViewModel.count)")
                 .font(.system(size: 16, design: .rounded))
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.leading, isNotchlessScreen ? 5.scaled(by: scale) : 14.scaled(by: scale))
         .padding(.trailing, isNotchlessScreen ? 8.scaled(by: scale) : 14.scaled(by: scale))

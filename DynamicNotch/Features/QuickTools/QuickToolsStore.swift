@@ -8,7 +8,6 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
     case shots
     case tray
     case clips
-    case notes
     case tools
     case widgets
     case transform
@@ -24,7 +23,6 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         case .shots: return "photo.stack.fill"
         case .tray: return "tray.and.arrow.down.fill"
         case .clips: return "doc.on.clipboard.fill"
-        case .notes: return "note.text"
         case .widgets: return "square.grid.2x2.fill"
         case .tools: return "square.grid.2x2.fill"
         case .transform: return "wand.and.stars"
@@ -38,7 +36,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         switch self {
         case .nook, .tray, .widgets:
             return false
-        case .shots, .clips, .notes, .tools, .transform, .ai, .meeting, .messages:
+        case .shots, .clips, .tools, .transform, .ai, .meeting, .messages:
             return true
         }
     }
@@ -54,29 +52,13 @@ struct QuickToolTab: Identifiable, Equatable {
         QuickToolTab(id: "messages", titleKey: "shelf.tool.messages", systemImage: "bubble.left.and.bubble.right.fill"),
         QuickToolTab(id: "ai", titleKey: "shelf.tool.ai", systemImage: "sparkles"),
         QuickToolTab(id: "transform", titleKey: "shelf.tool.transform", systemImage: "wand.and.stars"),
-        QuickToolTab(id: "teleprompter", titleKey: "shelf.tool.teleprompter", systemImage: "text.alignleft"),
-        QuickToolTab(id: "emoji", titleKey: "shelf.tool.emoji", systemImage: "face.smiling"),
         QuickToolTab(id: "stats", titleKey: "shelf.tool.stats", systemImage: "waveform.path.ecg"),
-        QuickToolTab(id: "notes", titleKey: "settings.tools.notes", systemImage: "note.text"),
         QuickToolTab(id: "snippets", titleKey: "productivity.tool.snippets", systemImage: "doc.on.clipboard"),
-        QuickToolTab(id: "tasks", titleKey: "productivity.tool.tasks", systemImage: "checklist"),
-        QuickToolTab(id: "focus", titleKey: "productivity.tool.focus", systemImage: "timer"),
-        QuickToolTab(id: "stopwatch", titleKey: "settings.tools.stopwatch", systemImage: "stopwatch"),
-        QuickToolTab(id: "awake", titleKey: "settings.tools.awake", systemImage: "cup.and.saucer.fill"),
-        QuickToolTab(id: "color", titleKey: "settings.tools.color", systemImage: "eyedropper.halffull"),
-        QuickToolTab(id: "calculator", titleKey: "support.tool.calculator", systemImage: "plus.forwardslash.minus"),
-        QuickToolTab(id: "shortcuts", titleKey: "support.tool.shortcuts", systemImage: "bolt.square"),
-        QuickToolTab(id: "zip", titleKey: "support.tool.zip", systemImage: "doc.zipper"),
-        QuickToolTab(id: "developer", titleKey: "support.tool.developer", systemImage: "curlybraces"),
-        QuickToolTab(id: "cases", titleKey: "support.tool.cases", systemImage: "photo.on.rectangle.angled"),
-        QuickToolTab(id: "reports", titleKey: "support.tool.reports", systemImage: "chart.bar.doc.horizontal"),
-        QuickToolTab(id: "rules", titleKey: "productivity.tool.rules", systemImage: "macwindow.badge.plus"),
-        QuickToolTab(id: "jobs", titleKey: "productivity.tool.jobs", systemImage: "terminal"),
         QuickToolTab(id: "status", titleKey: "productivity.tool.status", systemImage: "gauge.with.dots.needle.33percent")
     ]
 
     static let defaultEnabledIDs: [String] = [
-        "meeting", "messages", "ai", "notes", "snippets", "tasks", "focus", "stopwatch", "awake", "color", "calculator"
+        "meeting", "messages", "ai", "transform", "stats", "snippets"
     ]
 }
 
@@ -86,14 +68,8 @@ final class QuickToolsStore: ObservableObject {
     static let enabledTabsKey = "DynamicNotch.QuickTools.enabledTabs.v1"
 
     lazy var shelf = ShelfPreferences(defaults: defaults)
-    lazy var teleprompter = TeleprompterController(defaults: defaults)
-    lazy var notes = QuickNotes()
-    let stopwatch = StopwatchController()
-    let awake = KeepAwakeController()
-    lazy var focus = FocusSessionController()
-    let jobs = LocalJobRunner()
 
-    @Published var selectedTool = "notes" {
+    @Published var selectedTool = "stats" {
         didSet {
             if oldValue != selectedTool { notchViewModel?.refreshPresentationGeometry() }
         }
@@ -105,7 +81,8 @@ final class QuickToolsStore: ObservableObject {
         }
     }
     @Published var isNotchHubPinned = false
-    @Published var isMirrorCameraActive = false
+    @Published var isSoundMixerVisibleInCalendarSlot = false
+    @Published var isCalendarFullScheduleVisible = false
     @Published var isLyricsVisibleInCalendarSlot = false {
         didSet {
             guard oldValue != isLyricsVisibleInCalendarSlot else { return }
@@ -117,10 +94,21 @@ final class QuickToolsStore: ObservableObject {
         }
     }
     @Published private(set) var enabledTabIDs: [String]
-    @Published private(set) var sampledColor: String?
 
     func toggleLyricsInCalendarSlot() {
+        if !isLyricsVisibleInCalendarSlot {
+            isSoundMixerVisibleInCalendarSlot = false
+            isCalendarFullScheduleVisible = false
+        }
         isLyricsVisibleInCalendarSlot.toggle()
+    }
+
+    func toggleSoundMixerInCalendarSlot() {
+        if !isSoundMixerVisibleInCalendarSlot {
+            isLyricsVisibleInCalendarSlot = false
+            isCalendarFullScheduleVisible = false
+        }
+        isSoundMixerVisibleInCalendarSlot.toggle()
     }
 
     weak var nowPlayingViewModel: NowPlayingViewModel?
@@ -133,7 +121,6 @@ final class QuickToolsStore: ObservableObject {
     weak var notchViewModel: NotchViewModel?
 
     private let defaults: UserDefaults
-    private let colorSampler = NSColorSampler()
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -145,7 +132,9 @@ final class QuickToolsStore: ObservableObject {
         } else {
             self.enabledTabIDs = QuickToolTab.defaultEnabledIDs
         }
-        if !self.enabledTabIDs.contains(selectedTool), let first = self.enabledTabIDs.first {
+        if !validIDs.contains(selectedTool) {
+            self.selectedTool = "stats"
+        } else if !self.enabledTabIDs.contains(selectedTool), let first = self.enabledTabIDs.first {
             self.selectedTool = first
         }
     }
@@ -218,34 +207,17 @@ final class QuickToolsStore: ObservableObject {
     }
 
     func shelfExtraHeight(isIsland: Bool) -> CGFloat {
+        if hubMode == .nook || hubMode == .widgets { return isIsland ? 198 : 206 }
+        if hubMode == .tools && selectedTool == "stats" { return isIsland ? 290 : 300 }
         if hubMode == .clips || (hubMode == .tools && selectedTool == "snippets") { return isIsland ? 384 : 394 }
         if hubMode == .messages || (hubMode == .tools && selectedTool == "messages") { return isIsland ? 280 : 290 }
-        if hubMode == .meeting || (hubMode == .tools && selectedTool == "meeting") { return isIsland ? 220 : 230 }
+        if hubMode == .meeting || (hubMode == .tools && selectedTool == "meeting") { return isIsland ? 54 : 58 }
         if hubMode == .ai || (hubMode == .tools && selectedTool == "ai") { return isIsland ? 260 : 270 }
         if hubMode == .transform || (hubMode == .tools && selectedTool == "transform") { return isIsland ? 220 : 230 }
         return hubMode.requiresExtendedHeight ? (isIsland ? 200 : 210) : (isIsland ? 164 : 172)
     }
 
-    func sampleColor() {
-        colorSampler.show { [weak self] color in
-            guard let color = color?.usingColorSpace(.sRGB) else { return }
-            let value = Self.hex(red: color.redComponent, green: color.greenComponent, blue: color.blueComponent)
-            Task { @MainActor [weak self] in self?.sampledColor = value }
-        }
-    }
-
-    nonisolated static func hex(red: CGFloat, green: CGFloat, blue: CGFloat) -> String {
-        let values = [red, green, blue].map { Int((min(1, max(0, $0)) * 255).rounded()) }
-        return String(format: "#%02X%02X%02X", values[0], values[1], values[2])
-    }
-
-    func copyColor() {
-        guard let sampledColor else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(sampledColor, forType: .string)
-    }
-
-    func shutdown() { awake.stop() }
+    func shutdown() {}
 }
 
 extension Notification.Name {

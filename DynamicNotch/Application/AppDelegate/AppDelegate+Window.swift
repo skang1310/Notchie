@@ -14,7 +14,7 @@ extension AppDelegate {
 
         let frame = OverlayWindowLayout.topAnchoredFrame(
             on: screen,
-            size: OverlayWindowLayout.appCanvasSize
+            size: OverlayWindowLayout.canvasSize(for: screen.frame.size)
         )
 
         window = OverlayPanelFactory.makePanel(
@@ -31,7 +31,7 @@ extension AppDelegate {
                 settingsViewModel: settingsViewModel
             )
         )
-        hostingView.frame = NSRect(origin: .zero, size: OverlayWindowLayout.appCanvasSize)
+        hostingView.frame = NSRect(origin: .zero, size: frame.size)
         hostingView.autoresizingMask = [.width, .height]
 
         window.contentView = hostingView
@@ -47,23 +47,30 @@ extension AppDelegate {
     func updateWindowFrame() {
         guard let window else { return }
 
-        notchViewModel.updateDimensions()
+        notchViewModel.updateDimensions(animated: false)
 
         guard let screen = NSScreen.preferredNotchScreen(for: settingsViewModel) else {
             clearNowPlayingPrimaryWindowPresentationState()
+            notchViewModel.invalidatePointerInteraction()
+            notchViewModel.isPrimarySurfaceHidden = true
             window.orderOut(nil)
             return
         }
+        notchViewModel.updatePresentationBounds(screen.frame.size)
 
         let targetFrame = OverlayWindowLayout.topAnchoredFrame(
             on: screen,
-            size: OverlayWindowLayout.appCanvasSize
+            size: OverlayWindowLayout.canvasSize(for: screen.frame.size)
         )
 
         window.collectionBehavior = OverlayPanelFactory.collectionBehavior(
             includesFullscreenAuxiliary: true
         )
-        window.setFrame(targetFrame, display: true, animate: false)
+        if window.frame != targetFrame {
+            notchViewModel.invalidatePointerInteraction()
+            window.setFrame(targetFrame, display: true, animate: false)
+            reRegisterDragDestination(for: window)
+        }
         updatePrimaryWindowPresentation(on: screen)
     }
 
@@ -71,6 +78,8 @@ extension AppDelegate {
         guard let window, !isPrimaryWindowSuspendedForLock else { return }
 
         isPrimaryWindowSuspendedForLock = true
+        notchViewModel.invalidatePointerInteraction()
+        notchViewModel.isPrimarySurfaceHidden = true
         notchViewModel.isLocked = true
         airDropController.resetTargetState()
         clearNowPlayingPrimaryWindowPresentationState()
@@ -90,6 +99,8 @@ extension AppDelegate {
     }
 
     func reRegisterDragDestination(for window: NSWindow) {
+        let revision = UUID()
+        dragRegistrationRevision = revision
         let dragTypes: [NSPasteboard.PasteboardType] = [
             .fileURL,
             .URL,
@@ -117,7 +128,8 @@ extension AppDelegate {
 
         // Staggered passes to ensure WindowServer space transition has finished
         for delay in [0.2, 0.6, 1.0] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak window] in
+                guard let self, let window, self.window === window, self.dragRegistrationRevision == revision else { return }
                 performRegistration()
             }
         }
@@ -126,15 +138,10 @@ extension AppDelegate {
     private func updatePrimaryWindowPresentation(on screen: NSScreen) {
         guard let window, !isPrimaryWindowSuspendedForLock else { return }
 
-        if AppPresentationPolicy.hides(bundleID: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-                                       rules: ProductivityStorage.shared.document.hiddenBundleIDs) {
-            clearNowPlayingPrimaryWindowPresentationState()
-            window.orderOut(nil)
-            return
-        }
         let isFullscreen = SkyLightOperator.shared.isFullscreenSpaceActive(on: screen)
         let shouldHideActivities = settingsViewModel.application.isNotchHiddenInFullscreenEnabled && isFullscreen
         let shouldHideNotchlessIsland = screen.isNotchless && settingsViewModel.application.isDynamicIslandHiddenInFullscreenEnabled && isFullscreen
+        notchViewModel.isPrimarySurfaceHidden = shouldHideNotchlessIsland && !notchViewModel.hasDisplayedContent
 
         notchViewModel.setActivityPresentationHidden(shouldHideActivities)
 
@@ -167,6 +174,7 @@ extension AppDelegate {
                   SkyLightOperator.shared.isFullscreenSpaceActive(on: screen),
                   self.settingsViewModel.application.isDynamicIslandHiddenInFullscreenEnabled,
                   !self.notchViewModel.hasDisplayedContent else {
+                self?.hideWindowWorkItem = nil
                 return
             }
             self.window?.orderOut(nil)

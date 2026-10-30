@@ -17,12 +17,12 @@ struct HotspotActiveContent: NotchContentProtocol, DynamicIslandCustomizable {
     var strokeColor: Color {.green.opacity(0.3)}
     
     func compactSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraWidth: CGFloat = appearanceStyle == .battery ? 100 : 80
+        let extraWidth: CGFloat = appearanceStyle == .battery ? 115 : 90
         return .init(width: baseWidth + extraWidth, height: baseHeight)
     }
     
     func dynamicIslandSize(baseWidth: CGFloat, baseHeight: CGFloat) -> CGSize {
-        let extraWidth: CGFloat = appearanceStyle == .battery ? 85 : 60
+        let extraWidth: CGFloat = appearanceStyle == .battery ? 110 : 85
         return .init(width: baseWidth + extraWidth, height: baseHeight)
     }
     

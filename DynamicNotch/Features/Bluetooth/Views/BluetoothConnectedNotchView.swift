@@ -71,9 +71,13 @@ struct BluetoothConnectedNotchView: View {
                 if let clampedLevel {
                     Text("\(String(describing: clampedLevel))%")
                         .foregroundStyle(tint(for: clampedLevel).gradient)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 } else {
                     Text("---")
                         .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
         }

@@ -47,6 +47,8 @@ final class NotchEngine: ObservableObject {
     private var eventQueue: [NotchState] = []
     private var isProcessingQueue = false
     private var isTransitioning = false
+    private var transitionWaiters: [CheckedContinuation<Void, Never>] = []
+    private var deferredNotifications: [(content: NotchContentProtocol, expires: Date, duration: TimeInterval)] = []
 
     init(
         animations: @escaping () -> NotchAnimations,
@@ -135,6 +137,10 @@ final class NotchEngine: ObservableObject {
     func send(_ notchState: NotchState) {
         switch notchState {
         case .showTemporaryNotification(let content, let duration):
+            if shouldDefer(content) {
+                deferNotification(content, duration: duration)
+                return
+            }
             if notchModel.temporaryNotificationContent?.id == content.id {
                 currentTemporaryNotificationDuration = duration
 
@@ -172,7 +178,11 @@ final class NotchEngine: ObservableObject {
                     notchModel.liveActivityContent = content
                     notchModel.updateToken = UUID()
                 }
-                return
+                if notchModel.isLiveActivityExpanded || highestPriorityVisibleActivity?.id == content.id { return }
+            }
+            eventQueue.removeAll {
+                if case .showLiveActivity(let queued) = $0 { return queued.stackID == content.stackID }
+                return false
             }
 
         case .hideLiveActivity(let id):
@@ -200,6 +210,7 @@ final class NotchEngine: ObservableObject {
 
         case .hide:
             eventQueue.removeAll()
+            deferredNotifications.removeAll()
 
         case .dismissLiveActivity:
             break
@@ -215,8 +226,6 @@ final class NotchEngine: ObservableObject {
               !notchModel.isLiveActivityExpanded else { return }
 
         cancelTemporary()
-        let contentToRestore = highestPriorityVisibleActivity
-
         transition(
             hide: {
                 withAnimation(self.animations.hideContent) {
@@ -226,9 +235,10 @@ final class NotchEngine: ObservableObject {
             },
             show: {
                 withAnimation(self.animations.showContent) {
-                    self.notchModel.liveActivityContent = contentToRestore
+                    self.notchModel.liveActivityContent = self.highestPriorityVisibleActivity
                     self.suspendedActivity = nil
                 }
+                self.resumeDeferredPresentation()
             }
         )
     }
@@ -398,7 +408,6 @@ final class NotchEngine: ObservableObject {
         if let quickTools = liveActivityContent as? QuickToolsNotchContent,
            quickTools.openedFromIdleHover {
             activeLiveActivities.removeAll(where: { $0.id == quickTools.id })
-            let nextBest = highestPriorityVisibleActivity
             transition(
                 hide: {
                     withAnimation(self.animations.collapseLiveActivity) {
@@ -408,9 +417,10 @@ final class NotchEngine: ObservableObject {
                 },
                 show: {
                     withAnimation(self.animations.showContent) {
-                        self.notchModel.liveActivityContent = nextBest
+                        self.notchModel.liveActivityContent = self.highestPriorityVisibleActivity
                     }
                     self.handleStrokeVisibility()
+                    self.resumeDeferredPresentation()
                 }
             )
             return
@@ -425,8 +435,9 @@ final class NotchEngine: ObservableObject {
             },
             show: {
                 withAnimation(self.animations.showContent) {
-                    self.notchModel.liveActivityContent = liveActivityContent
+                    self.notchModel.liveActivityContent = self.highestPriorityVisibleActivity
                 }
+                self.resumeDeferredPresentation()
             }
         )
     }
@@ -491,7 +502,7 @@ final class NotchEngine: ObservableObject {
 
     private func executeState(_ state: NotchState) async {
         while isTransitioning {
-            try? await Task.sleep(nanoseconds: 10_000_000)
+            await withCheckedContinuation { transitionWaiters.append($0) }
         }
 
         switch state {
@@ -527,6 +538,10 @@ final class NotchEngine: ObservableObject {
             await showLiveContentTransition(highestPriorityVisibleActivity)
 
         case .showTemporaryNotification(let content, let duration):
+            if shouldDefer(content) {
+                deferNotification(content, duration: duration)
+                return
+            }
             if notchModel.temporaryNotificationContent?.id == content.id {
                 currentTemporaryNotificationDuration = duration
                 withAnimation(animations.updateContent) {
@@ -546,6 +561,9 @@ final class NotchEngine: ObservableObject {
     }
 
     private func showLiveContentTransition(_ content: NotchContentProtocol?) async {
+        if notchModel.isLiveActivityExpanded,
+           activeLiveActivities.contains(where: { $0.id == notchModel.liveActivityContent?.id && !dismissedLiveActivityIDs.contains($0.id) }), let content,
+           content.id != notchModel.liveActivityContent?.id, !content.interruptsExpandedInteraction { return }
         if notchModel.temporaryNotificationContent != nil {
             suspendedActivity = content
             return
@@ -566,7 +584,8 @@ final class NotchEngine: ObservableObject {
                 },
                 show: {
                     withAnimation(self.animations.showContent) {
-                        self.notchModel.liveActivityContent = content
+                        // Re-resolve after the hide delay: ended/replaced activities must not reappear.
+                        self.notchModel.liveActivityContent = self.highestPriorityVisibleActivity
                     }
                     continuation.resume()
                 }
@@ -637,6 +656,11 @@ final class NotchEngine: ObservableObject {
 
     private func updateLiveActivityStack(with content: NotchContentProtocol) {
         if let index = activeLiveActivities.firstIndex(where: { $0.stackID == content.stackID }) {
+            let previousID = activeLiveActivities[index].id
+            if previousID != content.id {
+                dismissedLiveActivityIDs.removeAll { $0 == previousID }
+                if case .live(let dismissed) = lastDismissedContent, dismissed.id == previousID { lastDismissedContent = nil }
+            }
             activeLiveActivities[index] = content
         } else {
             activeLiveActivities.append(content)
@@ -647,11 +671,40 @@ final class NotchEngine: ObservableObject {
 
     private func sortActiveLiveActivitiesByPriority() {
         activeLiveActivities.sort { lhs, rhs in
+            if lhs.id == rhs.id { return false }
+            if lhs.interruptsExpandedInteraction != rhs.interruptsExpandedInteraction {
+                return lhs.interruptsExpandedInteraction
+            }
             if lhs.priority == rhs.priority {
+                if lhs.id == notchModel.liveActivityContent?.id { return true }
+                if rhs.id == notchModel.liveActivityContent?.id { return false }
                 return lhs.id < rhs.id
             }
 
             return lhs.priority > rhs.priority
+        }
+    }
+
+    private func shouldDefer(_ content: NotchContentProtocol) -> Bool {
+        guard !content.interruptsExpandedInteraction else { return false }
+        return notchModel.isLiveActivityExpanded || notchModel.temporaryNotificationContent?.interruptsExpandedInteraction == true
+    }
+
+    private func deferNotification(_ content: NotchContentProtocol, duration: TimeInterval) {
+        guard duration > 0 else { return }
+        deferredNotifications.removeAll { $0.content.id == content.id || $0.expires <= .now }
+        deferredNotifications.append((content, Date().addingTimeInterval(duration.isFinite ? duration : 30), duration))
+        if deferredNotifications.count > 8 { deferredNotifications.removeFirst(deferredNotifications.count - 8) }
+    }
+
+    private func resumeDeferredPresentation() {
+        guard !notchModel.isLiveActivityExpanded else { return }
+        deferredNotifications.removeAll { $0.expires <= .now }
+        if let next = deferredNotifications.max(by: { $0.content.priority < $1.content.priority }) {
+            deferredNotifications.removeAll { $0.content.id == next.content.id }
+            send(.showTemporaryNotification(next.content, duration: min(next.duration, next.expires.timeIntervalSinceNow)))
+        } else {
+            refreshLiveActivityPriorities()
         }
     }
 
@@ -668,6 +721,9 @@ final class NotchEngine: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + currentDelay) {
                 show()
                 self.isTransitioning = false
+                let waiters = self.transitionWaiters
+                self.transitionWaiters.removeAll()
+                for waiter in waiters { waiter.resume() }
             }
         }
         return true

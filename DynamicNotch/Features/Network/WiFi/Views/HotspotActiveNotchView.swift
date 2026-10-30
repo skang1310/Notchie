@@ -87,6 +87,8 @@ struct HotspotActiveNotchView: View {
             
             Text("\(displayBatteryLevel)%")
                 .foregroundStyle(tint(for: displayBatteryLevel).gradient)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 }

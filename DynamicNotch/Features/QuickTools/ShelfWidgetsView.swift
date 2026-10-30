@@ -63,18 +63,6 @@ struct ShelfUtilityWidget: View {
         Group {
             switch widget {
             case .stats: ShelfSystemStatsView(compact: true)
-            case .focus: ShelfFocusWidget(controller: store.focus)
-            case .notes:
-                Button {
-                    store.selectedTool = "notes"; store.hubMode = .tools
-                } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label(privacyText("Quick Notes", "빠른 메모"), systemImage: "note.text").foregroundStyle(.yellow)
-                        Text(privacyText("Capture a thought", "떠오른 생각을 기록하세요"))
-                            .font(.system(size: 16, weight: .medium))
-                        Label(privacyText("Open notes", "메모 열기"), systemImage: "arrow.up.right").font(.caption).foregroundStyle(.secondary)
-                    }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).padding(12)
-                }.buttonStyle(.plain)
             default: EmptyView()
             }
         }
@@ -87,32 +75,11 @@ struct ShelfUtilityWidget: View {
     }
 }
 
-private struct ShelfFocusWidget: View {
-    @ObservedObject var controller: FocusSessionController
-    var body: some View {
-        VStack(spacing: 8) {
-            Label(privacyText("Focus", "집중"), systemImage: "timer").font(.caption).foregroundStyle(.orange)
-            Text(controller.timer.isActive ? String(format: "%02d:%02d", Int(controller.timer.remainingTime) / 60, Int(controller.timer.remainingTime) % 60) : "25:00")
-                .font(.system(size: 28, weight: .medium, design: .rounded)).monospacedDigit()
-            HStack {
-                if controller.timer.isActive {
-                    Button { controller.pauseOrResume() } label: { Image(systemName: controller.timer.state == .running ? "pause.fill" : "play.fill") }
-                    Button { controller.stop() } label: { Image(systemName: "stop.fill") }
-                } else if controller.phase == .readyForBreak {
-                    Button(privacyText("Start break", "휴식 시작")) { controller.startBreak() }
-                } else {
-                    Button(privacyText("Start focus", "집중 시작")) { controller.startFocus() }
-                }
-            }.controlSize(.small)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 struct ShelfSystemStatsView: View {
-    @StateObject private var stats = ShelfSystemStats()
+    @ObservedObject private var stats = ShelfSystemStats.shared
     var compact = false
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 8 : 14) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 meter("CPU", value: stats.cpu, color: .purple)
                 Spacer()
@@ -137,18 +104,47 @@ struct ShelfSystemStatsView: View {
                 fill.addLine(to: CGPoint(x: 0, y: size.height)); fill.closeSubpath()
                 context.fill(fill, with: .linearGradient(Gradient(colors: [.purple.opacity(0.3), .purple.opacity(0.01)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
                 context.stroke(path, with: .color(.purple), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
-            }.frame(height: compact ? 28 : 60)
+            }.frame(height: compact ? 28 : 40)
             if !compact {
-                Text(privacyText("Local host statistics · 2-second samples while visible. RAM = active + wired + compressed memory. First CPU sample needs a baseline.", "로컬 시스템 통계 · 화면이 열려 있을 때 2초마다 갱신합니다. RAM은 활성·와이어드·압축 메모리의 합계입니다. CPU는 첫 샘플 이후 표시됩니다."))
-                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("↓ " + ShelfSystemStats.rate(stats.download))
+                        Text("↑ " + ShelfSystemStats.rate(stats.upload))
+                    }
+                    Canvas { context, size in
+                        guard stats.networkHistory.count > 1 else { return }
+                        let peak = max(1, stats.networkHistory.max() ?? 1)
+                        var path = Path()
+                        for (index, value) in stats.networkHistory.enumerated() {
+                            let point = CGPoint(x: size.width * Double(index) / Double(stats.networkHistory.count - 1), y: size.height * (1 - value / peak))
+                            if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                        }
+                        context.stroke(path, with: .color(.mint), lineWidth: 1.5)
+                    }.frame(height: 30).accessibilityLabel(privacyText("Recent download throughput", "최근 다운로드 전송량"))
+                }.font(.system(size: 11, design: .monospaced))
+                HStack {
+                    Text(privacyText("Memory", "메모리") + " " + ShelfSystemStats.bytes(stats.usedMemoryBytes) + " / " + ShelfSystemStats.bytes(stats.totalMemoryBytes))
+                    Spacer()
+                    Text(privacyText("Swap", "스왑") + " " + ShelfSystemStats.bytes(stats.swapBytes))
+                }.font(.system(size: 10))
+                HStack {
+                    Text(privacyText("Memory pressure", "메모리 압력") + ": " + pressureText)
+                    Spacer()
+                    Text(privacyText("Disk free", "디스크 여유") + " " + ShelfSystemStats.bytes(stats.freeDiskBytes.flatMap { $0 >= 0 ? UInt64($0) : nil }))
+                }.font(.system(size: 10)).foregroundStyle(.secondary)
+                Text(privacyText("2-second visible samples · RAM: active + wired + compressed. Network: active en* interfaces, excluding duplicate VPN/tunnel counters. First sample needs a baseline.", "화면 표시 중 2초 간격 · RAM: 활성+와이어드+압축. 네트워크: 활성 en* 인터페이스 합계, VPN·터널 중복 제외. 첫 샘플은 기준값 수집입니다."))
+                    .font(.system(size: 8)).foregroundStyle(.secondary)
             }
         }
         .padding(compact ? 10 : 14)
-        .task {
-            while !Task.isCancelled {
-                stats.sample()
-                do { try await Task.sleep(for: .seconds(2)) } catch { return }
-            }
+        .modifier(SystemStatsSampling(stats: stats))
+    }
+    private var pressureText: String {
+        switch stats.pressure {
+        case 1: return privacyText("Normal", "정상")
+        case 2: return privacyText("Warning", "주의")
+        case 4: return privacyText("Critical", "높음")
+        default: return "—"
         }
     }
     private func meter(_ title: String, value: Double?, color: Color) -> some View {

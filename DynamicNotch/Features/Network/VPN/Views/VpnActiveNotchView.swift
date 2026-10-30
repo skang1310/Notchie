@@ -39,6 +39,8 @@ struct VpnActiveNotchView: View {
                 .font(.system(size: 14, design: .rounded))
                 .foregroundStyle(.orange.gradient)
                 .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.leading, isNotchlessScreen ? 5.scaled(by: scale) : 12.scaled(by: scale))
         .padding(.trailing, isNotchlessScreen ? 7.scaled(by: scale) : 14.scaled(by: scale))
