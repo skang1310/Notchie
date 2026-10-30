@@ -3,907 +3,2052 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light dark">
-  <title>Notchie — 나만의 맞춤형 macOS 노치 워크스페이스</title>
-  <meta name="description" content="Notchie는 macOS 유휴 노치를 강력한 올인원 워크스페이스로 확장하는 오픈소스 커스텀 앱입니다. Apple HIG 표준 앱 아이콘, 6:4 미디어 & 캘린더 Nook, 클립보드 스튜디오, 선반 위젯 대시보드, 카메라 얼굴 잠금 해제 프리뷰를 제공합니다.">
+  <title>Notchie — 맥북 노치를 가장 유용한 인터페이스로</title>
+  <meta name="description" content="화면만 가리던 유휴 노치를 맥에서 가장 자주 쓰는 작업 공간으로. 앱별 볼륨 믹서, 실시간 가사, 제스처 캘린더, 회의 제어, 개발자 AI 쿼터까지. 불필요한 기능은 덜어내고 성능은 극한으로 끌어올린 macOS 오픈소스 노치 허브.">
+  
+  <!-- OpenGraph & Twitter -->
+  <meta property="og:title" content="Notchie — 맥북 노치를 가장 유용한 인터페이스로">
+  <meta property="og:description" content="앱별 볼륨 믹서, 실시간 가사, 제스처 캘린더, 회의 제어, 개발자 AI 쿼터까지. 불필요한 기능은 덜어내고 성능은 극한으로 끌어올린 macOS 노치 허브.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="screenshots/panoramic-notch-hub.png">
+  
   <link rel="icon" type="image/png" href="assets/notchie-icon-dark.png">
+  
+  <!-- Apple & Toss Typography: SF Pro Display / Apple SD Gothic Neo / Pretendard -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+
   <style>
     :root {
-      color-scheme: light dark;
-
-      --accent-light: #15803d;
-      --accent-dark: #34c759;
-      --accent: light-dark(var(--accent-light), var(--accent-dark));
-
-      --surface-bg: light-dark(#f8fafc, #0a0d14);
-      --surface-card: light-dark(#ffffff, #131722);
-      --surface-elevated: light-dark(#f1f5f9, #1b2130);
-      --text-primary: light-dark(#0f172a, #f8fafc);
-      --text-secondary: light-dark(#475569, #94a3b8);
-      --border-subtle: light-dark(#e2e8f0, #242d40);
-      --badge-bg: color-mix(in oklab, var(--accent) 15%, transparent);
-
-      accent-color: var(--accent);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Pretendard", system-ui, sans-serif;
-      line-height: 1.6;
-    }
-
-    @media (forced-colors: active) {
-      :root {
-        --surface-bg: Canvas;
-        --surface-card: Canvas;
-        --text-primary: CanvasText;
-        --text-secondary: GrayText;
-        --border-subtle: CanvasText;
-        --accent: Highlight;
-      }
+      --bg: #000000;
+      --bg-subtle: #08090d;
+      --surface-1: rgba(255, 255, 255, 0.04);
+      --surface-2: rgba(255, 255, 255, 0.07);
+      --surface-elevated: rgba(26, 29, 36, 0.75);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      
+      --text-1: #ffffff;
+      --text-2: #94a3b8;
+      --text-3: #64748b;
+      
+      --blue: #3182F6;       /* Toss Electric Blue */
+      --blue-glow: rgba(49, 130, 246, 0.35);
+      --apple-blue: #0A84FF;
+      --green: #34C759;      /* Apple Audio Green */
+      --green-glow: rgba(52, 199, 89, 0.4);
+      --orange: #FF9F0A;
+      --red: #FF453A;
+      --purple: #AF52DE;
+      
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+      --radius-pill: 9999px;
+      
+      --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg);
+      color: var(--text-1);
+      font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Apple SD Gothic Neo", sans-serif;
+      font-feature-settings: "cv05", "cv08", "cv10";
+      letter-spacing: -0.022em;
     }
 
     body {
-      background-color: var(--surface-bg);
-      color: var(--text-primary);
+      overflow-x: hidden;
       min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-      padding-bottom: 4rem;
+      line-height: 1.55;
+      background: radial-gradient(circle at 50% 0%, #0d1527 0%, #000000 70%);
+      background-attachment: fixed;
+    }
+
+    /* Ambient Lighting */
+    .ambient-glow {
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(49, 130, 246, 0.18) 0%, rgba(175, 82, 222, 0.08) 40%, transparent 70%);
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
     }
 
     a {
-      color: var(--accent);
+      color: inherit;
       text-decoration: none;
-      transition: opacity 0.15s ease;
-    }
-
-    a:hover {
-      text-decoration: underline;
     }
 
     .container {
-      width: min(1080px, calc(100% - 2.5rem));
+      width: min(1160px, calc(100% - 3rem));
       margin: 0 auto;
+      position: relative;
+      z-index: 1;
     }
 
-    /* Header & Navigation */
-    .site-header {
+    /* Glass Effect Utilities */
+    .glass-panel {
+      background: var(--surface-1);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      transition: all 0.3s var(--ease-spring);
+    }
+
+    .glass-panel:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-2);
+    }
+
+    /* Navigation Bar */
+    header.site-nav {
       position: sticky;
       top: 0;
-      z-index: 50;
-      background-color: color-mix(in oklab, var(--surface-bg) 85%, transparent);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .nav-bar {
+      z-index: 100;
+      width: 100%;
+      height: 72px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      height: 4.25rem;
-      gap: 1rem;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      transition: height 0.25s var(--ease-smooth);
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-weight: 700;
-      font-size: 1.25rem;
-      letter-spacing: -0.02em;
-    }
-
-    .brand img {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
-    }
-
-    .badge {
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.2rem 0.55rem;
-      border-radius: 999px;
-      background-color: var(--badge-bg);
-      color: var(--accent);
-      border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-      font-size: 0.92rem;
-      font-weight: 500;
-    }
-
-    @media (max-width: 720px) {
-      .nav-links {
-        display: none;
+    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+      @keyframes nav-shrink {
+        to {
+          height: 60px;
+          background: rgba(0, 0, 0, 0.88);
+          border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+      }
+      header.site-nav {
+        animation: nav-shrink auto linear both;
+        animation-timeline: scroll(block root);
+        animation-range: 0px 100px;
       }
     }
 
-    /* Hero */
-    .hero {
-      padding: 4.5rem 0 3.5rem;
-      text-align: center;
-    }
-
-    .hero-icons {
-      display: inline-flex;
-      align-items: center;
-      gap: 1.25rem;
-      margin-bottom: 1.5rem;
-      padding: 0.85rem 1.5rem;
-      border-radius: 24px;
-      background-color: var(--surface-card);
-      border: 1px solid var(--border-subtle);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-    }
-
-    .hero-icons figure {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .hero-icons img {
-      width: 76px;
-      height: 76px;
-      border-radius: 18px;
-      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    .hero-icons img:hover {
-      transform: scale(1.08);
-    }
-
-    .hero-icons figcaption {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-
-    .hero h1 {
-      font-size: clamp(2.2rem, 4.5vw, 3.4rem);
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      margin-bottom: 1rem;
-      line-height: 1.2;
-    }
-
-    .hero p.lead {
-      max-width: 780px;
-      margin: 0 auto 2.25rem;
-      font-size: 1.15rem;
-      color: var(--text-secondary);
-      line-height: 1.7;
-    }
-
-    .cta-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.85rem;
-      margin-bottom: 3rem;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.4rem;
-      border-radius: 12px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      border: 1px solid var(--border-subtle);
-      background-color: var(--surface-card);
-      color: var(--text-primary);
-      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      text-decoration: none;
-      border-color: var(--accent);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-    }
-
-    .btn-primary {
-      background-color: var(--accent);
-      color: #ffffff;
-      border-color: var(--accent);
-    }
-
-    /* Interactive Notch Simulator */
-    .notch-simulator {
-      max-width: 740px;
-      margin: 0 auto;
-      border-radius: 22px;
-      background: linear-gradient(180deg, #06080d 0%, #0d111a 100%);
-      color: #f8fafc;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
-      overflow: hidden;
-      text-align: left;
-    }
-
-    .notch-top-bar {
+    .nav-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.75rem 1.25rem;
-      background-color: rgba(0, 0, 0, 0.4);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      width: 100%;
     }
 
-    .notch-cutout {
-      width: 140px;
-      height: 24px;
-      background-color: #000000;
-      border-bottom-left-radius: 12px;
-      border-bottom-right-radius: 12px;
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .nav-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .nav-version {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--blue);
+      background: rgba(49, 130, 246, 0.12);
+      border: 1px solid rgba(49, 130, 246, 0.25);
+      padding: 2px 7px;
+      border-radius: var(--radius-pill);
+    }
+
+    .nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-menu a {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--text-2);
+      transition: color 0.18s ease;
+    }
+
+    .nav-menu a:hover {
+      color: var(--text-1);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-2);
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      transition: all 0.2s var(--ease-spring);
+    }
+
+    .btn-ghost:hover {
+      color: var(--text-1);
+      background: var(--surface-2);
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--radius-pill);
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #ffffff;
+      background: var(--blue);
+      box-shadow: 0 4px 16px var(--blue-glow);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-spring);
+    }
+
+    .btn-primary:hover {
+      background: #2272eb;
+      transform: translateY(-1px) scale(1.02);
+      box-shadow: 0 8px 24px var(--blue-glow);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    /* Hero Section */
+    .hero-section {
+      padding: 5rem 0 3.5rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 1.8rem;
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .hero-title {
+      font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.04em;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(180deg, #FFFFFF 20%, rgba(255, 255, 255, 0.65) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-title span.gradient-word {
+      background: linear-gradient(135deg, #60a5fa 0%, #3182F6 50%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      font-weight: 400;
+      color: var(--text-2);
+      max-width: 680px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.65;
+      letter-spacing: -0.015em;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .hero-cta-group .btn-primary {
+      padding: 14px 28px;
+      font-size: 1.05rem;
+    }
+
+    .hero-cta-group .btn-ghost {
+      padding: 13px 24px;
+      font-size: 1.02rem;
+    }
+
+    /* Terminal Command Box */
+    .terminal-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-md);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.86rem;
+      color: #94a3b8;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .terminal-box:hover {
+      border-color: rgba(49, 130, 246, 0.4);
+      color: #f1f5f9;
+      transform: translateY(-1px);
+    }
+
+    .terminal-box code {
+      color: #38bdf8;
+    }
+
+    .terminal-copy-icon {
+      font-size: 0.8rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* =========================================================
+       Interactive MacBook Hardware Mockup & Living Notch Simulator
+       ========================================================= */
+    .stage-wrapper {
+      position: relative;
+      max-width: 980px;
+      margin: 0 auto 6rem;
+      padding: 0 1rem;
+    }
+
+    .macbook-chassis {
+      background: #1e2025;
+      border-radius: 28px 28px 12px 12px;
+      padding: 14px 14px 0 14px;
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 35px 80px -15px rgba(0, 0, 0, 0.9), 0 0 120px rgba(49, 130, 246, 0.12);
+      position: relative;
+    }
+
+    .macbook-screen {
+      background: #050608;
+      border-radius: 18px 18px 0 0;
+      height: 540px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(circle at 50% 120%, rgba(30, 64, 175, 0.3) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(147, 51, 234, 0.18) 0%, transparent 50%),
+        linear-gradient(180deg, #05070a 0%, #0c111c 100%);
+    }
+
+    /* macOS Menu Bar */
+    .macos-menubar {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      user-select: none;
+      z-index: 20;
+    }
+
+    .menu-left, .menu-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .apple-icon {
+      font-size: 14px;
+      opacity: 0.95;
+    }
+
+    .menu-item.bold {
+      font-weight: 700;
+    }
+
+    .menu-right {
+      gap: 12px;
+      font-size: 11.5px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* The Center Hardware Notch Cutout */
+    .notch-island {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000000;
+      color: #ffffff;
+      border-radius: 0 0 18px 18px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      z-index: 30;
+      transition: all 0.42s var(--ease-spring);
+      cursor: pointer;
+      overflow: hidden;
+      width: 172px;
+      height: 32px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Notch Expanded State */
+    .notch-island.expanded {
+      width: 780px;
+      height: 220px;
+      border-radius: 0 0 24px 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.16);
+    }
+
+    /* Notch Collapsed Bar Content */
+    .notch-collapsed-content {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .notch-island.expanded .notch-collapsed-content {
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      overflow: hidden;
+    }
+
+    .camera-bezel {
+      width: 11px;
+      height: 11px;
+      background: radial-gradient(circle, #0f2438 30%, #000000 80%);
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      position: relative;
+    }
+
+    .cam-green-led {
+      width: 3.5px;
+      height: 3.5px;
+      background: #34c759;
+      border-radius: 50%;
+      position: absolute;
+      right: -9px;
+      top: 3.5px;
+      box-shadow: 0 0 5px #34c759;
+    }
+
+    /* Notch Expanded Body */
+    .notch-expanded-body {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease 0.1s;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .notch-island.expanded .notch-expanded-body {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .notch-hub-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 38px;
+      padding: 0 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .notch-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sim-tab-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.18s ease;
+    }
+
+    .sim-tab-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .sim-tab-btn.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .notch-collapse-hint {
+      font-size: 10.5px;
+      color: rgba(255, 255, 255, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Panel Content Containers */
+    .sim-panel-container {
+      flex: 1;
+      padding: 14px 18px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sim-panel {
+      display: none;
+      height: 100%;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .sim-panel.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Panel 1: Sound Mixer Style */
+    .mixer-layout {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .mixer-device-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 10px 14px;
+      min-width: 120px;
+    }
+
+    .mixer-apps-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      overflow-x: auto;
+    }
+
+    .mixer-app-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 10px 12px;
+      width: 82px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .mixer-app-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(49, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .app-icon-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      position: relative;
+    }
+
+    .audio-playing-indicator {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 7px;
+      height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    /* Vertical Capsule Slider */
+    .capsule-slider-track {
+      width: 22px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 11px;
+      position: relative;
+      overflow: hidden;
+      cursor: ns-resize;
+    }
+
+    .capsule-slider-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, #60a5fa 0%, var(--blue) 100%);
+      border-radius: 0 0 11px 11px;
+      transition: height 0.08s ease;
+    }
+
+    .capsule-slider-track.master-slider .capsule-slider-fill {
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+    }
+
+    .volume-pct-label {
+      font-size: 10px;
+      font-weight: 700;
+      font-family: ui-monospace, monospace;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .app-name-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.6);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70px;
+    }
+
+    /* Panel 2: Now Playing + Synced Lyrics */
+    .music-lyrics-layout {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .now-playing-studio {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+    }
+
+    .album-art-box {
+      width: 84px;
+      height: 84px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
+    }
+
+    .track-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .track-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-artist {
+      font-size: 11px;
+      color: var(--text-2);
+    }
+
+    .lyrics-stream-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 12px 16px;
+      height: 115px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .lyric-line {
+      font-size: 11.5px;
+      color: rgba(255, 255, 255, 0.35);
+      transition: all 0.25s ease;
+    }
+
+    .lyric-line.active {
+      font-size: 13px;
+      font-weight: 700;
+      color: #38bdf8;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Panel 3: Gesture Calendar */
+    .calendar-sim-layout {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .cal-week-strip {
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 8px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .cal-day-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      color: var(--text-2);
+    }
+
+    .cal-day-cell.active {
+      background: var(--blue);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .cal-agenda-card {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .cal-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .cal-event-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .cal-event-time {
+      font-size: 11px;
+      color: var(--text-2);
+    }
+
+    /* Panel 4: AI Quota Monitor */
+    .quota-sim-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .quota-mini-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quota-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .quota-model-name {
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .quota-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .quota-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    /* Interactive Instruction Badge under stage */
+    .stage-instruction {
+      margin-top: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-2);
     }
 
-    .camera-lens {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #102a43 30%, #03080e 90%);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+    .key-badge {
+      padding: 2px 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 5px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      color: #ffffff;
     }
 
-    .green-indicator {
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      background-color: #34c759;
-      box-shadow: 0 0 6px #34c759;
+    /* =========================================================
+       Bento Grid Showcase (Apple / Toss Product Presentation)
+       ========================================================= */
+    .bento-section {
+      padding: 4rem 0 6rem;
     }
 
-    .notch-nav-tabs {
-      display: flex;
-      gap: 0.4rem;
-      padding: 0.65rem 1rem;
-      background-color: rgba(255, 255, 255, 0.02);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      overflow-x: auto;
+    .section-eyebrow {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.6rem;
     }
 
-    .tab-btn {
-      background: transparent;
-      border: 1px solid transparent;
-      color: #94a3b8;
-      font-size: 0.82rem;
-      font-weight: 600;
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      transition: all 0.15s ease;
+    .section-headline {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.035em;
+      margin-bottom: 1rem;
     }
 
-    .tab-btn:hover {
-      color: #f8fafc;
-      background-color: rgba(255, 255, 255, 0.06);
+    .section-subheadline {
+      font-size: 1.15rem;
+      color: var(--text-2);
+      max-width: 620px;
+      line-height: 1.6;
+      margin-bottom: 3.5rem;
     }
 
-    .tab-btn.active {
-      color: #34c759;
-      background-color: rgba(52, 199, 89, 0.18);
-      border-color: rgba(52, 199, 89, 0.5);
-    }
-
-    .notch-content-body {
-      padding: 1.5rem;
-      min-height: 180px;
-    }
-
-    .interactive-panel {
-      display: none;
-    }
-
-    .interactive-panel.active {
-      display: block;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Section Headings */
-    section {
-      padding-top: 4.5rem;
-    }
-
-    .section-title {
-      font-size: 1.95rem;
-      font-weight: 750;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.5rem;
-    }
-
-    .section-subtitle {
-      color: var(--text-secondary);
-      font-size: 1.05rem;
-      margin-bottom: 2.25rem;
-    }
-
-    /* Feature Grid */
-    .feature-grid {
+    .bento-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.35rem;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1.5rem;
     }
 
-    .feature-card {
-      background-color: var(--surface-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: 18px;
-      padding: 1.5rem;
+    .bento-card {
+      padding: 2.2rem;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-      transition: border-color 0.15s ease, transform 0.15s ease;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
     }
 
-    .feature-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
+    .bento-card.col-8 {
+      grid-column: span 8;
     }
 
-    .feature-card-header {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
+    .bento-card.col-4 {
+      grid-column: span 4;
     }
 
-    .feature-icon-bubble {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background-color: var(--badge-bg);
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
+    .bento-card.col-6 {
+      grid-column: span 6;
     }
 
-    .feature-card h3 {
-      font-size: 1.15rem;
+    .bento-card.col-12 {
+      grid-column: span 12;
+    }
+
+    .bento-card h3 {
+      font-size: 1.5rem;
       font-weight: 700;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
     }
 
-    .feature-card p {
-      font-size: 0.94rem;
-      color: var(--text-secondary);
+    .bento-card p {
+      font-size: 1.02rem;
+      color: var(--text-2);
       line-height: 1.65;
     }
 
-    .feature-tag {
-      margin-top: auto;
-      font-size: 0.75rem;
+    .bento-icon-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 1.4rem;
+    }
+
+    .bento-visual {
+      margin-top: 2rem;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    /* Stats & Performance Counter */
+    .stat-number {
+      font-size: 3.2rem;
+      font-weight: 800;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+
+    .stat-number.green {
+      color: var(--green);
+      text-shadow: 0 0 20px rgba(52, 199, 89, 0.35);
+    }
+
+    .stat-number.blue {
+      color: #60a5fa;
+      text-shadow: 0 0 20px rgba(96, 165, 250, 0.35);
+    }
+
+    /* Comparison Table */
+    .comparison-section {
+      padding: 3rem 0 6rem;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 2rem;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .compare-table th, .compare-table td {
+      padding: 18px 24px;
+      text-align: left;
+      font-size: 0.96rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .compare-table th {
+      background: rgba(255, 255, 255, 0.04);
+      font-weight: 700;
+      color: var(--text-2);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .compare-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .compare-table td.highlight {
+      color: #ffffff;
       font-weight: 600;
-      color: var(--accent);
+      background: rgba(49, 130, 246, 0.06);
     }
 
-    /* Screenshots Gallery */
-    .screenshot-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
-      gap: 1.75rem;
+    .check-yes {
+      color: var(--green);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    @media (max-width: 560px) {
-      .screenshot-grid {
+    .check-no {
+      color: #ef4444;
+      opacity: 0.7;
+    }
+
+    /* FAQ Section */
+    .faq-section {
+      padding: 3rem 0 6rem;
+    }
+
+    .faq-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 840px;
+    }
+
+    .faq-item {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: all 0.25s ease;
+    }
+
+    .faq-question {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 1.05rem;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .faq-question:hover {
+      background: var(--surface-2);
+    }
+
+    .faq-answer {
+      padding: 0 24px 20px 24px;
+      font-size: 0.98rem;
+      color: var(--text-2);
+      line-height: 1.65;
+      display: none;
+    }
+
+    .faq-item.open .faq-answer {
+      display: block;
+    }
+
+    .faq-item.open .faq-icon {
+      transform: rotate(180deg);
+    }
+
+    .faq-icon {
+      transition: transform 0.2s ease;
+      color: var(--text-3);
+    }
+
+    /* Download CTA Section */
+    .download-section {
+      padding: 6rem 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .download-card {
+      padding: 4.5rem 2rem;
+      border-radius: var(--radius-xl);
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), 0 0 60px rgba(49, 130, 246, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Footer */
+    footer.site-footer {
+      padding: 4rem 0 3rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.88rem;
+      color: var(--text-3);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 900px) {
+      .bento-card.col-8,
+      .bento-card.col-4,
+      .bento-card.col-6 {
+        grid-column: span 12;
+      }
+      .nav-menu {
+        display: none;
+      }
+      .macbook-screen {
+        height: 440px;
+      }
+      .notch-island.expanded {
+        width: 95%;
+        height: 250px;
+      }
+      .quota-sim-grid {
+        grid-template-columns: 1fr;
+      }
+      .music-lyrics-layout {
         grid-template-columns: 1fr;
       }
     }
 
-    figure.shot-card {
-      background-color: var(--surface-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: 18px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-      transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-
-    figure.shot-card:hover {
-      transform: translateY(-3px);
-      border-color: var(--accent);
-    }
-
-    figure.shot-card img {
-      width: 100%;
-      height: auto;
-      display: block;
-      border-bottom: 1px solid var(--border-subtle);
-      background-color: var(--surface-elevated);
-    }
-
-    figure.shot-card figcaption {
-      padding: 1.15rem 1.35rem;
-    }
-
-    figure.shot-card figcaption strong {
-      display: block;
-      font-size: 1.05rem;
-      font-weight: 700;
-      margin-bottom: 0.35rem;
-    }
-
-    figure.shot-card figcaption span {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-
-    /* Code Block */
-    pre.code-block {
-      background-color: var(--surface-elevated);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 1.25rem 1.4rem;
-      overflow-x: auto;
-      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-      font-size: 0.9rem;
-      line-height: 1.7;
-    }
-
-    /* Comparison Table */
-    .table-container {
-      overflow-x: auto;
-      margin-top: 1rem;
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.92rem;
-    }
-
-    th, td {
-      padding: 0.85rem 1.15rem;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    th {
-      background-color: var(--surface-elevated);
+    /* Toast Notification for Copy */
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(52, 199, 89, 0.4);
+      color: #ffffff;
+      padding: 10px 20px;
+      border-radius: var(--radius-pill);
+      font-size: 0.88rem;
       font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    /* Footer */
-    footer {
-      margin-top: 5.5rem;
-      padding-top: 2.25rem;
-      border-top: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      font-size: 0.92rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
       display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 1.25rem;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.3s var(--ease-spring);
+      z-index: 1000;
+    }
+
+    .toast-msg.show {
+      transform: translateX(-50%) translateY(0);
     }
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="container nav-bar">
-      <div class="brand">
-        <img src="assets/notchie-icon-dark.png" alt="Notchie app icon">
+
+  <div class="ambient-glow"></div>
+
+  <!-- Header Navigation -->
+  <header class="site-nav">
+    <div class="container nav-inner">
+      <a href="#" class="nav-brand">
+        <img src="assets/notchie-icon-dark.png" alt="Notchie App Icon">
         <span>Notchie</span>
-        <span class="badge">v24 Custom Edition</span>
-      </div>
-      <nav class="nav-links" aria-label="Primary Navigation">
-        <a href="#features">주요 기능</a>
-        <a href="#simulator">노치 시뮬레이터</a>
-        <a href="#screenshots">스크린샷</a>
-        <a href="#install">빌드 및 설치</a>
-        <a href="#license">라이선스</a>
+        <span class="nav-version">v2.5 Release</span>
+      </a>
+
+      <nav>
+        <ul class="nav-menu">
+          <li><a href="#simulator">라이브 노치 체험</a></li>
+          <li><a href="#features">핵심 기능</a></li>
+          <li><a href="#mixer">사운드 믹서</a></li>
+          <li><a href="#performance">최적화</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
       </nav>
+
+      <div class="nav-actions">
+        <a href="https://github.com/skang1310/Notchie" target="_blank" rel="noopener" class="btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <a href="#download" class="btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>무료 설치</span>
+        </a>
+      </div>
     </div>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <div class="hero-icons" aria-label="Notchie Light and Dark macOS Icons">
-        <figure>
-          <img src="assets/notchie-icon-light.png" alt="Notchie Light Icon">
-          <figcaption>Notchie Light</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/notchie-icon-dark.png" alt="Notchie Dark Icon">
-          <figcaption>Notchie Dark</figcaption>
-        </figure>
-      </div>
-
-      <h1>Notchie — 나만의 맞춤형 macOS 노치 워크스페이스</h1>
-      <p class="lead">
-        macOS의 유휴 노치를 <strong>6:4 미디어 &amp; 주간 캘린더 Nook</strong>, <strong>원클릭 클립보드 스튜디오</strong>, <strong>선반 위젯 &amp; 개발자 도구</strong>, <strong>웹캠 얼굴 잠금 해제 프리뷰</strong>로 채워주는 오픈소스 생산성 도구입니다. Apple Human Interface Guidelines 표준 규격의 정밀한 앱 아이콘과 제로 클라우드 프라이버시 설계를 자랑합니다.
-      </p>
-
-      <div class="cta-row">
-        <a class="btn btn-primary" href="https://github.com/skang1310/Notchie">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          GitHub에서 소스코드 보기
-        </a>
-        <a class="btn" href="#screenshots">실제 스크린샷 둘러보기</a>
-        <a class="btn" href="#install">로컬 빌드 &amp; 설치 가이드</a>
-      </div>
-    </section>
-
-    <!-- Interactive Simulator -->
-    <section id="simulator">
-      <h2 class="section-title">인터랙티브 노치 시뮬레이터 (Interactive Notch)</h2>
-      <p class="section-subtitle">상단 탭을 클릭하여 노치가 실제로 제공하는 각 모듈의 인터페이스를 미리 체험해보세요.</p>
-
-      <div class="notch-simulator">
-        <div class="notch-top-bar">
-          <div style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; display: flex; align-items: center; gap: 6px;">
-            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #34c759;"></span>
-            Notchie Workspace
-          </div>
-          <div class="notch-cutout">
-            <div class="camera-lens"></div>
-            <div class="green-indicator"></div>
-          </div>
-          <div style="font-size: 0.78rem; color: #64748b;">macOS 14+ / 15+ / 27+</div>
+  <!-- Hero Section -->
+  <main>
+    <section class="hero-section">
+      <div class="container">
+        <div class="hero-pill-badge">
+          <span class="pulse-dot"></span>
+          <span>새로워진 macOS Sonoma / Sequoia 최적화 에디션</span>
         </div>
 
-        <nav class="notch-nav-tabs" aria-label="Notch Simulator Tabs">
-          <button class="tab-btn active" onclick="switchSim('nook')">🎵 Nook (미디어 &amp; 캘린더)</button>
-          <button class="tab-btn" onclick="switchSim('clipboard')">📋 클립보드 스튜디오</button>
-          <button class="tab-btn" onclick="switchSim('shelf')">🧰 선반 &amp; 퀵 툴</button>
-          <button class="tab-btn" onclick="switchSim('notes')">📝 빠른 메모</button>
-          <button class="tab-btn" onclick="switchSim('tray')">📂 파일 보관함</button>
-        </nav>
+        <h1 class="hero-title">
+          노치, 이제 진짜<br>
+          <span class="gradient-word">맥북의 일부처럼.</span>
+        </h1>
 
-        <div class="notch-content-body">
-          <!-- Tab 1: Nook -->
-          <div id="sim-nook" class="interactive-panel active">
-            <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: center;">
-              <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                <div style="display: flex; gap: 10px; align-items: center;">
-                  <div style="width: 48px; height: 48px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #047857); display: flex; align-items: center; justify-content: center; font-size: 20px;">🎧</div>
-                  <div>
-                    <div style="font-weight: 700; font-size: 0.95rem;">Starboy (Remix)</div>
-                    <div style="font-size: 0.8rem; color: #94a3b8;">The Weeknd · Daft Punk</div>
+        <p class="hero-desc">
+          화면만 가리던 검은 유휴 공간이 매일 손이 가는 허브가 됩니다.<br>
+          앱별 볼륨 믹서부터 실시간 가사, 제스처 캘린더, 회의 제어, 개발자 AI 쿼터까지.
+        </p>
+
+        <div class="hero-cta-group">
+          <a href="#download" class="btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>지금 다운로드 (macOS 14+)</span>
+          </a>
+          <button class="terminal-box" onclick="copyInstallCmd()">
+            <span>$</span>
+            <code>git clone https://github.com/skang1310/Notchie.git</code>
+            <span class="terminal-copy-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>복사</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Living MacBook Hardware Mockup & Simulator -->
+      <div class="stage-wrapper" id="simulator">
+        <div class="macbook-chassis">
+          <div class="macbook-screen">
+            
+            <!-- macOS Menu Bar -->
+            <div class="macos-menubar">
+              <div class="menu-left">
+                <span class="apple-icon"></span>
+                <span class="menu-item bold">Notchie</span>
+                <span class="menu-item">파일</span>
+                <span class="menu-item">편집</span>
+                <span class="menu-item">보기</span>
+                <span class="menu-item">도움말</span>
+              </div>
+              <div class="menu-right">
+                <span>98%</span>
+                <span>목 10월 30일 오후 8:24</span>
+              </div>
+            </div>
+
+            <!-- Dynamic Interactive Notch Island -->
+            <div class="notch-island expanded" id="interactiveNotch" onclick="toggleNotchExpand(event)">
+              
+              <!-- Collapsed Pill View -->
+              <div class="notch-collapsed-content">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="color:#60a5fa;">🎵</span>
+                  <span style="font-size:10px;">Ditto</span>
+                </div>
+                <div class="camera-bezel">
+                  <span class="cam-green-led"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <span style="color:#34c759;font-size:10px;">오후 8:30</span>
+                </div>
+              </div>
+
+              <!-- Expanded Interactive Body -->
+              <div class="notch-expanded-body">
+                
+                <!-- Notch Top Navigation Tabs -->
+                <div class="notch-hub-top">
+                  <div class="notch-tabs" onclick="event.stopPropagation()">
+                    <button class="sim-tab-btn active" onclick="switchSimTab('mixer', this)">
+                      <span>🎛️</span>
+                      <span>사운드 믹서</span>
+                    </button>
+                    <button class="sim-tab-btn" onclick="switchSimTab('lyrics', this)">
+                      <span>🎵</span>
+                      <span>가사 & 재생</span>
+                    </button>
+                    <button class="sim-tab-btn" onclick="switchSimTab('calendar', this)">
+                      <span>📅</span>
+                      <span>제스처 캘린더</span>
+                    </button>
+                    <button class="sim-tab-btn" onclick="switchSimTab('meeting', this)">
+                      <span>📹</span>
+                      <span>회의 컨트롤</span>
+                    </button>
+                    <button class="sim-tab-btn" onclick="switchSimTab('ai', this)">
+                      <span>✨</span>
+                      <span>AI 쿼터</span>
+                    </button>
+                  </div>
+                  <div class="notch-collapse-hint">
+                    <span>노치 탭하여 접기</span>
+                    <span>✕</span>
                   </div>
                 </div>
-                <div style="margin-top: 10px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px;">
-                  <div style="width: 58%; height: 100%; background: #34c759; border-radius: 2px;"></div>
+
+                <!-- Sim Panel Contents -->
+                <div class="sim-panel-container" onclick="event.stopPropagation()">
+                  
+                  <!-- Panel 1: Per-App Sound Mixer -->
+                  <div class="sim-panel active" id="sim-mixer">
+                    <div class="mixer-layout">
+                      <!-- Master Device Column -->
+                      <div class="mixer-device-col">
+                        <span style="font-size:11px;font-weight:700;color:#e2e8f0;">마스터 출력</span>
+                        <div class="capsule-slider-track master-slider" onmousedown="startSliderDrag(event, 'master')" onwheel="handleSliderWheel(event, 'master')">
+                          <div class="capsule-slider-fill" id="fill-master" style="height: 75%;"></div>
+                        </div>
+                        <span class="volume-pct-label" id="pct-master">75%</span>
+                      </div>
+
+                      <!-- Per-App Sliders Row -->
+                      <div class="mixer-apps-row">
+                        <!-- Music -->
+                        <div class="mixer-app-card" onwheel="handleSliderWheel(event, 'music')">
+                          <div class="app-icon-circle" style="background:#fa2d48;">
+                            <span>🎵</span>
+                            <span class="audio-playing-indicator"></span>
+                          </div>
+                          <div class="capsule-slider-track" onmousedown="startSliderDrag(event, 'music')">
+                            <div class="capsule-slider-fill" id="fill-music" style="height: 80%;"></div>
+                          </div>
+                          <span class="volume-pct-label" id="pct-music">80%</span>
+                          <span class="app-name-label">Music</span>
+                        </div>
+
+                        <!-- Chrome -->
+                        <div class="mixer-app-card" onwheel="handleSliderWheel(event, 'chrome')">
+                          <div class="app-icon-circle" style="background:#1a73e8;">
+                            <span>🌐</span>
+                            <span class="audio-playing-indicator"></span>
+                          </div>
+                          <div class="capsule-slider-track" onmousedown="startSliderDrag(event, 'chrome')">
+                            <div class="capsule-slider-fill" id="fill-chrome" style="height: 45%;"></div>
+                          </div>
+                          <span class="volume-pct-label" id="pct-chrome">45%</span>
+                          <span class="app-name-label">Chrome</span>
+                        </div>
+
+                        <!-- Spotify -->
+                        <div class="mixer-app-card" onwheel="handleSliderWheel(event, 'spotify')">
+                          <div class="app-icon-circle" style="background:#1ed760;">
+                            <span>🎧</span>
+                          </div>
+                          <div class="capsule-slider-track" onmousedown="startSliderDrag(event, 'spotify')">
+                            <div class="capsule-slider-fill" id="fill-spotify" style="height: 60%;"></div>
+                          </div>
+                          <span class="volume-pct-label" id="pct-spotify">60%</span>
+                          <span class="app-name-label">Spotify</span>
+                        </div>
+
+                        <!-- Slack -->
+                        <div class="mixer-app-card" onwheel="handleSliderWheel(event, 'slack')">
+                          <div class="app-icon-circle" style="background:#4a154b;">
+                            <span>💬</span>
+                          </div>
+                          <div class="capsule-slider-track" onmousedown="startSliderDrag(event, 'slack')">
+                            <div class="capsule-slider-fill" id="fill-slack" style="height: 30%;"></div>
+                          </div>
+                          <span class="volume-pct-label" id="pct-slack">30%</span>
+                          <span class="app-name-label">Slack</span>
+                        </div>
+
+                        <!-- Mic -->
+                        <div class="mixer-app-card" onwheel="handleSliderWheel(event, 'mic')">
+                          <div class="app-icon-circle" style="background:#475569;">
+                            <span>🎙️</span>
+                          </div>
+                          <div class="capsule-slider-track" onmousedown="startSliderDrag(event, 'mic')">
+                            <div class="capsule-slider-fill" id="fill-mic" style="height: 90%; background: #94a3b8;"></div>
+                          </div>
+                          <span class="volume-pct-label" id="pct-mic">90%</span>
+                          <span class="app-name-label">마이크</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Panel 2: Now Playing & Synced Lyrics -->
+                  <div class="sim-panel" id="sim-lyrics">
+                    <div class="music-lyrics-layout">
+                      <div class="now-playing-studio">
+                        <div class="album-art-box">
+                          <span>💿</span>
+                        </div>
+                        <div class="track-meta">
+                          <span style="font-size:9.5px;color:#38bdf8;font-weight:700;">NOW PLAYING</span>
+                          <span class="track-title">Ditto (2026 Remaster)</span>
+                          <span class="track-artist">NewJeans — OMG</span>
+                          <div style="display:flex;align-items:center;gap:12px;margin-top:6px;font-size:13px;color:rgba(255,255,255,0.7);">
+                            <span>⏮</span>
+                            <span style="font-size:16px;color:#ffffff;">⏸</span>
+                            <span>⏭</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="lyrics-stream-card">
+                        <span style="font-size:9.5px;color:#34c759;font-weight:700;">REAL-TIME SYNCED LRC</span>
+                        <div class="lyric-line">Stay in the middle, Like you a little</div>
+                        <div class="lyric-line active">Don't want no riddle, 말해줘 say it back</div>
+                        <div class="lyric-line">Oh say it ditto, 아침은 너무 멀어</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Panel 3: Gesture Calendar -->
+                  <div class="sim-panel" id="sim-calendar">
+                    <div class="calendar-sim-layout">
+                      <div class="cal-week-strip">
+                        <div class="cal-day-cell"><span>월</span><span>27</span></div>
+                        <div class="cal-day-cell"><span>화</span><span>28</span></div>
+                        <div class="cal-day-cell"><span>수</span><span>29</span></div>
+                        <div class="cal-day-cell active"><span>목</span><span>30</span></div>
+                        <div class="cal-day-cell"><span>금</span><span>31</span></div>
+                        <div class="cal-day-cell"><span>토</span><span>1</span></div>
+                      </div>
+
+                      <div class="cal-agenda-card" id="calAgendaCard" onclick="toggleCalExpand()">
+                        <div class="cal-card-header">
+                          <span>UPCOMING (1/3)</span>
+                          <span id="calGestureHint" style="color:#94a3b8;">⬇️ 아래로 스크롤하여 전체 보기</span>
+                        </div>
+                        <span class="cal-event-title" id="calEventTitle">엔지니어링 싱크 &amp; 스프린트 리뷰</span>
+                        <span class="cal-event-time">오후 8:30 – 오후 9:30 · Google Meet</span>
+                        <div style="margin-top:4px;" id="calFullList">
+                          <span style="display:inline-flex;padding:3px 9px;border-radius:999px;background:#2563eb;color:#ffffff;font-size:9.5px;font-weight:700;">1초 만에 참여</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Panel 4: Meeting Controls -->
+                  <div class="sim-panel" id="sim-meeting">
+                    <div style="width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px 20px;">
+                      <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px #ef4444;"></span>
+                        <div>
+                          <div style="font-size:13.5px;font-weight:700;">Google Meet · 스프린트 리뷰</div>
+                          <div style="font-size:11px;color:#94a3b8;font-family:ui-monospace,monospace;">진행 시간: 24분 18초</div>
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <button style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#ffffff;font-size:14px;cursor:pointer;">🎙️</button>
+                        <button style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#ffffff;font-size:14px;cursor:pointer;">📹</button>
+                        <button style="padding:6px 14px;border-radius:999px;background:#dc2626;border:none;color:#ffffff;font-size:11px;font-weight:700;cursor:pointer;">통화 종료</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Panel 5: AI Quota Monitor -->
+                  <div class="sim-panel" id="sim-ai">
+                    <div class="quota-sim-grid">
+                      <div class="quota-mini-card">
+                        <div class="quota-card-top">
+                          <span class="quota-model-name" style="color:#f59e0b;">Claude 3.7 Sonnet</span>
+                          <span style="font-size:11px;font-weight:700;">38%</span>
+                        </div>
+                        <div class="quota-progress-bar">
+                          <div class="quota-bar-fill" style="width:38%;background:#f59e0b;"></div>
+                        </div>
+                        <span style="font-size:10px;color:rgba(255,255,255,0.5);">5시간마다 자동 리셋</span>
+                      </div>
+
+                      <div class="quota-mini-card">
+                        <div class="quota-card-top">
+                          <span class="quota-model-name" style="color:#10b981;">OpenAI Codex</span>
+                          <span style="font-size:11px;font-weight:700;">82%</span>
+                        </div>
+                        <div class="quota-progress-bar">
+                          <div class="quota-bar-fill" style="width:82%;background:#10b981;"></div>
+                        </div>
+                        <span style="font-size:10px;color:#34d399;">리셋까지 1시간 42분</span>
+                      </div>
+
+                      <div class="quota-mini-card">
+                        <div class="quota-card-top">
+                          <span class="quota-model-name" style="color:#60a5fa;">Antigravity Quota</span>
+                          <span style="font-size:11px;font-weight:700;">14%</span>
+                        </div>
+                        <div class="quota-progress-bar">
+                          <div class="quota-bar-fill" style="width:14%;background:#60a5fa;"></div>
+                        </div>
+                        <span style="font-size:10px;color:rgba(255,255,255,0.5);">여유 한도 충분</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
+              </div>
+            </div>
+
+            <!-- MacBook Wallpaper Ambient Label -->
+            <div style="margin-top:auto;padding:24px;display:flex;align-items:flex-end;justify-content:space-between;opacity:0.4;">
+              <span style="font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">macOS Sequoia Pro</span>
+              <span style="font-size:11px;font-family:ui-monospace,monospace;">3024 × 1964 Retina XDR</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stage-instruction">
+          <span class="key-badge">클릭 또는 마우스 휠</span>
+          <span>위의 노치를 탭하여 확장/축소하고, 슬라이더를 마우스로 드래그하거나 휠을 굴려보세요.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+       Bento Showcase: Apple / Toss Standard
+       ========================================================= -->
+    <section class="bento-section" id="features">
+      <div class="container">
+        <div class="section-eyebrow">FEATURES &amp; HIGHLIGHTS</div>
+        <h2 class="section-headline">
+          불필요한 것은 덜어내고,<br>
+          가장 자주 쓰는 경험만 노치에.
+        </h2>
+        <p class="section-subheadline">
+          타이머, 스톱워치, 메모 같은 곁다리 기능은 전부 정리했습니다.<br>
+          맥북 사용자가 하루에도 수십 번 마주하는 다섯 가지 핵심 흐름에 집중합니다.
+        </p>
+
+        <div class="bento-grid">
+          
+          <!-- Bento 1 (Wide): Per-App Sound Mixer -->
+          <article class="bento-card col-8 glass-panel" id="mixer">
+            <div>
+              <div class="bento-icon-badge" style="color:#60a5fa;">🎛️</div>
+              <h3>소리 조절의 새로운 기준, 앱별 볼륨 믹서</h3>
+              <p>
+                유튜브 영상 소리가 너무 크다고 맥 전체 볼륨을 줄이셨나요?<br>
+                이제 노치에서 Chrome, Music, Spotify, Slack의 볼륨을 개별적으로 제어하세요.
+                앱 위에 마우스를 올리고 <strong>휠만 굴려도 1초 만에 조절</strong>됩니다.
+              </p>
+            </div>
+            <div class="bento-visual" style="padding:18px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:12px;">
+                <span>실시간 CoreAudio C HAL 연동</span>
+                <span style="color:var(--green);">● 무지연 하드웨어 반영</span>
+              </div>
+              <div style="display:flex;gap:12px;align-items:center;">
+                <div style="flex:1;background:rgba(255,255,255,0.06);padding:10px 14px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:13px;font-weight:600;">YouTube (Chrome)</span>
+                  <span style="font-family:monospace;color:#60a5fa;font-weight:700;">45%</span>
+                </div>
+                <div style="flex:1;background:rgba(255,255,255,0.06);padding:10px 14px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:13px;font-weight:600;">Apple Music BGM</span>
+                  <span style="font-family:monospace;color:#34c759;font-weight:700;">80%</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Bento 2: Now Playing & Synced Lyrics -->
+          <article class="bento-card col-4 glass-panel">
+            <div>
+              <div class="bento-icon-badge" style="color:#ec4899;">🎵</div>
+              <h3>밀리초 실시간 동기화 가사</h3>
+              <p>
+                음악 카드를 한 번 탭하면 캘린더 자리에 고해상도 싱크 가사가 펼쳐집니다.
+                Apple Music과 Spotify 모두 완벽 지원합니다.
+              </p>
+            </div>
+            <div class="bento-visual" style="padding:16px;text-align:center;">
+              <span style="font-size:11px;color:#a855f7;font-weight:700;letter-spacing:0.05em;">KUGOU + LRCLIB PIPELINE</span>
+              <div style="margin-top:6px;font-size:13px;font-weight:700;color:#38bdf8;">
+                "Don't want no riddle, 말해줘 say it back"
+              </div>
+            </div>
+          </article>
+
+          <!-- Bento 3: Gesture Calendar -->
+          <article class="bento-card col-4 glass-panel">
+            <div>
+              <div class="bento-icon-badge" style="color:#38bdf8;">📅</div>
+              <h3>방향 제스처 캘린더</h3>
+              <p>
+                밑으로 스크롤하면 전체 일정이 열리고, 위로 스크롤하면 닫힙니다.
+                한 번 클릭으로 열고, 다시 클릭하면 접히는 자연스러운 물리 감각.
+              </p>
+            </div>
+            <div class="bento-visual" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.7);">
+                <span>⬇️ 스크롤 다운</span>
+                <span style="color:#60a5fa;font-weight:700;">전체 일정 펼침</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.7);">
+                <span>⬆️ 스크롤 업</span>
+                <span style="color:#94a3b8;font-weight:700;">다음 일정으로 접힘</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Bento 4: Meeting & Messages -->
+          <article class="bento-card col-4 glass-panel">
+            <div>
+              <div class="bento-icon-badge" style="color:#ef4444;">📹</div>
+              <h3>어디 숨었는지 모를 땐, 노치</h3>
+              <p>
+                수많은 브라우저 탭 속에 묻힌 Google Meet이나 Zoom 회의 창을 찾지 마세요.
+                노치에서 즉시 마이크를 끄고 카메라를 제어합니다.
+              </p>
+            </div>
+            <div class="bento-visual" style="padding:14px;display:flex;align-items:center;justify-content:center;gap:12px;">
+              <span style="padding:6px 12px;background:rgba(255,255,255,0.1);border-radius:20px;font-size:11px;font-weight:700;">🎙️ 원클릭 Mute</span>
+              <span style="padding:6px 12px;background:rgba(239,68,68,0.2);color:#fca5a5;border-radius:20px;font-size:11px;font-weight:700;">통화 종료</span>
+            </div>
+          </article>
+
+          <!-- Bento 5: AI Quota Tracker -->
+          <article class="bento-card col-4 glass-panel">
+            <div>
+              <div class="bento-icon-badge" style="color:#f59e0b;">✨</div>
+              <h3>개발자 맞춤 AI 쿼터 모니터</h3>
+              <p>
+                Claude Team, Codex, Antigravity 실시간 잔여 쿼터와 리셋 시간을 터미널 열 필요 없이 노치에서 상시 확인합니다.
+              </p>
+            </div>
+            <div class="bento-visual" style="padding:14px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;justify-content:space-between;font-size:11px;">
+                <span>Codex Live Rate Limit</span>
+                <span style="color:#ef4444;font-weight:700;">100% 소진</span>
+              </div>
+              <span style="font-size:10px;color:#94a3b8;">리셋 카운트다운: 1시간 14분 03초</span>
+            </div>
+          </article>
+
+          <!-- Bento 6 (Wide): Pure Native Performance -->
+          <article class="bento-card col-12 glass-panel" id="performance">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:2rem;align-items:center;">
+              <div>
+                <div class="bento-icon-badge" style="color:var(--green);">⚡</div>
+                <h3>불필요한 것은 100% 제거한 순수 Swift 최적화</h3>
+                <p>
+                  18개 비핵심 기능과 불필요한 백그라운드 타이머를 코드 레벨에서 완전히 도려냈습니다.<br>
+                  앱이 유휴 상태일 때 CPU 사용률은 <strong>0.0%</strong>에 수렴하며, 배터리를 단 1%도 낭비하지 않습니다.
+                </p>
               </div>
 
-              <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                  <span style="font-size: 0.78rem; font-weight: 700; color: #38bdf8;">10월 29일 목요일</span>
-                  <span style="font-size: 0.7rem; background: #0284c7; padding: 2px 6px; border-radius: 4px;">Google Meet</span>
+              <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:1.5rem;text-align:center;">
+                <div style="background:rgba(255,255,255,0.03);padding:1.4rem;border-radius:18px;border:1px solid rgba(255,255,255,0.06);">
+                  <div class="stat-number green">0.0%</div>
+                  <div style="font-size:0.86rem;color:var(--text-2);font-weight:600;">유휴 CPU 점유율</div>
                 </div>
-                <div style="font-size: 0.86rem; font-weight: 600;">스프린트 리뷰 &amp; 릴리즈 회고</div>
-                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">오후 5:00 – 6:00 (10분 후 시작)</div>
+                <div style="background:rgba(255,255,255,0.03);padding:1.4rem;border-radius:18px;border:1px solid rgba(255,255,255,0.06);">
+                  <div class="stat-number blue">371</div>
+                  <div style="font-size:0.86rem;color:var(--text-2);font-weight:600;">회귀 테스트 통과</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:1.4rem;border-radius:18px;border:1px solid rgba(255,255,255,0.06);">
+                  <div class="stat-number" style="color:#c084fc;">34MB</div>
+                  <div style="font-size:0.86rem;color:var(--text-2);font-weight:600;">초경량 번들 크기</div>
+                </div>
               </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="comparison-section">
+      <div class="container">
+        <div class="section-eyebrow">WHY NOTCHIE</div>
+        <h2 class="section-headline">맥북 노치가 바뀌는 순간</h2>
+        
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>기능 및 경험</th>
+              <th>기본 macOS 노치</th>
+              <th style="color:#ffffff;background:rgba(49,130,246,0.12);">Notchie Custom Edition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>앱별 독립 볼륨 제어</strong></td>
+              <td><span class="check-no">✕ 전체 볼륨만 변경 가능</span></td>
+              <td class="highlight"><span class="check-yes">✓ 개별 앱 슬라이더 + 휠 스크롤</span></td>
+            </tr>
+            <tr>
+              <td><strong>음악 재생 &amp; 실시간 가사</strong></td>
+              <td><span class="check-no">✕ 별도 앱 창 띄워야 함</span></td>
+              <td class="highlight"><span class="check-yes">✓ 노치 탭 한 번으로 싱크 가사 전환</span></td>
+            </tr>
+            <tr>
+              <td><strong>주간 캘린더 &amp; 일정 제스처</strong></td>
+              <td><span class="check-no">✕ 메뉴바 아이콘 클릭 필요</span></td>
+              <td class="highlight"><span class="check-yes">✓ 아래로 열고 위로 닫는 물리 스크롤</span></td>
+            </tr>
+            <tr>
+              <td><strong>Google Meet / Zoom 제어</strong></td>
+              <td><span class="check-no">✕ 수십 개 탭 중 회의 창 탐색</span></td>
+              <td class="highlight"><span class="check-yes">✓ 58pt 미니멀 바에서 1초 마이크 뮤트</span></td>
+            </tr>
+            <tr>
+              <td><strong>Claude &amp; Codex 쿼터 감시</strong></td>
+              <td><span class="check-no">✕ 웹 콘솔이나 CLI 일일이 조회</span></td>
+              <td class="highlight"><span class="check-yes">✓ 노치 호버 즉시 리셋 카운트다운</span></td>
+            </tr>
+            <tr>
+              <td><strong>백그라운드 자원 관리</strong></td>
+              <td><span class="check-no">✕ 서드파티 앱 백그라운드 상시 과부하</span></td>
+              <td class="highlight"><span class="check-yes">✓ 18개 비핵심 기능 삭제, CPU 0% 유지</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FAQ Accordion -->
+    <section class="faq-section" id="faq">
+      <div class="container">
+        <div class="section-eyebrow">FAQ</div>
+        <h2 class="section-headline">자주 묻는 질문</h2>
+
+        <div class="faq-list">
+          <div class="faq-item open">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Q. 노치가 없는 외장 모니터나 구형 맥에서도 쓸 수 있나요?</span>
+              <span class="faq-icon">▼</span>
+            </div>
+            <div class="faq-answer">
+              네, 가능합니다. 물리적 노치가 없는 외장 디스플레이나 구형 MacBook에서는 화면 상단 중앙에 아이폰 스타일의 세련된 <strong>Dynamic Island 플로팅 바</strong> 형태로 자연스럽게 표시됩니다.
             </div>
           </div>
 
-          <!-- Tab 2: Clipboard -->
-          <div id="sim-clipboard" class="interactive-panel">
-            <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 0.8rem; color: #94a3b8;">🔍 검색: <code style="color: #4ade80;">token</code></span>
-                <span style="font-size: 0.72rem; color: #64748b;">Enter로 복사 · 별표로 보관</span>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: 6px;">
-                  <span style="font-family: monospace; font-size: 0.82rem; color: #38bdf8;">https://github.com/skang1310/Notchie</span>
-                  <span style="font-size: 0.72rem; color: #94a3b8;">Safari · 방금 전</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(52, 199, 89, 0.1); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(52, 199, 89, 0.3);">
-                  <span style="font-family: monospace; font-size: 0.82rem; color: #4ade80;">xcodebuild -project DynamicNotch.xcodeproj ...</span>
-                  <span style="font-size: 0.72rem; color: #4ade80; font-weight: 600;">✓ 복사됨!</span>
-                </div>
-              </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Q. 배터리 소모나 발열은 없나요?</span>
+              <span class="faq-icon">▼</span>
+            </div>
+            <div class="faq-answer">
+              Notchie는 이번 대규모 정리 작업을 통해 메모, 스톱워치, 화면 색상 추출 도구 등 불필요한 18개 비핵심 모듈을 완전히 제거했습니다. 백그라운드 FSEvents 감시와 주기적 폴링을 없애 유휴 상태에서 CPU 0.0%를 유지하므로 배터리 부담이 전혀 없습니다.
             </div>
           </div>
 
-          <!-- Tab 3: Shelf -->
-          <div id="sim-shelf" class="interactive-panel">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-              <div style="background: rgba(255,255,255,0.04); padding: 10px; border-radius: 10px; text-align: center;">
-                <div style="font-size: 1.2rem;">⏱️</div>
-                <div style="font-weight: 700; font-size: 0.85rem; margin-top: 4px;">집중 타이머</div>
-                <div style="font-size: 0.72rem; color: #94a3b8;">25분 뽀모도로</div>
-              </div>
-              <div style="background: rgba(255,255,255,0.04); padding: 10px; border-radius: 10px; text-align: center;">
-                <div style="font-size: 1.2rem;">📊</div>
-                <div style="font-weight: 700; font-size: 0.85rem; margin-top: 4px;">CPU / RAM 상태</div>
-                <div style="font-size: 0.72rem; color: #34c759;">CPU 12% · RAM 8.4GB</div>
-              </div>
-              <div style="background: rgba(255,255,255,0.04); padding: 10px; border-radius: 10px; text-align: center;">
-                <div style="font-size: 1.2rem;">☕</div>
-                <div style="font-weight: 700; font-size: 0.85rem; margin-top: 4px;">화면 유지</div>
-                <div style="font-size: 0.72rem; color: #38bdf8;">절전 방지 켜짐</div>
-              </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Q. 실시간 가사는 어떤 음악 앱을 지원하나요?</span>
+              <span class="faq-icon">▼</span>
+            </div>
+            <div class="faq-answer">
+              macOS Apple Music(음악 앱)과 Spotify 데스크톱 앱 모두 지원합니다. Kugou 초고속 밀리초 LRC 파이프라인과 LRCLIB 백업 파이프라인을 탑재하여 국내외 대부분의 가요 및 팝송을 실시간 싱크 가사로 표시합니다.
             </div>
           </div>
 
-          <!-- Tab 4: Notes -->
-          <div id="sim-notes" class="interactive-panel">
-            <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-weight: 700; font-size: 0.88rem;">📝 빠른 메모</span>
-                <span style="font-size: 0.72rem; color: #34c759;">자동 저장됨</span>
-              </div>
-              <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">
-                • 이번 주 배포: Notchie v24 정식 릴리즈 완료<br>
-                • Apple HIG 표준 824x824 앱 아이콘 규격 반영<br>
-                • 미디어 60% : 캘린더 40% 최적 분할 적용
-              </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              <span>Q. 보안이나 개인정보는 안전한가요?</span>
+              <span class="faq-icon">▼</span>
             </div>
-          </div>
-
-          <!-- Tab 5: Tray -->
-          <div id="sim-tray" class="interactive-panel">
-            <div style="background: rgba(255,255,255,0.04); padding: 16px; border-radius: 12px; border: 2px dashed rgba(255,255,255,0.15); text-align: center;">
-              <div style="font-size: 1.5rem; margin-bottom: 6px;">📥</div>
-              <div style="font-weight: 600; font-size: 0.88rem;">파일을 여기에 드롭하여 임시 보관</div>
-              <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">AirDrop 전송, 이미지 포맷 변환(PNG/JPEG) 지원</div>
+            <div class="faq-answer">
+              Notchie는 100% 오픈소스(GPL-3.0)로 공개되어 있습니다. 외부 서버로 어떠한 분석 데이터나 로그도 전송하지 않으며, 비밀번호 요구가 완전히 배제된 macOS 로컬 샌드박스 정책을 엄격히 준수합니다.
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Key Features -->
-    <section id="features">
-      <h2 class="section-title">핵심 차별점 및 기능 (Key Capabilities)</h2>
-      <p class="section-subtitle">사용자의 일상 작업 속도를 극대화하도록 섬세하게 다듬어진 기능들입니다.</p>
-
-      <div class="feature-grid">
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">🍎</div>
-            <h3>Apple HIG 표준 앱 아이콘</h3>
-          </div>
-          <p>
-            1024×1024 캔버스 중심에 824×824 pt(80.5% 비율) 스퀘어클과 100pt 상하좌우 여백, 그리고 정밀한 듀얼 드롭 섀도우를 내장하여 Dock과 Finder에서 다른 macOS 앱과 완벽한 일체감을 제공합니다.
+    <!-- Download Section -->
+    <section class="download-section" id="download">
+      <div class="container">
+        <div class="download-card">
+          <h2 style="font-size:clamp(2.2rem, 4.5vw, 3.4rem);font-weight:800;letter-spacing:-0.035em;margin-bottom:1rem;">
+            지금, 당신의 맥북을 완성해보세요.
+          </h2>
+          <p style="font-size:1.15rem;color:var(--text-2);max-width:540px;margin:0 auto 2.5rem;line-height:1.6;">
+            macOS 14.0 Sonoma 및 macOS 15.0+ Sequoia에 완벽 대응합니다.<br>
+            Apple Silicon(M1/M2/M3/M4) 및 Intel Mac 모두 지원.
           </p>
-          <div class="feature-tag">macOS Big Sur+ HIG 준수</div>
-        </article>
 
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">🎵</div>
-            <h3>6:4 와이드 미디어 &amp; 캘린더 Nook</h3>
+          <div style="display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;margin-bottom:2rem;">
+            <a href="https://github.com/skang1310/Notchie/releases/latest" class="btn-primary" style="padding:16px 32px;font-size:1.1rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>최신 릴리즈 다운로드 (.dmg)</span>
+            </a>
+            <a href="https://github.com/skang1310/Notchie" target="_blank" rel="noopener" class="btn-ghost" style="padding:15px 26px;font-size:1.05rem;">
+              <span>GitHub 소스코드</span>
+            </a>
           </div>
-          <p>
-            노치 영역을 60% 넓은 Now Playing 미디어 플레이어와 40% 주간 7일 캘린더 스트립으로 구성했습니다. 다가오는 일정 확인과 Google Meet / Zoom 원클릭 회의 참여를 노치에서 즉시 해결합니다.
-          </p>
-          <div class="feature-tag">6:4 골든 프로포션 레이아웃</div>
-        </article>
 
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">📋</div>
-            <h3>스마트 클립보드 스튜디오</h3>
+          <div style="display:flex;align-items:center;justify-content:center;gap:1.5rem;font-size:0.86rem;color:var(--text-3);">
+            <span>✓ 완전 무료 오픈소스</span>
+            <span>✓ 371개 단위 테스트 검증</span>
+            <span>✓ 제3자 원격 전송 없음</span>
           </div>
-          <p>
-            실시간 텍스트·링크·코드 자동 분류, 캡슐 검색 필터링, 복사 시 출처 앱 메타데이터 표시 및 원클릭 재복사(Copied! 알림)를 지원합니다. 비밀번호 등 민감 데이터는 자동으로 기록에서 배제됩니다.
-          </p>
-          <div class="feature-tag">로컬 암호화 &amp; 프라이버시 보호</div>
-        </article>
-
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">📥</div>
-            <h3>통합 트레이 &amp; 클립보드 스튜디오</h3>
-          </div>
-          <p>
-            파일 드래그 앤 드롭 보관함, 스크린샷 기록, 기기 내 파일 변환(PDF 병합, 배경 제거, OCR 텍스트 추출), 클립보드 히스토리(자동 저장, 검색, 즐겨찾기)를 노치 트레이 하나로 완벽히 통합했습니다.
-          </p>
-          <div class="feature-tag">4개 서브모드 원클릭 전환</div>
-        </article>
-
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">🪪</div>
-            <h3>카메라 얼굴 잠금 해제 &amp; 프라이버시</h3>
-          </div>
-          <p>
-            HeyMac 엔진을 통합하여 카메라 기반 얼굴 잠금 해제와 앱별 프라이버시 가림막을 제공합니다. Original(풀 배지 스캔 애니메이션)과 Minimal(컴팩트 자물쇠 바) 스타일을 노치에서 즉시 미리볼 수 있습니다.
-          </p>
-          <div class="feature-tag">인터랙티브 노치 프리뷰</div>
-        </article>
-
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">✨</div>
-            <h3>AI Usage Tracker (Claude Code &amp; Codex)</h3>
-          </div>
-          <p>
-            터미널과 IDE에서 작업 중인 <strong>Claude Code</strong>와 <strong>OpenAI Codex</strong>의 세션, 프롬프트, 모델(Opus, Sonnet, GPT-6.1-Sol) 및 토큰 사용량(입력/출력/캐시)을 노치 호버 메뉴에서 실시간 파노라마로 확인하고 복사할 수 있습니다.
-          </p>
-          <div class="feature-tag">로컬 캐시 &amp; 세션 자동 파싱</div>
-        </article>
-
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">🌊</div>
-            <h3>Fluid Dynamic Island 모션 피직스</h3>
-          </div>
-          <p>
-            애플 아이폰 다이내믹 아일랜드 특유의 탄력적이고 유기적인 스프링 모션(반응 속도 0.38s, 댐핑 0.68)을 구현했습니다. 노치 확장/축소, 알림 전환 및 제스처 모핑 시 고유의 쫄깃하고 부드러운 물리 반동을 선사합니다.
-          </p>
-          <div class="feature-tag">Apple 스프링 물리 엔진</div>
-        </article>
-
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">🛡️</div>
-            <h3>시작 시 권한 자동 점검 가드</h3>
-          </div>
-          <p>
-            앱 시작 시 필수 권한(손쉬운 사용, 카메라, 캘린더, 블루투스 등)을 자동 점검합니다. 누락된 권한이 발견되면 노치 경고 배너 및 알람을 통해 원클릭으로 설정 페이지로 바로 안내합니다.
-          </p>
-          <div class="feature-tag">안정적인 백그라운드 런타임</div>
-        </article>
+        </div>
       </div>
     </section>
-
-    <!-- Screenshots -->
-    <section id="screenshots">
-      <h2 class="section-title">실제 앱 스크린샷 (Screenshots)</h2>
-      <p class="section-subtitle">실제 macOS 런타임에서 캡처된 정밀한 고해상도 실행 화면입니다.</p>
-
-      <div class="screenshot-grid">
-        <figure class="shot-card">
-          <img src="screenshots/panoramic-notch-hub.png" alt="Notchie OS 27 Panoramic Notch Hub" loading="lazy">
-          <figcaption>
-            <strong>파노라마 노치 허브 (Now Playing + 주간 캘린더 + 회의 원클릭)</strong>
-            <span>유휴 노치에 마우스를 올리면 부드럽게 펼쳐지는 와이드 대시보드</span>
-          </figcaption>
-        </figure>
-
-        <figure class="shot-card">
-          <img src="screenshots/about-settings.png" alt="Notchie About Settings Page" loading="lazy">
-          <figcaption>
-            <strong>일반 → 정보 (About Notchie Custom Edition)</strong>
-            <span>공식 Notchie 표준 아이콘, 커스텀 에디션 빌드 정보 및 GPL-3.0 / MIT 라이선스 안내</span>
-          </figcaption>
-        </figure>
-
-        <figure class="shot-card">
-          <img src="screenshots/face-unlock-preview.png" alt="Notchie Face Unlock Original vs Minimal Preview" loading="lazy">
-          <figcaption>
-            <strong>얼굴 잠금 해제 — 오리지널 배지 vs 미니멀 스타일 미리보기</strong>
-            <span>풀 배지 스캔 애니메이션과 미니멀 자물쇠 바를 실시간 노치에서 바로 테스트</span>
-          </figcaption>
-        </figure>
-
-        <figure class="shot-card">
-          <img src="screenshots/appearance-accent.png" alt="Notchie Appearance and Custom Accent Color Settings" loading="lazy">
-          <figcaption>
-            <strong>화면 테마, 표준 앱 아이콘 선택기 &amp; 커스텀 강조 색상 피커</strong>
-            <span>Light / Dark / Auto 아이콘 즉시 전환 및 시스템 컬러 피커를 통한 노치 틴트 커스터마이징</span>
-          </figcaption>
-        </figure>
-
-        <figure class="shot-card">
-          <img src="screenshots/quick-tools-clipboard.png" alt="Notchie Tray Settings and Clipboard History" loading="lazy">
-          <figcaption>
-            <strong>트레이 설정 &amp; 클립보드 내역 관리</strong>
-            <span>파일 보관함, 스크린샷 기록, 파일 변환 및 클립보드 히스토리 원클릭 전환</span>
-          </figcaption>
-        </figure>
-
-        <figure class="shot-card">
-          <img src="screenshots/permissions-guard.png" alt="Notchie Permissions Guard" loading="lazy">
-          <figcaption>
-            <strong>권한 관리 &amp; 시작 시 필수 권한 자동 점검 알림</strong>
-            <span>미설정 권한 요약, 원클릭 일괄 권한 요청 및 시작 시 경고 알람 토글</span>
-          </figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <!-- Build & Install -->
-    <section id="install">
-      <h2 class="section-title">빌드 및 로컬 설치 (Build &amp; Install)</h2>
-      <p class="section-subtitle">터미널에서 직접 빌드하고 서명 검증을 거쳐 <code>/Applications</code>에 설치할 수 있습니다.</p>
-
-      <pre class="code-block"><code># 1. 테스트 스위트 실행 (291개 테스트 전체 통과 확인)
-./scripts/test-app.sh
-
-# 2. Release 아티팩트 빌드 (코드 서명 요구 없음)
-xcodebuild -project DynamicNotch.xcodeproj \
-  -scheme DynamicNotch \
-  -configuration Release \
-  -derivedDataPath build/DynamicNotch-release \
-  CODE_SIGNING_ALLOWED=NO build
-
-# 3. 로컬 ad-hoc 서명 및 /Applications/DynamicNotch.app 자동 설치
-./scripts/install-local.sh build/DynamicNotch-release/Build/Products/Release/DynamicNotch.app</code></pre>
-    </section>
-
-    <!-- License & Credits -->
-    <section id="license">
-      <h2 class="section-title">오픈소스 라이선스 및 출처 (Credits &amp; License)</h2>
-      <p class="section-subtitle">
-        Notchie는 공개된 오픈소스 프로젝트의 핵심 역량을 바탕으로 새로운 인터랙션과 디자인을 더해 발전시킨 프로젝트이며, <strong>GNU General Public License v3.0 (GPL-3.0)</strong>으로 배포됩니다.
-      </p>
-
-      <div class="feature-grid">
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">📦</div>
-            <h3>DynamicNotch (GPL-3.0)</h3>
-          </div>
-          <p>
-            macOS 동적 노치 렌더링 및 시스템 이벤트 모니터링 기반 엔진 (원작자: Евгений Петрукович / <a href="https://github.com/jackson-storm/DynamicNotch">jackson-storm/DynamicNotch</a>).
-          </p>
-        </article>
-
-        <article class="feature-card">
-          <div class="feature-card-header">
-            <div class="feature-icon-bubble">🔐</div>
-            <h3>HeyMac (MIT License)</h3>
-          </div>
-          <p>
-            카메라 얼굴 인식 잠금 해제 및 앱 프라이버시 세션 보안 엔진 (원작자: Harshit Maurya / <a href="https://github.com/iharshitmaurya/HeyMac">iharshitmaurya/HeyMac</a>).
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <footer>
-      <div>
-        <strong>Notchie Custom Edition</strong> — Crafted with Swift, SwiftUI &amp; AppKit for macOS.
-      </div>
-      <div>
-        Distributed under the <strong>GNU General Public License v3.0 (GPL-3.0)</strong>.
-      </div>
-    </footer>
   </main>
 
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="assets/notchie-icon-dark.png" alt="Notchie Icon" width="24" height="24" style="border-radius:6px;">
+        <span><strong>Notchie</strong> Custom Edition · Crafted with Swift &amp; AppKit for macOS</span>
+      </div>
+      <div>
+        <span>Licensed under GNU General Public License v3.0 (GPL-3.0)</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div class="toast-msg" id="toastMsg">
+    <span style="color:#34c759;">✓</span>
+    <span>터미널 설치 명령어가 클립보드에 복사되었습니다!</span>
+  </div>
+
   <script>
-    function switchSim(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.interactive-panel').forEach(panel => panel.classList.remove('active'));
+    // 1. Interactive Notch Expand / Collapse
+    function toggleNotchExpand(e) {
+      const notch = document.getElementById('interactiveNotch');
+      notch.classList.toggle('expanded');
+    }
+
+    // 2. Interactive Tab Switching
+    function switchSimTab(tabId, btn) {
+      document.querySelectorAll('.sim-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.sim-panel').forEach(p => p.classList.remove('active'));
       
+      btn.classList.add('active');
       const targetPanel = document.getElementById('sim-' + tabId);
       if (targetPanel) {
         targetPanel.classList.add('active');
       }
+    }
+
+    // 3. Interactive Sound Mixer Sliders
+    let activeSlider = null;
+
+    function startSliderDrag(e, app) {
+      activeSlider = app;
+      updateSliderFromEvent(e, app);
       
-      const eventTarget = event.currentTarget || event.target;
-      if (eventTarget) {
-        eventTarget.classList.add('active');
+      const onMouseMove = (moveEvent) => {
+        if (activeSlider) {
+          updateSliderFromEvent(moveEvent, activeSlider);
+        }
+      };
+      
+      const onMouseUp = () => {
+        activeSlider = null;
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+      
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    }
+
+    function updateSliderFromEvent(e, app) {
+      const track = document.getElementById('fill-' + app)?.parentElement;
+      if (!track) return;
+      const rect = track.getBoundingClientRect();
+      const clickY = e.clientY;
+      const height = rect.height;
+      const rawRatio = (rect.bottom - clickY) / height;
+      const clamped = Math.max(0, Math.min(1, rawRatio));
+      const pct = Math.round(clamped * 100);
+      
+      setSliderVal(app, pct);
+    }
+
+    function handleSliderWheel(e, app) {
+      e.preventDefault();
+      const currentPct = parseInt(document.getElementById('pct-' + app)?.innerText || '50', 10);
+      const delta = e.deltaY < 0 ? 5 : -5;
+      const nextPct = Math.max(0, Math.min(100, currentPct + delta));
+      setSliderVal(app, nextPct);
+    }
+
+    function setSliderVal(app, pct) {
+      const fill = document.getElementById('fill-' + app);
+      const label = document.getElementById('pct-' + app);
+      if (fill) fill.style.height = pct + '%';
+      if (label) label.innerText = pct + '%';
+    }
+
+    // 4. Interactive Calendar Directional Scroll
+    let isCalExpanded = false;
+    const calCard = document.getElementById('calAgendaCard');
+    if (calCard) {
+      calCard.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.deltaY > 0 && !isCalExpanded) {
+          // Scroll Down -> Open
+          setCalExpand(true);
+        } else if (e.deltaY < 0 && isCalExpanded) {
+          // Scroll Up -> Close
+          setCalExpand(false);
+        }
+      });
+    }
+
+    function toggleCalExpand() {
+      setCalExpand(!isCalExpanded);
+    }
+
+    function setCalExpand(expand) {
+      isCalExpanded = expand;
+      const hint = document.getElementById('calGestureHint');
+      const title = document.getElementById('calEventTitle');
+      const list = document.getElementById('calFullList');
+      
+      if (expand) {
+        hint.innerText = '⬆️ 위로 스크롤하거나 클릭하여 접기';
+        title.innerText = '📅 10월 30일 (목) 전체 일정 3건';
+        list.innerHTML = `
+          <div style="font-size:10.5px;color:rgba(255,255,255,0.7);display:flex;flex-direction:column;gap:4px;margin-top:4px;">
+            <div>• 오후 8:30 엔지니어링 싱크</div>
+            <div>• 오후 9:30 Q4 로드맵 리뷰</div>
+            <div>• 오후 11:00 팀 데모 미팅</div>
+          </div>
+        `;
+      } else {
+        hint.innerText = '⬇️ 아래로 스크롤하여 전체 보기';
+        title.innerText = '엔지니어링 싱크 & 스프린트 리뷰';
+        list.innerHTML = `<span style="display:inline-flex;padding:3px 9px;border-radius:999px;background:#2563eb;color:#ffffff;font-size:9.5px;font-weight:700;">1초 만에 참여</span>`;
+      }
+    }
+
+    // 5. Terminal Install Command Copy
+    function copyInstallCmd() {
+      const cmd = 'git clone https://github.com/skang1310/Notchie.git && cd Notchie && ./scripts/install-local.sh';
+      navigator.clipboard.writeText(cmd).then(() => {
+        const toast = document.getElementById('toastMsg');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2800);
+      });
+    }
+
+    // 6. FAQ Accordion Toggle
+    function toggleFaq(el) {
+      const parent = el.parentElement;
+      parent.classList.toggle('open');
+    }
+
+    // 7. Scroll-driven animation fallback (for browsers without native CSS scroll-driven animation)
+    if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)')) {
+      const nav = document.querySelector('header.site-nav');
+      if (nav) {
+        window.addEventListener('scroll', () => {
+          if (window.scrollY > 40) {
+            nav.style.height = '60px';
+            nav.style.background = 'rgba(0, 0, 0, 0.9)';
+          } else {
+            nav.style.height = '72px';
+            nav.style.background = 'rgba(0, 0, 0, 0.65)';
+          }
+        });
       }
     }
   </script>
