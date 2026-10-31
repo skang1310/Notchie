@@ -637,6 +637,8 @@ struct NotchiePanoramicHubView: View {
                     }
                 case .ai:
                     aiIndependentNotchContainer
+                case .cinema:
+                    CinemaTrailersNotchView(accentColor: accentColor)
                 case .meeting:
                     MeetingNotchView(service: MeetingControlService.shared, accentColor: accentColor)
                 case .messages:
@@ -781,6 +783,17 @@ struct NotchiePanoramicHubView: View {
                         store.isLyricsVisibleInCalendarSlot = true
                     }
                     .transition(.opacity)
+                }
+
+                // Cinema / Netflix Premiere & Trailer Tab Button
+                primaryWingTabButton(
+                    title: text("Cinema", "티저·개봉"),
+                    systemImage: "film.stack",
+                    isSelected: store.hubMode == .cinema,
+                    badgeCount: 0,
+                    badgeIsAlert: false
+                ) {
+                    store.hubMode = store.hubMode == .cinema ? .nook : .cinema
                 }
 
                 // Apple Glass Settings Button

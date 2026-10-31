@@ -12,6 +12,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
     case widgets
     case transform
     case ai
+    case cinema
     case meeting
     case messages
 
@@ -27,6 +28,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         case .tools: return "square.grid.2x2.fill"
         case .transform: return "wand.and.stars"
         case .ai: return "sparkles"
+        case .cinema: return "film.stack"
         case .meeting: return "video.fill"
         case .messages: return "bubble.left.and.bubble.right.fill"
         }
@@ -36,7 +38,7 @@ enum NotchHubMode: String, CaseIterable, Identifiable {
         switch self {
         case .nook, .tray, .widgets:
             return false
-        case .shots, .clips, .tools, .transform, .ai, .meeting, .messages:
+        case .shots, .clips, .tools, .transform, .ai, .cinema, .meeting, .messages:
             return true
         }
     }
@@ -213,6 +215,7 @@ final class QuickToolsStore: ObservableObject {
         if hubMode == .messages || (hubMode == .tools && selectedTool == "messages") { return isIsland ? 280 : 290 }
         if hubMode == .meeting || (hubMode == .tools && selectedTool == "meeting") { return isIsland ? 54 : 58 }
         if hubMode == .ai || (hubMode == .tools && selectedTool == "ai") { return isIsland ? 260 : 270 }
+        if hubMode == .cinema { return isIsland ? 290 : 300 }
         if hubMode == .transform || (hubMode == .tools && selectedTool == "transform") { return isIsland ? 220 : 230 }
         return hubMode.requiresExtendedHeight ? (isIsland ? 200 : 210) : (isIsland ? 164 : 172)
     }

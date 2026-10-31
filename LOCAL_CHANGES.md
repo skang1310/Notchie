@@ -1,5 +1,24 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30 / 2026-10-31
 
+-8. **Movie & Netflix Trailers and Release Calendar Widget (2026-10-31 v50)**:
+   - **User Request**:
+     "영화/넷플릭스 예고편이랑 캘린더로 언제나오는지 볼수있는 위젯 하나 만들어줘. 설정화면 옆에 탭으로 있으면 좋을것같아."
+   - **Top Wing Header Tab Entry**:
+     - Added dedicated Cinema tab (`[🎬 티저·개봉]` / `[🎬 Cinema]`, `film.stack`) directly beside the Settings gear button on the right wing of the Notch header bar.
+     - 1-click toggles `store.hubMode = .cinema`, expanding the Notch to an optimal 290–300pt height.
+   - **Spotlight Trailer Card & Live HD Player**:
+     - Displays rich movie/series cards with custom poster gradients, platform tags (Netflix red, Cinema gold, Disney blue, Apple silver), D-Day countdown pills (`D-DAY`, `D-3`, `D-6`, etc.), release dates, age ratings, genre, director/cast, and synopsis.
+     - Direct `[▶ 예고편 재생]` button opens official high-definition teaser/trailer links (YouTube/web).
+     - Direct `[📅 캘린더 등록]` button automatically generates `.ics` reminder events to notify user upon release.
+   - **Release Calendar & Timeline**:
+     - View mode toggle between `[🎞️ 티저 포커스]` and `[📅 개봉 캘린더]`.
+     - Filter chips for `[전체]`, `[넷플릭스]`, `[극장 개봉]`, `[디즈니+/기타 OTT]`.
+     - Interactive schedule timeline and full release calendar with platform indicator dots and date selection.
+     - Bottom horizontal poster carousel with quick D-day and release date badges for fast spotlight browsing.
+   - **Testing & Verification**:
+     - 375 unit tests passed (0 failures) including new `CinemaReleasesTests`.
+     - Release build installed and running at `/Applications/Notchie.app` (PID 63045, UUID `B91E1C20-B302-3B38-9973-371E67B5E858`).
+
 -7. **Computer Button for Sound Mixer & Automatic Google Meet Live Activity (2026-10-31 v49)**:
    - **Computer Icon Button on Now Playing Widget**:
      - Featured prominent computer icon button (`laptopcomputer`) on the Now Playing studio card in both active playback (`ObservedNowPlayingStudioBody`) and idle standby (`placeholderStudioCard`) states.
