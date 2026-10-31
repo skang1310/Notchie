@@ -1,4 +1,17 @@
-# Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30
+# Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30 / 2026-10-31
+
+-7. **Computer Button for Sound Mixer & Automatic Google Meet Live Activity (2026-10-31 v49)**:
+   - **Computer Icon Button on Now Playing Widget**:
+     - Featured prominent computer icon button (`laptopcomputer`) on the Now Playing studio card in both active playback (`ObservedNowPlayingStudioBody`) and idle standby (`placeholderStudioCard`) states.
+     - 1-click toggles the Sound Mixer directly in place of the Calendar slot. When active, highlights in `accentColor` with a subtle circular badge.
+     - Removed artificial top-wing header bar text buttons (`[구글밋]`, `[사운드 믹서]`), restoring clean, uncluttered native Notch styling.
+   - **Google Meet Automatic Live Activity & Control Buttons**:
+     - Registered `NotchContentRegistry.Meeting.active` with screen recording priority.
+     - Created `MeetingNotchContent` implementing `NotchContentProtocol` and `DynamicIslandCustomizable`.
+     - Connected `MeetingControlService.shared.notchViewModel = notchViewModel`.
+     - When Google Meet (or native meeting app) is launched or running on any webpage in Chrome, Arc, Brave, Edge, or Safari, the Notch automatically triggers a Live Activity and expands it, immediately showing the control buttons (Mic Mute/Unmute, Camera Toggle, End Call, and Open Window).
+     - Automatically hides the Live Activity when the call terminates.
+   - 371 unit tests passed (0 failures); Release build installed and running at `/Applications/Notchie.app` (PID 83117, UUID `AD96B3A4-CB58-32D3-85C9-60E9CE3EBA77`).
 
 -6. **Google Meet Controls & Per-App Sound Mixer Direct Visibility (2026-10-30 v48)**:
    - **Google Meet Always-Accessible Entry**:

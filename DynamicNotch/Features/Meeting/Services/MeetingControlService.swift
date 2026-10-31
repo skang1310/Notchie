@@ -526,6 +526,27 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
             }
         }
 
+        // Check Safari for meet.google.com tab
+        if let safari = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Safari").first {
+            let script = """
+            tell application "Safari"
+                repeat with w in windows
+                    repeat with t in tabs of w
+                        if URL of t contains "meet.google.com" then
+                            return name of t
+                        end if
+                    end repeat
+                end repeat
+                return ""
+            end tell
+            """
+            var error: NSDictionary?
+            if let res = NSAppleScript(source: script)?.executeAndReturnError(&error),
+               let tabTitle = res.stringValue, !tabTitle.isEmpty {
+                return (.meet, safari.processIdentifier, tabTitle)
+            }
+        }
+
         // 3. Native meeting applications
         let runningApps = NSWorkspace.shared.runningApplications
         for app in runningApps {
@@ -550,6 +571,8 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
 @MainActor
 public final class MeetingControlService: ObservableObject {
     public static let shared = MeetingControlService()
+
+    weak var notchViewModel: NotchViewModel?
 
     @Published public private(set) var session: MeetingSessionState
     @Published public private(set) var inputVolume: Int = 60
@@ -599,11 +622,11 @@ public final class MeetingControlService: ObservableObject {
     }
 
     private func configureDetectionTimer() {
-        let interval: TimeInterval = session.isActive ? 3 : 15
+        let interval: TimeInterval = session.isActive ? 2.0 : 2.5
         guard detectionInterval != interval else { return }
         detectionTimer?.cancel()
         detectionInterval = interval
-        detectionTimer = Timer.publish(every: interval, tolerance: session.isActive ? 0.5 : 2, on: .main, in: .common)
+        detectionTimer = Timer.publish(every: interval, tolerance: 0.5, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 self?.requestMeetingDetection()
@@ -657,6 +680,12 @@ public final class MeetingControlService: ObservableObject {
         refreshInputVolume()
 
         updateElapsedTimer()
+
+        // Automatically show meeting Live Activity in Notch with meeting controls
+        notchViewModel?.send(.showLiveActivity(MeetingNotchContent(service: self)))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            self?.notchViewModel?.expandActiveLiveActivity()
+        }
     }
 
     func acquirePresentation(_ id: UUID) {
@@ -699,8 +728,11 @@ public final class MeetingControlService: ObservableObject {
         session.isActive = false
         session.startTime = nil
         session.elapsedSeconds = 0
+        detectedPid = nil
         timer?.cancel()
         timer = nil
+
+        notchViewModel?.send(.hideLiveActivity(id: NotchContentRegistry.Meeting.active.id))
     }
 
     public func toggleMute() {

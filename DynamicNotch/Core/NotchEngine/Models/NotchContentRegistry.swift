@@ -93,6 +93,13 @@ enum NotchContentRegistry {
         )
     }
 
+    enum Meeting {
+        static let active = NotchContentDescriptor(
+            id: "meeting.active",
+            priority: NotchContentPriority.screenRecording
+        )
+    }
+
     enum Calendar {
         static let upcoming = NotchContentDescriptor(
             id: "calendar.upcoming",

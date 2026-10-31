@@ -138,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 applicationSettings: settingsViewModel.application,
                 notchViewModel: notchViewModel
             )
+            MeetingControlService.shared.notchViewModel = notchViewModel
         }
 
         lockScreenManager.startMonitoring()

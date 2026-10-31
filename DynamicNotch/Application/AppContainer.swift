@@ -129,7 +129,7 @@ final class AppContainer {
         self.externalDrivesMonitor = ExternalDrivesMonitor()
         QuickToolsStore.shared.bind(container: self)
         if !isRunningTests {
-            _ = MeetingControlService.shared
+            MeetingControlService.shared.notchViewModel = notchViewModel
             _ = MessagesService.shared
             _ = NotchMessageNotificationService.shared
         }
