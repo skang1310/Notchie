@@ -37,12 +37,17 @@ public struct CinemaTrailersNotchView: View {
         }
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            if store.lastUpdatedDate == nil {
+                await store.refreshReleases()
+            }
+        }
     }
 
     // MARK: - Top Filter & Mode Switcher Bar
 
     private var topFilterBar: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             // Platform Filter Chips
             ForEach(CinemaPlatform.allCases) { platform in
                 let isSelected = store.selectedFilter == platform
@@ -51,17 +56,17 @@ public struct CinemaTrailersNotchView: View {
                         store.selectedFilter = platform
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3.5) {
                         Image(systemName: platform.iconName)
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 8.5, weight: .semibold))
                             .foregroundStyle(isSelected ? platform.accentColor : .white.opacity(0.65))
 
                         Text(platform.localizedName(isKorean: isKorean))
-                            .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .rounded))
+                            .font(.system(size: 9.5, weight: isSelected ? .bold : .medium, design: .rounded))
                             .foregroundStyle(isSelected ? .white : .white.opacity(0.8))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3.5)
+                    .padding(.horizontal, 6.5)
+                    .padding(.vertical, 3)
                     .background(
                         Capsule()
                             .fill(isSelected ? platform.accentColor.opacity(0.26) : Color.white.opacity(0.06))
@@ -76,7 +81,62 @@ public struct CinemaTrailersNotchView: View {
                 .buttonStyle(.plain)
             }
 
+            Rectangle()
+                .fill(Color.white.opacity(0.12))
+                .frame(width: 1, height: 14)
+                .padding(.horizontal, 1)
+
+            // Period Filter Chips (전체, 11월, 12월, 2025년, 2026년)
+            ForEach(store.availablePeriods, id: \.id) { period in
+                let isSelected = store.selectedPeriodFilter == period.id
+                Button {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.82)) {
+                        store.selectedPeriodFilter = period.id
+                    }
+                } label: {
+                    Text(isKorean ? period.ko : period.en)
+                        .font(.system(size: 9.5, weight: isSelected ? .bold : .medium, design: .rounded))
+                        .foregroundStyle(isSelected ? .white : .white.opacity(0.75))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(isSelected ? accentColor.opacity(0.32) : Color.white.opacity(0.05))
+                                .overlay(
+                                    Capsule().strokeBorder(
+                                        isSelected ? accentColor.opacity(0.65) : Color.clear,
+                                        lineWidth: 0.8
+                                    )
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
             Spacer()
+
+            // Live Network Refresh Button
+            Button {
+                Task {
+                    await store.refreshReleases()
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .rotationEffect(.degrees(store.isRefreshing ? 360 : 0))
+                        .animation(store.isRefreshing ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: store.isRefreshing)
+                    Text(store.isRefreshing ? text("Updating", "업데이트 중") : text("Live", "실시간 최신"))
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(Color.green)
+                .padding(.horizontal, 6.5)
+                .padding(.vertical, 3)
+                .background(Color.green.opacity(0.12), in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.green.opacity(0.35), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+            .help(text("Fetch latest online releases", "온라인 최신 개봉 데이터 새로고침"))
 
             // View Mode Toggle (Spotlight vs Calendar)
             Button {
@@ -84,15 +144,15 @@ public struct CinemaTrailersNotchView: View {
                     store.isCalendarMode.toggle()
                 }
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 3.5) {
                     Image(systemName: store.isCalendarMode ? "play.rectangle.on.rectangle.fill" : "calendar")
-                        .font(.system(size: 9.5, weight: .bold))
-                    Text(store.isCalendarMode ? text("Trailer Card", "티저 포커스") : text("Release Calendar", "개봉 캘린더"))
-                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 9, weight: .bold))
+                    Text(store.isCalendarMode ? text("Cards", "티저 카드") : text("Calendar", "개봉 캘린더"))
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(accentColor)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 3.5)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
                 .background(
                     Capsule()
                         .fill(accentColor.opacity(0.18))
@@ -159,13 +219,13 @@ public struct CinemaTrailersNotchView: View {
                     // D-Day Tag
                     Text(item.formattedDDay)
                         .font(.system(size: 9, weight: .heavy, design: .rounded))
-                        .foregroundStyle(item.daysRemaining <= 3 ? Color.red : Color.green)
+                        .foregroundStyle(item.daysRemaining <= 7 && item.daysRemaining >= 0 ? Color.red : Color.green)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2.5)
                         .background(Color.black.opacity(0.6), in: Capsule())
                         .overlay(
                             Capsule().strokeBorder(
-                                (item.daysRemaining <= 3 ? Color.red : Color.green).opacity(0.5),
+                                (item.daysRemaining <= 7 && item.daysRemaining >= 0 ? Color.red : Color.green).opacity(0.5),
                                 lineWidth: 0.8
                             )
                         )
@@ -266,10 +326,14 @@ public struct CinemaTrailersNotchView: View {
                 Image(systemName: "calendar.day.timeline.leading")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(accentColor)
-                Text(text("Coming Up", "개봉 예정 타임라인"))
+                Text(text("Release Timeline", "개봉 타임라인"))
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                 Spacer()
+
+                Text("\(store.filteredReleases.count)" + text(" titles", "편"))
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.55))
             }
             .padding(.horizontal, 6)
 
@@ -299,7 +363,7 @@ public struct CinemaTrailersNotchView: View {
                                 Spacer()
 
                                 Text(item.formattedDDay)
-                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(isSelected ? item.platform.accentColor : .white.opacity(0.55))
                             }
                             .padding(.horizontal, 8)
@@ -336,7 +400,7 @@ public struct CinemaTrailersNotchView: View {
         VStack(spacing: 6) {
             // Month Header
             HStack {
-                Text(text("2024–2025 Release Calendar", "영화 & 넷플릭스 개봉 캘린더"))
+                Text(text("Cinema & Netflix Release Schedule", "영화 & 넷플릭스 최신 개봉 일정"))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
@@ -363,7 +427,7 @@ public struct CinemaTrailersNotchView: View {
                             // Date Column
                             VStack(spacing: 1) {
                                 Text(item.formattedDDay)
-                                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                    .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                                     .foregroundStyle(item.platform.accentColor)
 
                                 Text(item.shortDateString)

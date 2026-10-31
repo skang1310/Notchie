@@ -22,6 +22,10 @@ final class CinemaReleasesTests: XCTestCase {
 
     @MainActor
     func testCinemaReleaseItemDDayCalculation() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         let releaseInFiveDays = cal.date(byAdding: .day, value: 5, to: today)!
@@ -30,7 +34,7 @@ final class CinemaReleasesTests: XCTestCase {
             title: "테스트 영화",
             originalTitle: "Test Movie",
             platform: .netflix,
-            releaseDate: releaseInFiveDays,
+            releaseDateString: formatter.string(from: releaseInFiveDays),
             genre: "액션",
             directorOrCast: "감독 이름",
             synopsis: "줄거리 내용",
@@ -44,7 +48,7 @@ final class CinemaReleasesTests: XCTestCase {
             title: "오늘 개봉작",
             originalTitle: "Today Release",
             platform: .theater,
-            releaseDate: today,
+            releaseDateString: formatter.string(from: today),
             genre: "드라마",
             directorOrCast: "감독",
             synopsis: "줄거리",
@@ -61,6 +65,7 @@ final class CinemaReleasesTests: XCTestCase {
 
         // Default all
         store.selectedFilter = .all
+        store.selectedPeriodFilter = "all"
         store.searchText = ""
         store.selectedDate = nil
         XCTAssertEqual(store.filteredReleases.count, store.releases.count)
@@ -83,6 +88,13 @@ final class CinemaReleasesTests: XCTestCase {
         let searchResults = store.filteredReleases
         XCTAssertEqual(searchResults.count, 1)
         XCTAssertTrue(searchResults.first?.title.contains("오징어 게임") == true)
+
+        // Period filter 2024.11
+        store.searchText = ""
+        store.selectedPeriodFilter = "2024.11"
+        let novReleases = store.filteredReleases
+        XCTAssertFalse(novReleases.isEmpty)
+        XCTAssertTrue(novReleases.allSatisfy { $0.yearMonthKey == "2024.11" })
 
         // Date selection
         if let first = store.releases.first {

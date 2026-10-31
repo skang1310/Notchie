@@ -6,7 +6,7 @@
 import Foundation
 import SwiftUI
 
-public enum CinemaPlatform: String, CaseIterable, Identifiable, Sendable {
+public enum CinemaPlatform: String, CaseIterable, Identifiable, Sendable, Codable {
     case all
     case netflix
     case theater
@@ -46,18 +46,18 @@ public enum CinemaPlatform: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-public struct CinemaReleaseItem: Identifiable, Sendable {
+public struct CinemaReleaseItem: Identifiable, Sendable, Codable {
     public let id: UUID
     public let title: String
     public let originalTitle: String
     public let platform: CinemaPlatform
-    public let releaseDate: Date
+    public let releaseDateString: String
     public let genre: String
     public let directorOrCast: String
     public let synopsis: String
     public let trailerURL: URL?
     public let rating: String
-    public let posterGradient: [Color]
+    public let posterColors: [String]
     public let iconSymbol: String
 
     public init(
@@ -65,27 +65,38 @@ public struct CinemaReleaseItem: Identifiable, Sendable {
         title: String,
         originalTitle: String,
         platform: CinemaPlatform,
-        releaseDate: Date,
+        releaseDateString: String,
         genre: String,
         directorOrCast: String,
         synopsis: String,
         trailerURL: URL?,
         rating: String = "15+",
-        posterGradient: [Color] = [Color.purple.opacity(0.6), Color.black],
+        posterColors: [String] = ["#8B5CF6", "#000000"],
         iconSymbol: String = "film"
     ) {
         self.id = id
         self.title = title
         self.originalTitle = originalTitle
         self.platform = platform
-        self.releaseDate = releaseDate
+        self.releaseDateString = releaseDateString
         self.genre = genre
         self.directorOrCast = directorOrCast
         self.synopsis = synopsis
         self.trailerURL = trailerURL
         self.rating = rating
-        self.posterGradient = posterGradient
+        self.posterColors = posterColors
         self.iconSymbol = iconSymbol
+    }
+
+    public var releaseDate: Date {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        return formatter.date(from: releaseDateString) ?? Date()
+    }
+
+    public var posterGradient: [Color] {
+        posterColors.compactMap { Color(hex: $0) }
     }
 
     public var daysRemaining: Int {
@@ -102,15 +113,17 @@ public struct CinemaReleaseItem: Identifiable, Sendable {
             return "D-DAY"
         } else if days > 0 {
             return "D-\(days)"
+        } else if days >= -60 {
+            return platform == .netflix ? "스트리밍 중" : "절찬 상영"
         } else {
-            return "공개됨"
+            return "공개작"
         }
     }
 
     public var formattedReleaseDate: String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "M월 d일 (E)"
+        formatter.dateFormat = "yyyy.MM.dd (E)"
         return formatter.string(from: releaseDate)
     }
 
@@ -119,5 +132,38 @@ public struct CinemaReleaseItem: Identifiable, Sendable {
         formatter.locale = Locale(identifier: "ko_KR")
         formatter.dateFormat = "MM.dd"
         return formatter.string(from: releaseDate)
+    }
+
+    public var yearMonthKey: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy.MM"
+        return formatter.string(from: releaseDate)
+    }
+}
+
+private extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+
+        let r, g, b, a: Double
+        if hexSanitized.count == 6 {
+            r = Double((rgb & 0xFF0000) >> 16) / 255.0
+            g = Double((rgb & 0x00FF00) >> 8) / 255.0
+            b = Double(rgb & 0x0000FF) / 255.0
+            a = 1.0
+        } else if hexSanitized.count == 8 {
+            r = Double((rgb & 0xFF000000) >> 24) / 255.0
+            g = Double((rgb & 0x00FF0000) >> 16) / 255.0
+            b = Double((rgb & 0x0000FF00) >> 8) / 255.0
+            a = Double(rgb & 0x000000FF) / 255.0
+        } else {
+            return nil
+        }
+
+        self.init(.sRGB, red: r, green: g, blue: b, opacity: a)
     }
 }

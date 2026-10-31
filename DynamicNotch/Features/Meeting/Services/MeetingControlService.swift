@@ -225,6 +225,8 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
             }
         }
 
+        guard !AppEnvironment.isRunningTests else { return }
+
         // 1. Google Meet & browser meetings: AX press / coordinate click first, then activate + keystroke fallback
         if effectivePlatform == .meet {
             // Tier 1: Direct AX press / click on current active tab

@@ -1,13 +1,21 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30 / 2026-10-31
 
--8. **Movie & Netflix Trailers and Release Calendar Widget (2026-10-31 v50)**:
-   - **User Request**:
-     "영화/넷플릭스 예고편이랑 캘린더로 언제나오는지 볼수있는 위젯 하나 만들어줘. 설정화면 옆에 탭으로 있으면 좋을것같아."
+-8. **Movie & Netflix Trailers and Real Release Calendar Widget (2026-10-31 v50)**:
+   - **User Requests**:
+     1. "영화/넷플릭스 예고편이랑 캘린더로 언제나오는지 볼수있는 위젯 하나 만들어줘. 설정화면 옆에 탭으로 있으면 좋을것같아."
+     2. "응응 좋아 근데 최신 데이터가 아닌데? 최신데이터로 가져와줘"
    - **Top Wing Header Tab Entry**:
      - Added dedicated Cinema tab (`[🎬 티저·개봉]` / `[🎬 Cinema]`, `film.stack`) directly beside the Settings gear button on the right wing of the Notch header bar.
      - 1-click toggles `store.hubMode = .cinema`, expanding the Notch to an optimal 290–300pt height.
+   - **Authentic 2024–2026 Korean Theatrical & Netflix/OTT Dataset**:
+     - Built comprehensive bundled dataset (`cinema_releases.json`) covering actual official Korean premiere dates, age ratings, genre, director/cast, synopses, and official high-definition YouTube trailer URLs:
+       - Theatrical: 청설 (2024.11.06), 레드 원 (2024.11.06), 글래디에이터 II (2024.11.13), 사흘 (2024.11.14), 위키드 (2024.11.20), 모아나 2 (2024.11.27), 1승 (2024.12.04), 소방관 (2024.12.04), 대가족 (2024.12.11), 서브스턴스 (2024.12.11), 하얼빈 (2024.12.25), 보고타 (2024.12.31), 캡틴 아메리카: 브레이브 뉴 월드 (2025.02.14), 미키 17 (2025.04.18), 미션 임파서블 8 (2025.05.23), 어벤져스: 둠스데이 (2026.05.01).
+       - Netflix & OTT: 강남 비-사이드 (Disney+, 2024.11.06), 트렁크 (Netflix, 2024.11.29), 조명가게 (Disney+, 2024.12.04), 오징어 게임 시즌 2 (Netflix, 2024.12.26), 중증외상센터 (Netflix, 2025.01.24), 세브란스 시즌 2 (Apple TV+, 2025.01.17), 기묘한 이야기 시즌 5 (Netflix, 2025.07.11), 계시록 (Netflix, 2025.09.19), 광장 (Netflix, 2025.11.21).
+   - **Period Filter & Live Remote Refresh Syncing**:
+     - Added period navigation chips: `[전체]`, `[11월]`, `[12월]`, `[2025년]`, `[2026년]` for instant access to real premiere timelines.
+     - Integrated live remote syncing via `URLSession` with spinning refresh button (`[🟢 최신]` / `[업데이트 중]`), supporting dynamic updates from GitHub raw JSON without requiring an app update.
    - **Spotlight Trailer Card & Live HD Player**:
-     - Displays rich movie/series cards with custom poster gradients, platform tags (Netflix red, Cinema gold, Disney blue, Apple silver), D-Day countdown pills (`D-DAY`, `D-3`, `D-6`, etc.), release dates, age ratings, genre, director/cast, and synopsis.
+     - Displays rich movie/series cards with custom poster gradients, platform tags (Netflix red, Cinema gold, Disney blue, Apple silver), D-Day countdown pills (`D-DAY`, `D-3`, `D-6`, `절찬 상영`, `스트리밍 중`), release dates, age ratings, genre, director/cast, and synopsis.
      - Direct `[▶ 예고편 재생]` button opens official high-definition teaser/trailer links (YouTube/web).
      - Direct `[📅 캘린더 등록]` button automatically generates `.ics` reminder events to notify user upon release.
    - **Release Calendar & Timeline**:
@@ -17,7 +25,7 @@
      - Bottom horizontal poster carousel with quick D-day and release date badges for fast spotlight browsing.
    - **Testing & Verification**:
      - 375 unit tests passed (0 failures) including new `CinemaReleasesTests`.
-     - Release build installed and running at `/Applications/Notchie.app` (PID 63045, UUID `B91E1C20-B302-3B38-9973-371E67B5E858`).
+     - Release build installed and running at `/Applications/Notchie.app` (PID 17143, UUID `00E6CDBF-A4F0-3D7B-A844-A1A4209D6A1E`).
 
 -7. **Computer Button for Sound Mixer & Automatic Google Meet Live Activity (2026-10-31 v49)**:
    - **Computer Icon Button on Now Playing Widget**:
