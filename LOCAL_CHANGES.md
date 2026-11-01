@@ -1,5 +1,14 @@
 # Notchie custom edition features — 2026-10-28 / 2026-10-29 / 2026-10-30 / 2026-10-31
 
+-9. **Code review fixes: Cinema data/sync, meeting detection, README screenshots (2026-11-01 v51)**:
+   - **Cinema**: remote sync URL repeated the `DynamicNotch/` folder and always returned 404 (now `main/DynamicNotch/Resources/cinema_releases.json`); auto-sync on first open never ran because `lastUpdatedDate` was set in `init`; the badge said "실시간 최신" even after a failed sync (now `최신` / `내장 데이터` / `오프라인`).
+   - Release days are parsed as Gregorian calendar days in the local zone (fixes off-by-one D-day/calendar matching outside KST and Buddhist/Japanese calendar locales); malformed dates are dropped instead of becoming "today"; period chips are derived from the data (`전체 / 개봉 예정 / years`); D-day labels localized and correct for Disney+/Apple TV+.
+   - `.ics` export adds required `UID`/`DTSTAMP`, RFC 5545 text escaping and CRLF. Removed the ~340-line Swift copy of the dataset (bundled JSON is the single source).
+   - Data: oEmbed check showed 18/26 trailer links were 404 and 2 opened a different film; those are now `null` and fall back to a YouTube search. Corrected dates: 하얼빈 2024-12-24, 미키 17 2025-02-28, 광장 2025-06-06, 기묘한 이야기 5 2025-11-27, 어벤져스: 둠스데이 2026-12-18. `가능한 사랑` date remains unverified.
+   - **Meeting**: detection now requires the default input device to be in use (`kAudioDevicePropertyDeviceIsRunningSomewhere`, no permission). Previously a merely running Zoom/Teams/FaceTime/Webex or an open Meet home tab created a permanent Live Activity, and 2.5 s polling sent Apple Events to browsers (Automation prompts). Meet tabs must have a meeting code URL; browser owner names matched exactly (`contains("arc")` matched unrelated processes). Auto-stop needs 3 consecutive misses; Leave suppresses re-detection until the call ends.
+   - **README**: removed outdated screenshots (weather hub; clipboard capture showing removed tools and personal clipboard text — still present in git history), added upstream HUD gallery crops, feature table for Cinema/Meeting/Messages/Lyrics/Sound Mixer, and `scripts/capture-readme-screenshots.sh`.
+   - Verification: authored on Linux; **not** built with xcodebuild, DynamicNotchTests **not** run, no install/runtime check. Pure logic (date parsing, ICS, Meet heuristics, JSON decode) was extracted and executed with Swift 6.1 on Linux in two time zones: all assertions passed.
+
 -8. **Movie & Netflix Trailers and Real Release Calendar Widget (2026-10-31 v50)**:
    - **User Requests**:
      1. "영화/넷플릭스 예고편이랑 캘린더로 언제나오는지 볼수있는 위젯 하나 만들어줘. 설정화면 옆에 탭으로 있으면 좋을것같아."

@@ -44,6 +44,18 @@ public struct CinemaTrailersNotchView: View {
         }
     }
 
+    /// Reflects the real sync result instead of always claiming the data is live.
+    private var refreshStatusText: String {
+        if store.isRefreshing { return text("Updating", "업데이트 중") }
+        if store.lastRefreshFailed { return text("Offline", "오프라인") }
+        if store.lastUpdatedDate == nil { return text("Bundled", "내장 데이터") }
+        return text("Latest", "최신")
+    }
+
+    private var refreshStatusColor: Color {
+        store.lastRefreshFailed ? .orange : .green
+    }
+
     // MARK: - Top Filter & Mode Switcher Bar
 
     private var topFilterBar: some View {
@@ -86,7 +98,7 @@ public struct CinemaTrailersNotchView: View {
                 .frame(width: 1, height: 14)
                 .padding(.horizontal, 1)
 
-            // Period Filter Chips (전체, 11월, 12월, 2025년, 2026년)
+            // Period Filter Chips (전체, 개봉 예정, years present in the data)
             ForEach(store.availablePeriods, id: \.id) { period in
                 let isSelected = store.selectedPeriodFilter == period.id
                 Button {
@@ -126,14 +138,14 @@ public struct CinemaTrailersNotchView: View {
                         .font(.system(size: 8.5, weight: .bold))
                         .rotationEffect(.degrees(store.isRefreshing ? 360 : 0))
                         .animation(store.isRefreshing ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: store.isRefreshing)
-                    Text(store.isRefreshing ? text("Updating", "업데이트 중") : text("Live", "실시간 최신"))
+                    Text(refreshStatusText)
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                 }
-                .foregroundStyle(Color.green)
+                .foregroundStyle(refreshStatusColor)
                 .padding(.horizontal, 6.5)
                 .padding(.vertical, 3)
-                .background(Color.green.opacity(0.12), in: Capsule())
-                .overlay(Capsule().strokeBorder(Color.green.opacity(0.35), lineWidth: 0.8))
+                .background(refreshStatusColor.opacity(0.12), in: Capsule())
+                .overlay(Capsule().strokeBorder(refreshStatusColor.opacity(0.35), lineWidth: 0.8))
             }
             .buttonStyle(.plain)
             .help(text("Fetch latest online releases", "온라인 최신 개봉 데이터 새로고침"))
@@ -217,7 +229,7 @@ public struct CinemaTrailersNotchView: View {
                     .background(item.platform.accentColor, in: Capsule())
 
                     // D-Day Tag
-                    Text(item.formattedDDay)
+                    Text(item.formattedDDay(isKorean: isKorean))
                         .font(.system(size: 9, weight: .heavy, design: .rounded))
                         .foregroundStyle(item.daysRemaining <= 7 && item.daysRemaining >= 0 ? Color.red : Color.green)
                         .padding(.horizontal, 6)
@@ -362,7 +374,7 @@ public struct CinemaTrailersNotchView: View {
 
                                 Spacer()
 
-                                Text(item.formattedDDay)
+                                Text(item.formattedDDay(isKorean: isKorean))
                                     .font(.system(size: 8.5, weight: .bold, design: .rounded))
                                     .foregroundStyle(isSelected ? item.platform.accentColor : .white.opacity(0.55))
                             }
@@ -426,7 +438,7 @@ public struct CinemaTrailersNotchView: View {
                         HStack(spacing: 10) {
                             // Date Column
                             VStack(spacing: 1) {
-                                Text(item.formattedDDay)
+                                Text(item.formattedDDay(isKorean: isKorean))
                                     .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                                     .foregroundStyle(item.platform.accentColor)
 
@@ -543,7 +555,7 @@ public struct CinemaTrailersNotchView: View {
 
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 3.5) {
-                                    Text(item.formattedDDay)
+                                    Text(item.formattedDDay(isKorean: isKorean))
                                         .font(.system(size: 8.5, weight: .heavy, design: .rounded))
                                         .foregroundStyle(item.platform.accentColor)
 
