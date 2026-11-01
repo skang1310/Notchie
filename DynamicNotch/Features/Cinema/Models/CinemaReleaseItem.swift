@@ -88,11 +88,48 @@ public struct CinemaReleaseItem: Identifiable, Sendable, Codable {
         self.iconSymbol = iconSymbol
     }
 
+    /// Calendar day of the release (`yyyy-MM-dd`), independent of the user's locale,
+    /// calendar system and time zone. `nil` when the string is malformed.
+    public var releaseDay: DateComponents? {
+        Self.parseReleaseDay(releaseDateString)
+    }
+
+    nonisolated static func parseReleaseDay(_ string: String) -> DateComponents? {
+        let parts = string.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 3,
+              parts[0].count == 4, parts[1].count == 2, parts[2].count == 2,
+              let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]),
+              (1...12).contains(month), (1...31).contains(day) else { return nil }
+        let components = DateComponents(year: year, month: month, day: day)
+        guard Self.gregorian.date(from: components).map({ Self.gregorian.component(.day, from: $0) == day }) == true else {
+            return nil
+        }
+        return components
+    }
+
+    /// Release day as local midnight. Release dates are calendar days, so they are interpreted
+    /// in the current time zone; parsing them in a fixed zone shifted D-day and calendar
+    /// matching by one day for users outside Korea.
     public var releaseDate: Date {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        return formatter.date(from: releaseDateString) ?? Date()
+        guard let day = releaseDay, let date = Self.gregorian.date(from: day) else { return .distantFuture }
+        return date
+    }
+
+    public var hasValidReleaseDate: Bool { releaseDay != nil }
+
+    /// Trailer link to open. Falls back to a YouTube search when no verified link is bundled,
+    /// so the button never opens a dead or unrelated video.
+    public var resolvedTrailerURL: URL? {
+        if let trailerURL { return trailerURL }
+        var components = URLComponents(string: "https://www.youtube.com/results")
+        components?.queryItems = [URLQueryItem(name: "search_query", value: "\(title) \(originalTitle) 예고편")]
+        return components?.url
+    }
+
+    private nonisolated static var gregorian: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        return calendar
     }
 
     public var posterGradient: [Color] {
@@ -107,38 +144,46 @@ public struct CinemaReleaseItem: Identifiable, Sendable, Codable {
         return components.day ?? 0
     }
 
-    public var formattedDDay: String {
+    public var formattedDDay: String { formattedDDay(isKorean: true) }
+
+    public func formattedDDay(isKorean: Bool) -> String {
         let days = daysRemaining
         if days == 0 {
             return "D-DAY"
         } else if days > 0 {
             return "D-\(days)"
         } else if days >= -60 {
-            return platform == .netflix ? "스트리밍 중" : "절찬 상영"
+            // Every non-theatrical platform is a streaming service, not only Netflix.
+            if platform == .theater {
+                return isKorean ? "절찬 상영" : "In Theaters"
+            }
+            return isKorean ? "스트리밍 중" : "Streaming"
         } else {
-            return "공개작"
+            return isKorean ? "공개작" : "Released"
         }
     }
 
     public var formattedReleaseDate: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy.MM.dd (E)"
-        return formatter.string(from: releaseDate)
+        Self.koreanDateFormatter.string(from: releaseDate)
     }
 
     public var shortDateString: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "MM.dd"
-        return formatter.string(from: releaseDate)
+        guard let day = releaseDay, let month = day.month, let dayOfMonth = day.day else { return "--.--" }
+        return String(format: "%02d.%02d", month, dayOfMonth)
     }
 
     public var yearMonthKey: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy.MM"
-        return formatter.string(from: releaseDate)
+        guard let day = releaseDay, let year = day.year, let month = day.month else { return "" }
+        return String(format: "%04d.%02d", year, month)
     }
+
+    private static let koreanDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy.MM.dd (E)"
+        return formatter
+    }()
 }
 
 private extension Color {

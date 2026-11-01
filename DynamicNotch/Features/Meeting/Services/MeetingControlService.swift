@@ -469,6 +469,12 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
     }
 
     nonisolated public func detectActiveRunningMeeting() -> (platform: MeetingPlatform, pid: pid_t?, title: String?)? {
+        // 0. A call always holds the microphone. Without this gate a merely running Zoom/Teams/
+        //    FaceTime/Webex app or an idle Meet home tab produced a permanent "meeting" Live
+        //    Activity, and every poll sent Apple Events to each browser (triggering Automation
+        //    permission prompts at launch). Reading this CoreAudio flag needs no permission.
+        guard MeetingDetectionHeuristics.isDefaultInputDeviceInUse() else { return nil }
+
         // 1. Detect browser-based Google Meet and Slack Huddle calls via window list
         if let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] {
             for win in windowList {
@@ -478,15 +484,8 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
                 let lowerOwner = owner.lowercased()
                 let lowerName = name.lowercased()
 
-                let isBrowser = lowerOwner.contains("chrome") || lowerOwner.contains("safari") ||
-                                lowerOwner.contains("arc") || lowerOwner.contains("brave") ||
-                                lowerOwner.contains("edge") || lowerOwner.contains("chromium") ||
-                                lowerOwner.contains("meet")
-
-                // Detect Google Meet active tab or window
-                if isBrowser && (name.contains("Meet -") || name.contains("Meet –") || name.contains("Meet: ") ||
-                                 lowerName.contains("google meet") || lowerName.contains("meet.google.com") ||
-                                 (name.contains("회의") && (lowerOwner.contains("chrome") || lowerOwner.contains("meet")))) {
+                if MeetingDetectionHeuristics.isBrowserOwner(owner),
+                   MeetingDetectionHeuristics.isGoogleMeetCallWindowTitle(name) {
                     let pid = (win[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value
                     let cleanTitle = name
                         .replacingOccurrences(of: " - Google Chrome", with: "")
@@ -505,46 +504,50 @@ public final class DefaultMeetingControlProvider: MeetingControlProviderProtocol
             }
         }
 
-        // 2. Check running browsers for meet.google.com tab if window list didn't identify it (e.g. background tab or non-standard title)
+        // 2. Check running browsers for a Meet *call* tab (background tab or non-standard title).
+        //    Only URLs with a meeting code count; the Meet home/landing page is not a call.
+        let separator = "character id 9"
         for bId in ["com.google.Chrome", "company.thebrowser.Browser", "com.brave.Browser", "com.microsoft.edgemac"] {
             if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bId).first {
                 let script = """
+                set sep to \(separator)
+                set out to ""
                 tell application id "\(bId)"
                     repeat with w in windows
                         repeat with t in tabs of w
-                            if URL of t contains "meet.google.com" then
-                                return title of t
-                            end if
+                            set u to URL of t
+                            if u contains "meet.google.com/" then set out to out & u & sep & (title of t) & linefeed
                         end repeat
                     end repeat
-                    return ""
                 end tell
+                return out
                 """
                 var error: NSDictionary?
                 if let res = NSAppleScript(source: script)?.executeAndReturnError(&error),
-                   let tabTitle = res.stringValue, !tabTitle.isEmpty {
+                   let tabTitle = MeetingDetectionHeuristics.firstMeetCallTitle(inTabList: res.stringValue ?? "") {
                     return (.meet, app.processIdentifier, tabTitle)
                 }
             }
         }
 
-        // Check Safari for meet.google.com tab
+        // Check Safari for a Meet call tab
         if let safari = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Safari").first {
             let script = """
+            set sep to \(separator)
+            set out to ""
             tell application "Safari"
                 repeat with w in windows
                     repeat with t in tabs of w
-                        if URL of t contains "meet.google.com" then
-                            return name of t
-                        end if
+                        set u to URL of t
+                        if u contains "meet.google.com/" then set out to out & u & sep & (name of t) & linefeed
                     end repeat
                 end repeat
-                return ""
             end tell
+            return out
             """
             var error: NSDictionary?
             if let res = NSAppleScript(source: script)?.executeAndReturnError(&error),
-               let tabTitle = res.stringValue, !tabTitle.isEmpty {
+               let tabTitle = MeetingDetectionHeuristics.firstMeetCallTitle(inTabList: res.stringValue ?? "") {
                 return (.meet, safari.processIdentifier, tabTitle)
             }
         }
@@ -588,6 +591,13 @@ public final class MeetingControlService: ObservableObject {
     private var detectionObservers = Set<AnyCancellable>()
     private var detectionInterval: TimeInterval?
     private var presentationConsumers = Set<UUID>()
+    /// Consecutive polls without a detected call. A short gap (device switch, a browser
+    /// briefly releasing the mic) must not tear down and re-show the Live Activity.
+    private var consecutiveMisses = 0
+    static let missesBeforeAutoStop = 3
+    /// Set when the user presses Leave; the still-open app/tab is ignored until the call
+    /// is gone, otherwise the next poll immediately re-opened the Live Activity.
+    private(set) var isSuppressedUntilCallEnds = false
     var isElapsedTimerRunning: Bool { timer != nil }
 
     public init(provider: MeetingControlProviderProtocol? = nil) {
@@ -653,16 +663,25 @@ public final class MeetingControlService: ObservableObject {
 
     private func applyDetectedMeeting(_ detected: (platform: MeetingPlatform, pid: pid_t?, title: String?)?) {
         if let detected {
-            detectedPid = detected.pid
-            if !session.isActive {
-                startMeetingSession(
-                    title: detected.title ?? detected.platform.displayName,
-                    platform: detected.platform
-                )
+            consecutiveMisses = 0
+            if !isSuppressedUntilCallEnds {
+                detectedPid = detected.pid
+                if !session.isActive {
+                    startMeetingSession(
+                        title: detected.title ?? detected.platform.displayName,
+                        platform: detected.platform
+                    )
+                }
             }
-        } else if session.isActive && detectedPid != nil {
-            // Previously detected meeting is no longer running -> clean exit
-            stopMeetingSession()
+        } else {
+            isSuppressedUntilCallEnds = false
+            if session.isActive && detectedPid != nil {
+                consecutiveMisses += 1
+                if consecutiveMisses >= Self.missesBeforeAutoStop {
+                    // Previously detected meeting is no longer running -> clean exit
+                    stopMeetingSession()
+                }
+            }
         }
         if detectionTimer != nil { configureDetectionTimer() }
     }
@@ -731,6 +750,7 @@ public final class MeetingControlService: ObservableObject {
         session.startTime = nil
         session.elapsedSeconds = 0
         detectedPid = nil
+        consecutiveMisses = 0
         timer?.cancel()
         timer = nil
 
@@ -766,6 +786,7 @@ public final class MeetingControlService: ObservableObject {
 
     public func leaveMeeting() {
         provider.sendShortcut(platform: session.platform, action: .leaveCall, pid: detectedPid)
+        isSuppressedUntilCallEnds = true
         stopMeetingSession()
     }
 
@@ -779,5 +800,80 @@ public final class MeetingControlService: ObservableObject {
         if let detectedPid, let app = NSRunningApplication(processIdentifier: detectedPid) {
             app.activate(options: [.activateIgnoringOtherApps])
         }
+    }
+}
+
+/// Pure, permission-free helpers for meeting detection, kept separate so they are testable.
+enum MeetingDetectionHeuristics {
+    /// Exact process names. Substring checks such as `contains("arc")` also matched
+    /// unrelated processes ("Archive Utility", "SearchPartyUserAgent", …).
+    nonisolated static let browserOwnerNames: Set<String> = [
+        "google chrome", "google chrome beta", "google chrome canary", "chromium",
+        "arc", "brave browser", "microsoft edge", "safari", "safari technology preview"
+    ]
+
+    nonisolated static func isBrowserOwner(_ owner: String) -> Bool {
+        browserOwnerNames.contains(owner.lowercased())
+    }
+
+    /// `https://meet.google.com/abc-defg-hij` (optionally with query/fragment) is a call;
+    /// `https://meet.google.com/`, `/landing`, `/new` etc. are not.
+    nonisolated static func isGoogleMeetCallURL(_ string: String) -> Bool {
+        guard let url = URL(string: string.trimmingCharacters(in: .whitespacesAndNewlines)),
+              url.host?.lowercased() == "meet.google.com" else { return false }
+        let components = url.path.split(separator: "/")
+        guard let code = components.first, components.count == 1 else { return false }
+        return isMeetingCode(String(code))
+    }
+
+    /// Meet call windows are titled "Meet - <code or meeting name>"; the home page is just
+    /// "Google Meet", which previously counted as an active call.
+    nonisolated static func isGoogleMeetCallWindowTitle(_ title: String) -> Bool {
+        if title.hasPrefix("Meet - ") || title.hasPrefix("Meet – ") || title.hasPrefix("Meet: ") {
+            return true
+        }
+        return title
+            .split(whereSeparator: { $0 == " " || $0 == "\t" })
+            .contains { isMeetingCode(String($0)) }
+    }
+
+    /// Parses AppleScript output of `url<TAB>title` lines and returns the first call tab's title.
+    nonisolated static func firstMeetCallTitle(inTabList list: String) -> String? {
+        for line in list.split(whereSeparator: \.isNewline) {
+            let fields = line.split(separator: "\t", maxSplits: 1, omittingEmptySubsequences: false)
+            guard let url = fields.first, isGoogleMeetCallURL(String(url)) else { continue }
+            let title = fields.count > 1 ? fields[1].trimmingCharacters(in: .whitespaces) : ""
+            return title.isEmpty ? "Google Meet" : title
+        }
+        return nil
+    }
+
+    nonisolated static func isMeetingCode(_ code: String) -> Bool {
+        let groups = code.lowercased().split(separator: "-", omittingEmptySubsequences: false)
+        guard groups.map(\.count) == [3, 4, 3] else { return false }
+        return groups.allSatisfy { $0.allSatisfy { $0 >= "a" && $0 <= "z" } }
+    }
+
+    /// `true` while any process captures from the default input device (public CoreAudio
+    /// property, no microphone permission required). Notchie itself never records audio.
+    nonisolated static func isDefaultInputDeviceInUse() -> Bool {
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID) == noErr,
+              deviceID != kAudioObjectUnknown else { return false }
+
+        var isRunning: UInt32 = 0
+        size = UInt32(MemoryLayout<UInt32>.size)
+        address.mSelector = kAudioDevicePropertyDeviceIsRunningSomewhere
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &isRunning) == noErr else {
+            // If the flag cannot be read, fall back to the previous (ungated) behaviour.
+            return true
+        }
+        return isRunning != 0
     }
 }

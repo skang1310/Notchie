@@ -126,6 +126,102 @@ final class MeetingAndMessagesTests: XCTestCase {
         XCTAssertEqual(mock.lastSentAction, .leaveCall)
     }
 
+    func testAutoDetectedMeetingSurvivesBriefDetectionGaps() {
+        let mock = MockMeetingControlProvider()
+        let service = MeetingControlService(provider: mock)
+        defer { service.stopDetection() }
+
+        mock.detectedMeeting = (.meet, 4242, "Meet - abc-defg-hij")
+        service.pollRunningMeeting()
+        XCTAssertTrue(service.session.isActive)
+        XCTAssertEqual(service.detectedPid, 4242)
+
+        mock.detectedMeeting = nil
+        for _ in 1..<MeetingControlService.missesBeforeAutoStop {
+            service.pollRunningMeeting()
+            XCTAssertTrue(service.session.isActive, "a short gap must not end the session")
+        }
+        // Detection recovers: the miss counter resets.
+        mock.detectedMeeting = (.meet, 4242, "Meet - abc-defg-hij")
+        service.pollRunningMeeting()
+        mock.detectedMeeting = nil
+        for _ in 1..<MeetingControlService.missesBeforeAutoStop {
+            service.pollRunningMeeting()
+        }
+        XCTAssertTrue(service.session.isActive)
+
+        service.pollRunningMeeting()
+        XCTAssertFalse(service.session.isActive)
+        XCTAssertNil(service.detectedPid)
+    }
+
+    func testLeavingDoesNotImmediatelyReopenTheSameCall() {
+        let mock = MockMeetingControlProvider()
+        let service = MeetingControlService(provider: mock)
+        defer { service.stopDetection() }
+
+        mock.detectedMeeting = (.zoom, 77, "Zoom Meeting")
+        service.pollRunningMeeting()
+        XCTAssertTrue(service.session.isActive)
+
+        service.leaveMeeting()
+        XCTAssertFalse(service.session.isActive)
+        XCTAssertTrue(service.isSuppressedUntilCallEnds)
+
+        // The app/tab is still around for a moment after leaving.
+        service.pollRunningMeeting()
+        XCTAssertFalse(service.session.isActive)
+
+        // Once the call is gone, the next call is detected again.
+        mock.detectedMeeting = nil
+        service.pollRunningMeeting()
+        XCTAssertFalse(service.isSuppressedUntilCallEnds)
+        mock.detectedMeeting = (.zoom, 77, "Zoom Meeting")
+        service.pollRunningMeeting()
+        XCTAssertTrue(service.session.isActive)
+    }
+
+    func testManuallyStartedMeetingIsNotAutoStopped() {
+        let mock = MockMeetingControlProvider()
+        let service = MeetingControlService(provider: mock)
+        defer { service.stopDetection() }
+        service.startMeetingSession(title: "Manual", platform: .meet)
+        for _ in 0..<(MeetingControlService.missesBeforeAutoStop + 1) {
+            service.pollRunningMeeting()
+        }
+        XCTAssertTrue(service.session.isActive)
+    }
+
+    func testGoogleMeetCallURLRequiresMeetingCode() {
+        XCTAssertTrue(MeetingDetectionHeuristics.isGoogleMeetCallURL("https://meet.google.com/abc-defg-hij"))
+        XCTAssertTrue(MeetingDetectionHeuristics.isGoogleMeetCallURL("https://meet.google.com/abc-defg-hij?authuser=1"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isGoogleMeetCallURL("https://meet.google.com/"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isGoogleMeetCallURL("https://meet.google.com/landing"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isGoogleMeetCallURL("https://meet.google.com/new"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isGoogleMeetCallURL("https://evil.example/abc-defg-hij?meet.google.com"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isGoogleMeetCallURL("https://meet.google.com/abc-defg-hij/extra"))
+    }
+
+    func testMeetWindowTitlesAndBrowserOwners() {
+        XCTAssertTrue(MeetingDetectionHeuristics.isGoogleMeetCallWindowTitle("Meet - abc-defg-hij"))
+        XCTAssertTrue(MeetingDetectionHeuristics.isGoogleMeetCallWindowTitle("Meet – Weekly sync"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isGoogleMeetCallWindowTitle("Google Meet"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isGoogleMeetCallWindowTitle("Meeting notes.md"))
+
+        XCTAssertTrue(MeetingDetectionHeuristics.isBrowserOwner("Arc"))
+        XCTAssertTrue(MeetingDetectionHeuristics.isBrowserOwner("Google Chrome"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isBrowserOwner("Archive Utility"))
+        XCTAssertFalse(MeetingDetectionHeuristics.isBrowserOwner("SearchPartyUserAgent"))
+    }
+
+    func testFirstMeetCallTitleSkipsLandingTabs() {
+        let list = "https://meet.google.com/landing\tGoogle Meet\nhttps://meet.google.com/abc-defg-hij\tMeet - abc-defg-hij\n"
+        XCTAssertEqual(MeetingDetectionHeuristics.firstMeetCallTitle(inTabList: list), "Meet - abc-defg-hij")
+        XCTAssertNil(MeetingDetectionHeuristics.firstMeetCallTitle(inTabList: "https://meet.google.com/\tGoogle Meet\n"))
+        XCTAssertNil(MeetingDetectionHeuristics.firstMeetCallTitle(inTabList: ""))
+        XCTAssertEqual(MeetingDetectionHeuristics.firstMeetCallTitle(inTabList: "https://meet.google.com/xyz-abcd-efg\t"), "Google Meet")
+    }
+
     func testMessagesModelsAndInitials() {
         let conv1 = MessageConversation(id: "chat-1", displayName: "Dohan Kim", handle: "+18086661044")
         XCTAssertEqual(conv1.avatarInitials, "DK")
