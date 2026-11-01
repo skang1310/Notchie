@@ -288,9 +288,11 @@ final class MeetingAndMessagesTests: XCTestCase {
         XCTAssertEqual(service.session.title, "Meet - team-sync-daily")
         XCTAssertEqual(service.detectedPid, 12345)
 
-        // Ending meeting cleans up session
+        // Ending meeting cleans up session (requires missesBeforeAutoStop consecutive nil polls)
         mock.detectedMeeting = nil
-        service.pollRunningMeeting()
+        for _ in 0..<MeetingControlService.missesBeforeAutoStop {
+            service.pollRunningMeeting()
+        }
         XCTAssertFalse(service.session.isActive)
     }
 
